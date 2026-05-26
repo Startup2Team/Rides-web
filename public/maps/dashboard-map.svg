@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
+  <rect width="100%" height="100%" fill="#F2EBDD"/>
+
+  <path d="M 0 0 Q 55 8 80 32 Q 100 62 72 82 L 0 70 Z" fill="#C5E1A5"/>
+  <path d="M 290 285 Q 330 268 365 285 Q 400 295 400 320 L 290 320 Z" fill="#A6CCE8" opacity="0.85"/>
+
+  <g fill="none" stroke-linecap="round">
+    <path d="M -20 70 Q 200 130 420 240" stroke="#E5DCC5" stroke-width="24"/>
+    <path d="M -10 180 L 410 195" stroke="#E5DCC5" stroke-width="16"/>
+    <path d="M 230 -10 Q 235 150 245 330" stroke="#E5DCC5" stroke-width="16"/>
+    <path d="M -10 110 L 410 135" stroke="#E5DCC5" stroke-width="9"/>
+    <path d="M -10 250 L 410 270" stroke="#E5DCC5" stroke-width="9"/>
+    <path d="M 110 -10 Q 115 150 130 330" stroke="#E5DCC5" stroke-width="9"/>
+    <path d="M 340 -10 Q 345 150 355 330" stroke="#E5DCC5" stroke-width="9"/>
+
+    <path d="M -20 70 Q 200 130 420 240" stroke="#FFFFFF" stroke-width="20"/>
+    <path d="M -10 180 L 410 195" stroke="#FFFFFF" stroke-width="13"/>
+    <path d="M 230 -10 Q 235 150 245 330" stroke="#FFFFFF" stroke-width="13"/>
+    <path d="M -10 110 L 410 135" stroke="#FFFFFF" stroke-width="6"/>
+    <path d="M -10 250 L 410 270" stroke="#FFFFFF" stroke-width="6"/>
+    <path d="M 110 -10 Q 115 150 130 330" stroke="#FFFFFF" stroke-width="6"/>
+    <path d="M 340 -10 Q 345 150 355 330" stroke="#FFFFFF" stroke-width="6"/>
+  </g>
+
+  <g fill="#E0D5BB">
+    <rect x="130" y="20" width="35" height="30" rx="2"/>
+    <rect x="170" y="20" width="55" height="35" rx="2"/>
+    <rect x="250" y="20" width="35" height="30" rx="2"/>
+    <rect x="290" y="20" width="40" height="35" rx="2"/>
+    <rect x="335" y="20" width="55" height="40" rx="2"/>
+
+    <rect x="130" y="62" width="40" height="35" rx="2"/>
+    <rect x="175" y="62" width="50" height="30" rx="2"/>
+    <rect x="250" y="62" width="35" height="38" rx="2"/>
+    <rect x="290" y="65" width="40" height="32" rx="2"/>
+    <rect x="338" y="68" width="55" height="35" rx="2"/>
+
+    <rect x="20" y="120" width="35" height="42" rx="2"/>
+    <rect x="60" y="120" width="42" height="38" rx="2"/>
+    <rect x="135" y="142" width="50" height="28" rx="2"/>
+    <rect x="190" y="145" width="32" height="28" rx="2"/>
+    <rect x="252" y="142" width="40" height="32" rx="2"/>
+    <rect x="297" y="142" width="38" height="30" rx="2"/>
+    <rect x="345" y="145" width="48" height="32" rx="2"/>
+
+    <rect x="20" y="208" width="38" height="35" rx="2"/>
+    <rect x="63" y="208" width="42" height="38" rx="2"/>
+    <rect x="135" y="210" width="50" height="34" rx="2"/>
+    <rect x="190" y="208" width="35" height="38" rx="2"/>
+    <rect x="252" y="210" width="48" height="38" rx="2"/>
+    <rect x="305" y="208" width="32" height="38" rx="2"/>
+    <rect x="345" y="210" width="48" height="34" rx="2"/>
+
+    <rect x="20" y="280" width="48" height="32" rx="2"/>
+    <rect x="135" y="282" width="38" height="28" rx="2"/>
+    <rect x="180" y="282" width="48" height="28" rx="2"/>
+    <rect x="252" y="282" width="40" height="30" rx="2"/>
+  </g>
+
+  <g fill="#9C8F73" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="6" font-weight="500">
+    <text x="60" y="135" transform="rotate(2 60 135)">KN 5 Ave</text>
+    <text x="180" y="188">Avenue de la Paix</text>
+    <text x="248" y="220" transform="rotate(85 248 220)" letter-spacing="0.3">KK 14 Ave</text>
+    <text x="145" y="105">Boulevard du Lac</text>
+    <text x="58" y="178">KG 9 Ave</text>
+  </g>
+</svg>
