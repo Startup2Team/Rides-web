@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -90,6 +90,12 @@ const icons = {
       <path d="M21 19a2 2 0 0 1-2 2h-1v-7h3zM3 19a2 2 0 0 0 2 2h1v-7H3z" />
     </Icon>
   ),
+  inbox: (
+    <Icon>
+      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </Icon>
+  ),
   reports: (
     <Icon>
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -113,9 +119,24 @@ const icons = {
   ),
 };
 
+type NavItem = {
+  label: string;
+  href: string;
+  icon: ReactNode;
+  children?: { label: string; href: string }[];
+  disabled?: boolean;
+};
+
+const driverCategories: { label: string; href: string }[] = [
+  { label: "Moto Bikes", href: "/admin/drivers?vehicle=moto" },
+  { label: "Cab Taxis", href: "/admin/drivers?vehicle=cab" },
+  { label: "Light Hilux", href: "/admin/drivers?vehicle=hilux" },
+  { label: "Heavy Fuso", href: "/admin/drivers?vehicle=fuso" },
+];
+
 const groups: {
   label: string;
-  items: { label: string; href: string; icon: ReactNode }[];
+  items: NavItem[];
 }[] = [
   {
     label: "Overview",
@@ -124,7 +145,7 @@ const groups: {
   {
     label: "Operations",
     items: [
-      { label: "Drivers", href: "/admin/drivers", icon: icons.drivers },
+      { label: "Drivers", href: "/admin/drivers", icon: icons.drivers, children: driverCategories },
       { label: "Customers", href: "/admin/customers", icon: icons.customers },
       { label: "Live Rides", href: "/admin/live-rides", icon: icons.liveRides },
       { label: "Negotiations", href: "/admin/negotiations", icon: icons.negotiations },
@@ -144,6 +165,7 @@ const groups: {
     items: [
       { label: "Safety Center", href: "/admin/safety-center", icon: icons.safety },
       { label: "Support", href: "/admin/support", icon: icons.support },
+      { label: "Inbox", href: "/admin/inbox", icon: icons.inbox },
     ],
   },
   {
@@ -155,8 +177,51 @@ const groups: {
   },
 ];
 
+function isChildActive(
+  childHref: string,
+  pathname: string,
+  searchParams: URLSearchParams,
+) {
+  const [path, qs] = childHref.split("?");
+  if (pathname !== path) return false;
+  if (!qs) {
+    // "All drivers" — active only when no vehicle filter is present
+    return !searchParams.get("vehicle");
+  }
+  const target = new URLSearchParams(qs);
+  for (const [k, v] of target.entries()) {
+    if (searchParams.get(k) !== v) return false;
+  }
+  return true;
+}
+
 export function AdminSidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      for (const group of groups) {
+        for (const item of group.items) {
+          if (!item.children) continue;
+          const parentMatch =
+            pathname === item.href || pathname.startsWith(`${item.href}/`);
+          if (parentMatch) next.add(item.href);
+        }
+      }
+      return next;
+    });
+  }, [pathname]);
+
+  const toggle = (href: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(href)) next.delete(href);
+      else next.add(href);
+      return next;
+    });
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card lg:flex">
@@ -185,17 +250,108 @@ export function AdminSidebar() {
             </p>
             <ul className="mt-2 space-y-0.5">
               {group.items.map((item) => {
-                const active =
+                const parentMatch =
                   item.href === "/admin"
                     ? pathname === "/admin"
                     : pathname === item.href ||
                       pathname.startsWith(`${item.href}/`);
+
+                if (item.children) {
+                  const isOpen = expanded.has(item.href);
+                  const parentExactActive =
+                    parentMatch && !searchParams.get("vehicle");
+                  return (
+                    <li key={item.href}>
+                      <div
+                        className={`flex items-center rounded-lg pr-1 transition-colors ${
+                          parentExactActive
+                            ? "bg-primary/15 font-semibold text-primary"
+                            : "text-muted-foreground hover:bg-surface hover:text-foreground"
+                        }`}
+                      >
+                        <Link
+                          href={item.href}
+                          className="flex flex-1 items-center gap-3 px-3 py-2 text-sm"
+                        >
+                          {item.icon}
+                          <span>{item.label}</span>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => toggle(item.href)}
+                          aria-expanded={isOpen}
+                          aria-label={`${isOpen ? "Collapse" : "Expand"} ${item.label}`}
+                          className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-black/5"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden
+                            className={`h-3.5 w-3.5 transition-transform ${
+                              isOpen ? "rotate-180" : ""
+                            }`}
+                          >
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
+                        </button>
+                      </div>
+                      {isOpen ? (
+                        <ul className="mt-0.5 space-y-0.5 pl-9">
+                          {item.children.map((child) => {
+                            const childActive = isChildActive(
+                              child.href,
+                              pathname,
+                              searchParams,
+                            );
+                            return (
+                              <li key={child.href}>
+                                <Link
+                                  href={child.href}
+                                  className={`flex items-center rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                                    childActive
+                                      ? "bg-primary/10 font-semibold text-primary"
+                                      : "text-muted-foreground hover:bg-surface hover:text-foreground"
+                                  }`}
+                                >
+                                  {child.label}
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                    </li>
+                  );
+                }
+
+                if (item.disabled) {
+                  return (
+                    <li key={item.href}>
+                      <div
+                        aria-disabled
+                        title="Coming soon"
+                        className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground/60"
+                      >
+                        {item.icon}
+                        <span className="flex-1">{item.label}</span>
+                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Soon
+                        </span>
+                      </div>
+                    </li>
+                  );
+                }
+
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
                       className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                        active
+                        parentMatch
                           ? "bg-primary/15 font-semibold text-primary"
                           : "text-muted-foreground hover:bg-surface hover:text-foreground"
                       }`}
