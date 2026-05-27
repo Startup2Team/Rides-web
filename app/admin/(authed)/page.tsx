@@ -1,4 +1,7 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { DateSubtitle, Greeting } from "./_greeting";
+import { PeriodFilter } from "./_period-filter";
 
 export const metadata = {
   title: "Admin · Dashboard",
@@ -14,7 +17,7 @@ function Icon({ children }: { children: ReactNode }) {
       strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="h-4 w-4"
+      className="h-3.5 w-3.5"
       aria-hidden
     >
       {children}
@@ -84,32 +87,18 @@ const icons = {
       <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
     </Icon>
   ),
-  arrowUp: (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3" aria-hidden>
-      <path d="M7 14l5-5 5 5z" />
-    </svg>
-  ),
-  arrowDown: (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3" aria-hidden>
-      <path d="M7 10l5 5 5-5z" />
-    </svg>
-  ),
-  arrowRight: (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3" aria-hidden>
-      <path d="M10 7l5 5-5 5z" />
-    </svg>
-  ),
 };
 
-type Trend = { direction: "up" | "down" | "flat"; value: string };
-
+type TrendDir = "up" | "down" | "flat";
+type BadgeTone = "live" | "alert" | "info";
 type Kpi = {
   label: string;
   value: string;
   icon: ReactNode;
-  trend?: Trend;
-  badge?: { tone: "live" | "alert" | "info"; label: string };
+  trend?: { direction: TrendDir; value: string };
+  badge?: { tone: BadgeTone; label: string };
   period?: string;
+  spark: number[];
 };
 
 const kpis: Kpi[] = [
@@ -119,12 +108,15 @@ const kpis: Kpi[] = [
     icon: icons.drivers,
     trend: { direction: "up", value: "8%" },
     period: "vs last week",
+    spark: [120, 128, 132, 135, 138, 140, 142],
   },
   {
     label: "Drivers Online",
     value: "89",
     icon: icons.signal,
     badge: { tone: "live", label: "Live" },
+    period: "of 142 active",
+    spark: [82, 84, 85, 87, 88, 87, 89],
   },
   {
     label: "Active Rides",
@@ -132,6 +124,7 @@ const kpis: Kpi[] = [
     icon: icons.route,
     trend: { direction: "up", value: "12%" },
     period: "vs yesterday",
+    spark: [200, 210, 218, 225, 232, 240, 247],
   },
   {
     label: "Completed Today",
@@ -139,6 +132,7 @@ const kpis: Kpi[] = [
     icon: icons.check,
     trend: { direction: "up", value: "5%" },
     period: "vs yesterday",
+    spark: [1100, 1150, 1200, 1230, 1250, 1270, 1283],
   },
   {
     label: "Cancelled Today",
@@ -146,6 +140,7 @@ const kpis: Kpi[] = [
     icon: icons.cancel,
     trend: { direction: "down", value: "2%" },
     period: "vs yesterday",
+    spark: [55, 53, 52, 50, 49, 48, 47],
   },
   {
     label: "Revenue Today",
@@ -153,6 +148,7 @@ const kpis: Kpi[] = [
     icon: icons.money,
     trend: { direction: "up", value: "18%" },
     period: "vs yesterday",
+    spark: [2.5, 2.8, 3.0, 3.3, 3.7, 4.0, 4.2],
   },
   {
     label: "Negotiations",
@@ -160,6 +156,7 @@ const kpis: Kpi[] = [
     icon: icons.chat,
     trend: { direction: "up", value: "22%" },
     period: "vs yesterday",
+    spark: [240, 255, 268, 280, 292, 305, 312],
   },
   {
     label: "Acceptance Rate",
@@ -167,12 +164,15 @@ const kpis: Kpi[] = [
     icon: icons.percent,
     trend: { direction: "flat", value: "0%" },
     period: "stable",
+    spark: [86, 87, 86, 88, 87, 86, 87],
   },
   {
     label: "Live Requests",
     value: "12",
     icon: icons.bell,
     badge: { tone: "alert", label: "Urgent" },
+    period: "in queue now",
+    spark: [5, 7, 8, 10, 11, 12, 12],
   },
   {
     label: "Heatmap Index",
@@ -180,77 +180,138 @@ const kpis: Kpi[] = [
     icon: icons.flame,
     badge: { tone: "info", label: "High" },
     period: "of 100",
+    spark: [65, 68, 72, 75, 76, 77, 78],
   },
 ];
 
-function KpiCard({ kpi }: { kpi: Kpi }) {
+function Sparkline({
+  data,
+  tone,
+}: {
+  data: number[];
+  tone: "up" | "down" | "flat" | "alert" | "live" | "info";
+}) {
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const w = 100;
+  const h = 24;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return [x, y] as const;
+  });
+
+  const line = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p[0].toFixed(2)} ${p[1].toFixed(2)}`)
+    .join(" ");
+  const area = `${line} L ${w} ${h} L 0 ${h} Z`;
+
+  const stroke =
+    tone === "down"
+      ? "#ef4444"
+      : tone === "flat"
+      ? "#9ca3af"
+      : tone === "alert"
+      ? "#f59e0b"
+      : "#00C853";
+  const fill =
+    tone === "down"
+      ? "rgba(239,68,68,0.1)"
+      : tone === "flat"
+      ? "rgba(156,163,175,0.08)"
+      : tone === "alert"
+      ? "rgba(245,158,11,0.12)"
+      : "rgba(0,200,83,0.12)";
+  const lastPoint = points[points.length - 1];
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-          {kpi.label}
-        </p>
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      aria-hidden
+      className="block h-7 w-full"
+    >
+      <path d={area} fill={fill} />
+      <path d={line} stroke={stroke} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lastPoint[0]} cy={lastPoint[1]} r="2" fill={stroke} />
+    </svg>
+  );
+}
+
+function TrendPill({ direction, value }: { direction: TrendDir; value: string }) {
+  const tone =
+    direction === "up"
+      ? "bg-primary/10 text-primary"
+      : direction === "down"
+      ? "bg-red-50 text-red-600"
+      : "bg-muted text-muted-foreground";
+  const arrow = direction === "up" ? "↑" : direction === "down" ? "↓" : "→";
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tone}`}
+    >
+      <span>{arrow}</span>
+      <span>{value}</span>
+    </span>
+  );
+}
+
+function LivePill({ tone, label }: { tone: BadgeTone; label: string }) {
+  const styles =
+    tone === "alert"
+      ? "bg-amber-50 text-amber-700"
+      : "bg-primary/10 text-primary";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${styles}`}
+    >
+      <span className="relative flex h-1.5 w-1.5">
+        {tone === "live" ? (
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-75" />
+        ) : null}
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-current" />
+      </span>
+      {label}
+    </span>
+  );
+}
+
+function KpiCard({ kpi }: { kpi: Kpi }) {
+  const sparkTone: "up" | "down" | "flat" | "alert" | "live" | "info" = kpi.trend
+    ? kpi.trend.direction
+    : kpi.badge
+    ? kpi.badge.tone
+    : "up";
+
+  return (
+    <div className="group relative rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-primary/5">
+      <div className="flex items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary ring-1 ring-inset ring-primary/15">
           {kpi.icon}
         </span>
+        <span className="truncate text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+          {kpi.label}
+        </span>
       </div>
-      <p className="mt-3 text-2xl font-bold tracking-tight text-foreground">
-        {kpi.value}
-      </p>
-      <div className="mt-2 flex items-center gap-1.5 text-[11px]">
-        {kpi.trend ? (
-          <>
-            <span
-              className={`inline-flex items-center gap-0.5 font-semibold ${
-                kpi.trend.direction === "up"
-                  ? "text-primary"
-                  : kpi.trend.direction === "down"
-                  ? "text-red-500"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {kpi.trend.direction === "up" && icons.arrowUp}
-              {kpi.trend.direction === "down" && icons.arrowDown}
-              {kpi.trend.direction === "flat" && icons.arrowRight}
-              {kpi.trend.value}
-            </span>
-            {kpi.period && (
-              <span className="text-muted-foreground">{kpi.period}</span>
-            )}
-          </>
-        ) : kpi.badge ? (
-          <span className="flex items-center gap-1.5">
-            <span
-              className={`relative flex h-1.5 w-1.5 ${
-                kpi.badge.tone === "live"
-                  ? "text-primary"
-                  : kpi.badge.tone === "alert"
-                  ? "text-amber-500"
-                  : "text-primary"
-              }`}
-            >
-              {kpi.badge.tone === "live" && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-75" />
-              )}
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-current" />
-            </span>
-            <span
-              className={`font-semibold ${
-                kpi.badge.tone === "alert"
-                  ? "text-amber-600"
-                  : kpi.badge.tone === "info"
-                  ? "text-primary"
-                  : "text-primary"
-              }`}
-            >
-              {kpi.badge.label}
-            </span>
-            {kpi.period && (
-              <span className="text-muted-foreground">{kpi.period}</span>
-            )}
-          </span>
-        ) : null}
+
+      <div className="mt-4 flex items-baseline gap-2">
+        <span className="text-2xl font-bold tracking-tight text-foreground">
+          {kpi.value}
+        </span>
+        {kpi.trend ? <TrendPill {...kpi.trend} /> : null}
+        {kpi.badge ? <LivePill {...kpi.badge} /> : null}
       </div>
+
+      <div className="mt-3">
+        <Sparkline data={kpi.spark} tone={sparkTone} />
+      </div>
+
+      {kpi.period ? (
+        <p className="mt-1.5 text-[10px] font-medium text-muted-foreground">
+          {kpi.period}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -268,9 +329,14 @@ function LiveMapWidget() {
             Live Operations Map
           </h2>
         </div>
-        <span className="text-[10px] font-medium text-muted-foreground">
-          247 active rides
-        </span>
+        <div className="text-right">
+          <div className="text-[11px] font-semibold text-foreground">
+            247 active rides
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            Updated just now
+          </div>
+        </div>
       </div>
 
       <div className="relative aspect-[16/9] overflow-hidden">
@@ -322,27 +388,38 @@ function LiveMapWidget() {
           />
         </svg>
 
-        <div className="absolute z-10" style={{ top: "42%", left: "22%" }}>
-          <div className="relative">
-            <span className="absolute -inset-2 animate-ping rounded-full bg-primary opacity-40" />
-            <span className="relative block h-3 w-3 rounded-full bg-primary ring-2 ring-card" />
+        {[
+          { top: "42%", left: "22%" },
+          { top: "65%", left: "65%" },
+          { top: "18%", left: "38%" },
+          { top: "32%", left: "72%" },
+          { top: "50%", left: "15%" },
+          { top: "70%", left: "50%" },
+          { top: "85%", left: "65%" },
+        ].map((p, i) => (
+          <div key={`a${i}`} className="absolute z-10" style={p}>
+            <div className="relative">
+              <span className="absolute -inset-2 animate-ping rounded-full bg-primary opacity-40" />
+              <span className="relative block h-3 w-3 rounded-full bg-primary ring-2 ring-card" />
+            </div>
           </div>
-        </div>
-        <div className="absolute z-10" style={{ top: "65%", left: "65%" }}>
-          <div className="relative">
-            <span className="absolute -inset-2 animate-ping rounded-full bg-primary opacity-40" />
-            <span className="relative block h-3 w-3 rounded-full bg-primary ring-2 ring-card" />
+        ))}
+        {[
+          { top: "28%", left: "52%" },
+          { top: "55%", left: "78%" },
+          { top: "78%", left: "30%" },
+          { top: "22%", left: "12%" },
+          { top: "38%", left: "88%" },
+          { top: "60%", left: "18%" },
+          { top: "48%", left: "42%" },
+          { top: "72%", left: "88%" },
+          { top: "88%", left: "25%" },
+          { top: "25%", left: "68%" },
+        ].map((p, i) => (
+          <div key={`i${i}`} className="absolute z-10" style={p}>
+            <span className="block h-2.5 w-2.5 rounded-full bg-foreground/85 ring-[3px] ring-card shadow-sm" />
           </div>
-        </div>
-        <div className="absolute z-10" style={{ top: "28%", left: "52%" }}>
-          <span className="block h-2.5 w-2.5 rounded-full bg-foreground ring-[3px] ring-card shadow-sm" />
-        </div>
-        <div className="absolute z-10" style={{ top: "55%", left: "78%" }}>
-          <span className="block h-2.5 w-2.5 rounded-full bg-foreground ring-[3px] ring-card shadow-sm" />
-        </div>
-        <div className="absolute z-10" style={{ top: "78%", left: "30%" }}>
-          <span className="block h-2.5 w-2.5 rounded-full bg-foreground ring-[3px] ring-card shadow-sm" />
-        </div>
+        ))}
 
         <div className="absolute bottom-3 left-3 z-20 rounded-xl border border-border bg-card/85 px-3 py-2 shadow-md backdrop-blur-xl">
           <div className="flex items-center gap-3">
@@ -386,13 +463,23 @@ function RevenueWidget() {
         </p>
         <div className="mt-1 flex items-center gap-1.5 text-xs">
           <span className="inline-flex items-center gap-0.5 font-semibold text-primary">
-            {icons.arrowUp}
-            18%
+            ↑ 18%
           </span>
           <span className="text-muted-foreground">vs yesterday</span>
         </div>
 
-        <div className="mt-4 flex-1">
+        <div className="relative mt-4 flex-1">
+          <div className="absolute right-2 top-0 z-10 rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-md">
+            <div className="text-[8px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+              Peak
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[11px] font-bold text-foreground">
+                17:00
+              </span>
+              <span className="text-[11px] font-bold text-primary">520K</span>
+            </div>
+          </div>
           <svg
             viewBox="0 0 200 80"
             preserveAspectRatio="none"
@@ -459,12 +546,19 @@ function RideTrendWidget() {
   ];
   const max = 260;
 
+  const totalWeek = data.reduce((acc, d) => acc + d.c + d.x, 0);
+
   return (
     <div className="rounded-2xl border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">
-          Ride Trend
-        </h2>
+        <div>
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">
+            Ride Trend
+          </h2>
+          <p className="text-[10px] text-muted-foreground">
+            {totalWeek.toLocaleString()} rides this week
+          </p>
+        </div>
         <span className="text-[10px] font-medium text-muted-foreground">
           7 days
         </span>
@@ -472,13 +566,16 @@ function RideTrendWidget() {
       <div className="p-4">
         <div className="flex h-32 items-end justify-between gap-2">
           {data.map((d, i) => (
-            <div key={i} className="flex flex-1 flex-col items-center gap-1">
+            <div
+              key={i}
+              className="flex h-full flex-1 flex-col items-center justify-end gap-0.5"
+            >
               <div
                 className="w-full rounded-t bg-muted"
                 style={{ height: `${(d.x / max) * 100}%` }}
               />
               <div
-                className="-mt-1 w-full rounded-b bg-primary"
+                className="w-full rounded-b-sm bg-primary"
                 style={{ height: `${(d.c / max) * 100}%` }}
               />
             </div>
@@ -557,21 +654,30 @@ function DriverStatusWidget() {
               <span className="h-2 w-2 rounded-full bg-primary" />
               <span className="text-muted-foreground">Online</span>
             </span>
-            <span className="font-bold text-foreground">89</span>
+            <span className="flex items-baseline gap-1.5">
+              <span className="font-bold text-foreground">89</span>
+              <span className="text-[10px] font-semibold text-primary">+5</span>
+            </span>
           </div>
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-amber-400" />
               <span className="text-muted-foreground">On trip</span>
             </span>
-            <span className="font-bold text-foreground">34</span>
+            <span className="flex items-baseline gap-1.5">
+              <span className="font-bold text-foreground">34</span>
+              <span className="text-[10px] font-semibold text-primary">+3</span>
+            </span>
           </div>
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-muted-foreground/30" />
               <span className="text-muted-foreground">Offline</span>
             </span>
-            <span className="font-bold text-foreground">19</span>
+            <span className="flex items-baseline gap-1.5">
+              <span className="font-bold text-foreground">19</span>
+              <span className="text-[10px] font-semibold text-primary">−8</span>
+            </span>
           </div>
         </div>
       </div>
@@ -581,10 +687,10 @@ function DriverStatusWidget() {
 
 function TopDriversWidget() {
   const drivers = [
-    { name: "Aiden M.", rides: 28, w: "90%" },
-    { name: "Beni K.", rides: 24, w: "78%" },
-    { name: "Claude R.", rides: 21, w: "68%" },
-    { name: "Diane U.", rides: 18, w: "58%" },
+    { name: "Aiden M.", rides: 28, w: "90%", online: true },
+    { name: "Beni K.", rides: 24, w: "78%", online: true },
+    { name: "Claude R.", rides: 21, w: "68%", online: false },
+    { name: "Diane U.", rides: 18, w: "58%", online: true },
   ];
   return (
     <div className="rounded-2xl border border-border bg-card">
@@ -602,10 +708,15 @@ function TopDriversWidget() {
             <span className="w-3 text-[10px] font-bold text-muted-foreground">
               {i + 1}
             </span>
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-inset ring-primary/30">
+            <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-inset ring-primary/30">
               <span className="text-[10px] font-bold">
                 {d.name.charAt(0)}
               </span>
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-card ${
+                  d.online ? "bg-primary" : "bg-muted-foreground/40"
+                }`}
+              />
             </span>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold text-foreground">
@@ -626,44 +737,124 @@ function TopDriversWidget() {
   );
 }
 
+type ActivityKind =
+  | "ride_request"
+  | "ride_complete"
+  | "driver_online"
+  | "driver_document"
+  | "negotiation";
+
 type Activity = {
-  type: "ride" | "driver" | "complete";
+  kind: ActivityKind;
   text: string;
   time: string;
 };
 
 const activities: Activity[] = [
   {
-    type: "ride",
+    kind: "ride_request",
     text: "New ride request near Kimironko Market",
     time: "Just now",
   },
   {
-    type: "complete",
+    kind: "ride_complete",
     text: "Aiden M. completed trip to Kigali Heights",
     time: "2m",
   },
   {
-    type: "driver",
+    kind: "driver_online",
     text: "Diane U. came online — Cab Taxi",
     time: "5m",
   },
   {
-    type: "ride",
+    kind: "negotiation",
     text: "Negotiation agreed: 3,800 RWF (Nyamirambo route)",
     time: "8m",
   },
   {
-    type: "complete",
+    kind: "ride_complete",
     text: "Beni K. completed trip — 4.9 ★ rating received",
     time: "12m",
   },
   {
-    type: "driver",
+    kind: "driver_document",
     text: "Claude R. submitted documents for verification",
     time: "21m",
   },
 ];
+
+const activityMeta: Record<
+  ActivityKind,
+  { icon: ReactNode; tone: "positive" | "neutral" }
+> = {
+  ride_request: {
+    icon: (
+      <ActivityFeedIcon>
+        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
+        <circle cx="12" cy="10" r="3" fill="currentColor" />
+      </ActivityFeedIcon>
+    ),
+    tone: "positive",
+  },
+  ride_complete: {
+    icon: (
+      <ActivityFeedIcon>
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="9 12 11 14 15 10" />
+      </ActivityFeedIcon>
+    ),
+    tone: "positive",
+  },
+  driver_online: {
+    icon: (
+      <ActivityFeedIcon>
+        <path d="M5 12a7 7 0 0 1 14 0" />
+        <path d="M2 12a10 10 0 0 1 20 0" />
+        <path d="M8 12a4 4 0 0 1 8 0" />
+        <circle cx="12" cy="20" r="1" fill="currentColor" />
+      </ActivityFeedIcon>
+    ),
+    tone: "positive",
+  },
+  driver_document: {
+    icon: (
+      <ActivityFeedIcon>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+      </ActivityFeedIcon>
+    ),
+    tone: "neutral",
+  },
+  negotiation: {
+    icon: (
+      <ActivityFeedIcon>
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        <line x1="9" y1="10" x2="15" y2="10" />
+        <line x1="9" y1="14" x2="13" y2="14" />
+      </ActivityFeedIcon>
+    ),
+    tone: "positive",
+  },
+};
+
+function ActivityFeedIcon({ children }: { children: ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      {children}
+    </svg>
+  );
+}
 
 function ActivityFeed() {
   return (
@@ -678,58 +869,46 @@ function ActivityFeed() {
             Recent Activity
           </h2>
         </div>
-        <a
-          href="#"
+        <Link
+          href="/admin/live-rides"
           className="text-[11px] font-medium text-muted-foreground hover:text-primary"
         >
           View all
-        </a>
+        </Link>
       </div>
       <ul className="divide-y divide-border">
-        {activities.map((a, i) => (
-          <li key={i} className="flex items-center gap-3 px-4 py-3">
-            <span
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                a.type === "ride"
-                  ? "bg-primary/15 text-primary"
-                  : a.type === "complete"
-                  ? "bg-primary/15 text-primary"
-                  : "bg-amber-400/15 text-amber-600"
-              }`}
-            >
-              {a.type === "ride" && (
-                <Icon>
-                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
-                  <circle cx="12" cy="10" r="3" fill="currentColor" />
-                </Icon>
-              )}
-              {a.type === "complete" && (
-                <Icon>
-                  <polyline points="20 6 9 17 4 12" />
-                </Icon>
-              )}
-              {a.type === "driver" && (
-                <Icon>
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M5 20a7 7 0 0 1 14 0" />
-                </Icon>
-              )}
-            </span>
-            <p className="min-w-0 flex-1 truncate text-sm text-foreground">
-              {a.text}
-            </p>
-            <span className="shrink-0 text-[11px] text-muted-foreground">
-              {a.time}
-            </span>
-          </li>
-        ))}
+        {activities.map((a, i) => {
+          const meta = activityMeta[a.kind];
+          return (
+            <li key={i} className="flex items-center gap-3 px-4 py-3">
+              <span
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                  meta.tone === "positive"
+                    ? "bg-primary/15 text-primary"
+                    : "bg-amber-400/15 text-amber-600"
+                }`}
+              >
+                {meta.icon}
+              </span>
+              <p className="min-w-0 flex-1 truncate text-sm text-foreground">
+                {a.text}
+              </p>
+              <span className="shrink-0 text-[11px] text-muted-foreground">
+                {a.time}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
 }
 
+type AlertKind = "sos" | "complaint" | "fraud" | "system";
+
 type Alert = {
-  tone: "danger" | "warn" | "info";
+  kind: AlertKind;
+  tone: "danger" | "warn";
   title: string;
   detail: string;
   time: string;
@@ -737,30 +916,63 @@ type Alert = {
 
 const alerts: Alert[] = [
   {
+    kind: "sos",
     tone: "danger",
     title: "Emergency: SOS triggered",
     detail: "Ride #4821 · Aiden M. · Kimironko area",
     time: "3m",
   },
   {
+    kind: "complaint",
     tone: "warn",
     title: "Driver complaint",
     detail: "Rider reported unsafe driving · Trip #4815",
     time: "14m",
   },
   {
+    kind: "fraud",
     tone: "warn",
     title: "Possible fraud detected",
     detail: "Unusual cancellation pattern · 3 accounts",
     time: "32m",
   },
   {
-    tone: "info",
+    kind: "system",
+    tone: "warn",
     title: "Payment gateway latency",
     detail: "MoMo API responding above threshold",
     time: "1h",
   },
 ];
+
+const alertIcons: Record<AlertKind, ReactNode> = {
+  sos: (
+    <ActivityFeedIcon>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+      <line x1="12" y1="10" x2="12" y2="14" />
+    </ActivityFeedIcon>
+  ),
+  complaint: (
+    <ActivityFeedIcon>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <line x1="9" y1="10" x2="15" y2="10" />
+      <line x1="9" y1="14" x2="13" y2="14" />
+    </ActivityFeedIcon>
+  ),
+  fraud: (
+    <ActivityFeedIcon>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </ActivityFeedIcon>
+  ),
+  system: (
+    <ActivityFeedIcon>
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </ActivityFeedIcon>
+  ),
+};
 
 function AlertsPanel() {
   return (
@@ -775,12 +987,12 @@ function AlertsPanel() {
             {alerts.length}
           </span>
         </div>
-        <a
-          href="#"
+        <Link
+          href="/admin/safety-center"
           className="text-[11px] font-medium text-muted-foreground hover:text-primary"
         >
           View all
-        </a>
+        </Link>
       </div>
       <ul className="divide-y divide-border">
         {alerts.map((a, i) => (
@@ -790,28 +1002,38 @@ function AlertsPanel() {
                 className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
                   a.tone === "danger"
                     ? "bg-red-50 text-red-600 ring-1 ring-inset ring-red-200"
-                    : a.tone === "warn"
-                    ? "bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-200"
-                    : "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20"
+                    : "bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-200"
                 }`}
               >
-                <Icon>
-                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </Icon>
+                {alertIcons[a.kind]}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold tracking-tight text-foreground">
-                  {a.title}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-xs font-semibold tracking-tight text-foreground">
+                    {a.title}
+                  </p>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">
+                    {a.time}
+                  </span>
+                </div>
                 <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
                   {a.detail}
                 </p>
+                <div className="mt-2 flex items-center gap-2">
+                  {a.kind === "sos" ? (
+                    <button className="rounded-md bg-red-600 px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm hover:bg-red-700">
+                      Respond
+                    </button>
+                  ) : (
+                    <button className="rounded-md border border-border bg-card px-2.5 py-1 text-[10px] font-medium text-foreground hover:bg-surface">
+                      View
+                    </button>
+                  )}
+                  <button className="text-[10px] font-medium text-muted-foreground hover:text-foreground">
+                    {a.kind === "sos" ? "Dispatch" : "Resolve"}
+                  </button>
+                </div>
               </div>
-              <span className="shrink-0 text-[10px] text-muted-foreground">
-                {a.time}
-              </span>
             </div>
           </li>
         ))}
@@ -825,31 +1047,10 @@ export default function AdminDashboardPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-            Executive Overview
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl">
-            Welcome back, Aiden 👋
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Here&apos;s what&apos;s happening on the platform today.
-          </p>
+          <Greeting name="Aiden" />
+          <DateSubtitle />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
-            Today
-            <span className="text-primary/70">×</span>
-          </span>
-          <span className="rounded-full border border-border bg-card px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-            Week
-          </span>
-          <span className="rounded-full border border-border bg-card px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-            Month
-          </span>
-          <span className="rounded-full border border-border bg-card px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-            Custom
-          </span>
-        </div>
+        <PeriodFilter />
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
