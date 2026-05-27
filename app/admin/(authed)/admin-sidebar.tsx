@@ -160,7 +160,7 @@ export function AdminSidebar() {
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card lg:flex">
-      <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-5">
+      <div className="flex h-20 shrink-0 items-center gap-2.5 border-b border-border px-5">
         <span className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-primary to-[#00A040] shadow-md shadow-primary/30 ring-1 ring-inset ring-white/15">
           <svg
             viewBox="0 0 24 24"
@@ -174,9 +174,6 @@ export function AdminSidebar() {
         </span>
         <span className="text-sm font-semibold tracking-[-0.02em] text-foreground">
           Taravelis
-        </span>
-        <span className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-          Admin
         </span>
       </div>
 
