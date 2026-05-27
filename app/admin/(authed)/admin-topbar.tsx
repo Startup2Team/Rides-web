@@ -86,6 +86,16 @@ export function AdminTopbar() {
 
   const [openNotif, setOpenNotif] = useState(false);
   const [openUser, setOpenUser] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await fetch("/api/admin/auth/logout", { method: "POST" });
+    } finally {
+      window.location.href = "/admin/login";
+    }
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -329,10 +339,11 @@ export function AdminTopbar() {
                 </li>
               </ul>
               <div className="border-t border-border p-1.5">
-                <Link
-                  href="/admin/login"
-                  onClick={() => setOpenUser(false)}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface"
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface disabled:opacity-50"
                 >
                   <span className="text-muted-foreground">
                     <Icon>
@@ -341,8 +352,8 @@ export function AdminTopbar() {
                       <line x1="21" y1="12" x2="9" y2="12" />
                     </Icon>
                   </span>
-                  Sign out
-                </Link>
+                  {signingOut ? "Signing out…" : "Sign out"}
+                </button>
               </div>
             </div>
           ) : null}
