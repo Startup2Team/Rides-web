@@ -265,7 +265,7 @@ export function AdminTopbar() {
               <ul className="p-1.5">
                 <li>
                   <Link
-                    href="/admin/team"
+                    href="/admin/account"
                     onClick={() => setOpenUser(false)}
                     className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface"
                   >
@@ -275,7 +275,7 @@ export function AdminTopbar() {
                         <path d="M5 20a7 7 0 0 1 14 0" />
                       </Icon>
                     </span>
-                    Your profile
+                    Account settings
                   </Link>
                 </li>
                 <li>

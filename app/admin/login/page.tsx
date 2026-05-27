@@ -91,20 +91,13 @@ export default function AdminLoginPage() {
       </div>
 
       <div className="flex items-center justify-center px-6 py-12 sm:px-10 lg:px-16">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-md">
           <div className="flex items-center gap-2.5 lg:hidden">
             <BrandMark />
             <span className="text-base font-semibold tracking-[-0.02em] text-foreground">
               Taravelis
             </span>
           </div>
-
-          <h1 className="mt-10 text-3xl font-bold tracking-[-0.02em] text-foreground lg:mt-0">
-            Sign in
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Welcome back. Please enter your credentials to continue.
-          </p>
 
           <LoginForm />
         </div>
