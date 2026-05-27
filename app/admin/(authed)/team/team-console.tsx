@@ -630,7 +630,7 @@ export function TeamConsole() {
             ...prev,
           ]);
           setInviteOpen(false);
-          setToast(`Invite sent to ${email}`);
+          setToast(`${name} added · share the temp password with them`);
         }}
       />
 
