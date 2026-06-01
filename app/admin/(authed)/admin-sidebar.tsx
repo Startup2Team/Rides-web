@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { RidesLogo } from "../../components/rides-logo";
+import { useAuth } from "@/context/auth-context";
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -205,7 +206,14 @@ export function AdminSidebar({
 } = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Avoid SSR/CSR mismatch: user comes from localStorage on the client only,
+  // so first render must match the server (which has no user).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const showUser = mounted && user;
 
   useEffect(() => {
     setExpanded((prev) => {
@@ -248,11 +256,18 @@ export function AdminSidebar({
         } lg:shadow-none`}
       >
         <div className="flex h-16 shrink-0 items-center justify-between gap-2.5 border-b border-border px-4 sm:h-20 sm:px-5">
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
             <RidesLogo size={56} className="shrink-0" />
-            <span className="text-sm font-semibold tracking-[-0.02em] text-foreground">
-              Rides
-            </span>
+            <div className="min-w-0">
+              <span className="block truncate text-sm font-semibold tracking-[-0.02em] text-foreground">
+                {showUser ? user.name : "Rides"}
+              </span>
+              {showUser && user.role ? (
+                <span className="mt-0.5 inline-block rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-primary">
+                  {user.role === "Super Admin" ? "Admin" : user.role}
+                </span>
+              ) : null}
+            </div>
           </div>
           <button
             type="button"
