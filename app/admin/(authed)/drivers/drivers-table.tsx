@@ -1,82 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar, Card } from "../_components";
 import { VerifyDriverModal, type VerifyDriver } from "./verify-driver-modal";
 import {
   getDrivers,
-  getDriversOverview,
+  getDriver,
   approveDriver,
   rejectDriver,
   suspendDriver,
   reinstateDriver,
-  type Driver as ApiDriver,
+  forceDriverOffline,
 } from "@/lib/api";
+import {
+  mapApiDriver,
+  mapDriverDetailToVerify,
+  VEHICLE_SLUG_LABELS,
+  vehicleTypeFromSlug,
+  type DriverRow,
+  type DriverStatus,
+} from "@/lib/drivers";
 
-function mapApiStatus(d: ApiDriver): DriverStatus {
-  if (d.approval_status === "PENDING") return "Pending";
-  if (d.approval_status === "REJECTED") return "Suspended";
-  if (d.is_online) return "Online";
-  return "Offline";
-}
-
-function formatTransportType(t: string): string {
-  const map: Record<string, string> = {
-    MOTO_BIKE: "Moto Bike",
-    CAB_TAXI: "Cab Taxi",
-    LIGHT_HILUX: "Light Hilux",
-    HEAVY_FUSO: "Heavy Fuso",
-  };
-  return map[t] ?? t;
-}
-
-function mapApiDriver(d: ApiDriver): Driver {
-  const pct = d.acceptance_rate != null ? Math.round(d.acceptance_rate * 100) : null;
-  return {
-    id: d.id,
-    name: d.full_name,
-    vehicle: formatTransportType(d.transport_type),
-    plate: d.vehicle_plate ?? "—",
-    status: mapApiStatus(d),
-    acceptance: pct,
-    rating: null,
-    lastActive: new Date(d.created_at).toLocaleDateString(),
-  };
-}
-
-const vehicleSlugMap: Record<string, string> = {
-  moto: "Moto Bike",
-  cab: "Cab Taxi",
-  hilux: "Light Hilux",
-  fuso: "Heavy Fuso",
-};
-
-const vehicleSlugLabels: Record<string, string> = {
-  moto: "Moto Bikes",
-  cab: "Cab Taxis",
-  hilux: "Light Hilux",
-  fuso: "Heavy Fuso",
-};
-
-type DriverStatus =
-  | "Online"
-  | "On trip"
-  | "Offline"
-  | "Pending"
-  | "Suspended";
-
-type Driver = {
-  id: string;
-  name: string;
-  vehicle: string;
-  plate: string;
-  status: DriverStatus;
-  acceptance: number | null;
-  rating: number | null;
-  lastActive: string;
-  kyc?: VerifyDriver["kyc"];
-};
+type Driver = DriverRow;
 
 
 const statusStyles: Record<DriverStatus, string> = {
@@ -387,7 +333,7 @@ export function DriversTable() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const vehicleSlug = searchParams.get("vehicle");
-  const vehicleFilter = vehicleSlug ? vehicleSlugMap[vehicleSlug] ?? null : null;
+  const vehicleType = vehicleTypeFromSlug(vehicleSlug);
 
   const [tab, setTab] = useState<Tab["id"]>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -395,25 +341,98 @@ export function DriversTable() {
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [verifyDriver, setVerifyDriver] = useState<VerifyDriver | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [totalFromApi, setTotalFromApi] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   useEffect(() => {
-    setPage(1);
-  }, [vehicleSlug]);
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
 
   useEffect(() => {
-    const params: Record<string, string> = {};
-    if (vehicleFilter) params.vehicle_type = vehicleFilter;
+    setPage(1);
+  }, [vehicleSlug, debouncedQuery]);
+
+  const loadDrivers = useCallback(async () => {
     setLoading(true);
-    getDrivers({ ...params, limit: "100", offset: "0" })
-      .then((res) => setDrivers((res.drivers ?? []).map(mapApiDriver)))
-      .catch(() => null)
-      .finally(() => setLoading(false));
-  }, [vehicleFilter]);
+    setError(null);
+    try {
+      const params: Record<string, string> = {
+        limit: "500",
+        offset: "0",
+      };
+      if (vehicleType) params.vehicle_type = vehicleType;
+      if (debouncedQuery) params.search = debouncedQuery;
+
+      const res = await getDrivers(params);
+      setDrivers((res.drivers ?? []).map(mapApiDriver));
+      setTotalFromApi(res.total ?? res.drivers?.length ?? 0);
+    } catch (err) {
+      setDrivers([]);
+      setTotalFromApi(0);
+      setError(err instanceof Error ? err.message : "Failed to load drivers");
+    } finally {
+      setLoading(false);
+    }
+  }, [vehicleType, debouncedQuery]);
+
+  useEffect(() => {
+    void loadDrivers();
+  }, [loadDrivers]);
+
+  useEffect(() => {
+    if (!verifyingId) {
+      setVerifyDriver(null);
+      return;
+    }
+    const row = drivers.find((d) => d.id === verifyingId);
+    let cancelled = false;
+    setDetailLoading(true);
+    getDriver(verifyingId)
+      .then((detail) => {
+        if (cancelled) return;
+        setVerifyDriver(
+          mapDriverDetailToVerify(detail, row ?? undefined),
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        if (row) {
+          setVerifyDriver({
+            id: row.id,
+            name: row.name,
+            vehicle: row.vehicle,
+            plate: row.plate,
+            kyc: {
+              phone: row.phone ?? "",
+              dob: "—",
+              age: 0,
+              location: "—",
+              licenseNumber: "—",
+              submittedAt: row.lastActive,
+              momoProvider: "MTN MoMo",
+              momoCode: "",
+            },
+          });
+        } else {
+          setVerifyDriver(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [verifyingId, drivers]);
 
   useEffect(() => {
     if (!toast) return;
@@ -431,29 +450,17 @@ export function DriversTable() {
     ? drivers.find((d) => d.id === verifyingId)
     : null;
 
-  const scoped = vehicleFilter
-    ? drivers.filter((d) => d.vehicle === vehicleFilter)
-    : drivers;
-
   const counts: Record<Tab["id"], number> = {
-    all: scoped.length,
-    Online: scoped.filter((d) => d.status === "Online").length,
-    "On trip": scoped.filter((d) => d.status === "On trip").length,
-    Offline: scoped.filter((d) => d.status === "Offline").length,
-    Pending: scoped.filter((d) => d.status === "Pending").length,
-    Suspended: scoped.filter((d) => d.status === "Suspended").length,
+    all: drivers.length,
+    Online: drivers.filter((d) => d.status === "Online").length,
+    "On trip": drivers.filter((d) => d.status === "On trip").length,
+    Offline: drivers.filter((d) => d.status === "Offline").length,
+    Pending: drivers.filter((d) => d.status === "Pending").length,
+    Suspended: drivers.filter((d) => d.status === "Suspended").length,
   };
 
-  const filtered = scoped.filter((d) => {
+  const filtered = drivers.filter((d) => {
     if (tab !== "all" && d.status !== tab) return false;
-    if (query) {
-      const q = query.toLowerCase();
-      return (
-        d.name.toLowerCase().includes(q) ||
-        d.plate.toLowerCase().includes(q) ||
-        d.vehicle.toLowerCase().includes(q)
-      );
-    }
     return true;
   });
 
@@ -497,7 +504,7 @@ export function DriversTable() {
   }
 
   const renderPrimaryAction = (d: Driver) => {
-    if (d.status === "Pending" && d.kyc) {
+    if (d.status === "Pending") {
       return (
         <button
           type="button"
@@ -550,15 +557,20 @@ export function DriversTable() {
       onToggle={() => setOpenMenuId(openMenuId === d.id ? null : d.id)}
       onClose={() => setOpenMenuId(null)}
       onVerify={
-        d.status === "Pending" && d.kyc
-          ? () => setVerifyingId(d.id)
-          : undefined
+        d.status === "Pending" ? () => setVerifyingId(d.id) : undefined
       }
       onView={() => setVerifyingId(d.id)}
       onMessage={() => setToast(`Message sent to ${d.name}`)}
-      onForceOffline={() => {
-        updateStatus(d.id, "Offline");
-        setToast(`${d.name} forced offline`);
+      onForceOffline={async () => {
+        try {
+          await forceDriverOffline(d.id);
+          updateStatus(d.id, "Offline");
+          setToast(`${d.name} forced offline`);
+        } catch (err) {
+          setToast(
+            err instanceof Error ? err.message : "Failed to force offline",
+          );
+        }
       }}
       onSuspend={async () => {
         try { await suspendDriver(d.id, 24); } catch { /* ignore */ }
@@ -576,19 +588,19 @@ export function DriversTable() {
   return (
     <Card
       title={
-        vehicleSlug && vehicleSlugLabels[vehicleSlug]
-          ? vehicleSlugLabels[vehicleSlug]
+        vehicleSlug && VEHICLE_SLUG_LABELS[vehicleSlug]
+          ? VEHICLE_SLUG_LABELS[vehicleSlug]
           : "All drivers"
       }
       action={
         <div className="flex items-center gap-2">
-          {vehicleSlug && vehicleSlugLabels[vehicleSlug] ? (
+          {vehicleSlug && VEHICLE_SLUG_LABELS[vehicleSlug] ? (
             <button
               type="button"
               onClick={() => router.push("/admin/drivers")}
               className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/15"
             >
-              {vehicleSlugLabels[vehicleSlug]}
+              {VEHICLE_SLUG_LABELS[vehicleSlug]}
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -618,6 +630,19 @@ export function DriversTable() {
         </div>
       }
     >
+      {error ? (
+        <div className="border-b border-border px-4 py-3">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            type="button"
+            onClick={() => void loadDrivers()}
+            className="mt-2 text-xs font-semibold text-primary hover:underline"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
       <div className="flex items-center gap-1 border-b border-border px-3 py-2">
         {tabs.map((t) => {
           const active = tab === t.id;
@@ -804,7 +829,9 @@ export function DriversTable() {
             {sorted.length === 0 ? 0 : start + 1}–{end}
           </span>{" "}
           of{" "}
-          <span className="font-semibold text-foreground">{sorted.length}</span>{" "}
+          <span className="font-semibold text-foreground">
+            {debouncedQuery || tab !== "all" ? sorted.length : totalFromApi}
+          </span>{" "}
           drivers
         </p>
         <div className="flex items-center gap-2">
@@ -833,31 +860,43 @@ export function DriversTable() {
         </div>
       </div>
 
+      {detailLoading && verifyingId ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+          <p className="rounded-xl border border-border bg-card px-6 py-4 text-sm font-medium text-foreground shadow-xl">
+            Loading driver profile…
+          </p>
+        </div>
+      ) : null}
+
       <VerifyDriverModal
-        driver={
-          verifyingDriver && verifyingDriver.kyc
-            ? {
-                id: verifyingDriver.id,
-                name: verifyingDriver.name,
-                vehicle: verifyingDriver.vehicle,
-                plate: verifyingDriver.plate,
-                kyc: verifyingDriver.kyc,
-              }
-            : null
-        }
+        driver={verifyDriver}
         mode={verifyingDriver?.status === "Pending" ? "verify" : "view"}
         onClose={() => setVerifyingId(null)}
         onApprove={async (id) => {
-          try { await approveDriver(id); } catch { /* ignore */ }
-          updateStatus(id, "Offline");
-          setToast(`${verifyingDriver?.name} approved`);
-          setVerifyingId(null);
+          try {
+            await approveDriver(id);
+            updateStatus(id, "Offline");
+            setToast(`${verifyingDriver?.name ?? "Driver"} approved`);
+            setVerifyingId(null);
+            void loadDrivers();
+          } catch (err) {
+            setToast(
+              err instanceof Error ? err.message : "Failed to approve driver",
+            );
+          }
         }}
-        onReject={async (id) => {
-          try { await rejectDriver(id, "Rejected by admin"); } catch { /* ignore */ }
-          updateStatus(id, "Suspended");
-          setToast(`${verifyingDriver?.name} rejected`);
-          setVerifyingId(null);
+        onReject={async (id, reason) => {
+          try {
+            await rejectDriver(id, reason);
+            updateStatus(id, "Suspended");
+            setToast(`${verifyingDriver?.name ?? "Driver"} rejected`);
+            setVerifyingId(null);
+            void loadDrivers();
+          } catch (err) {
+            setToast(
+              err instanceof Error ? err.message : "Failed to reject driver",
+            );
+          }
         }}
       />
 

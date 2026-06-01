@@ -140,10 +140,8 @@ export function AccountConsole() {
   const [tab, setTab] = useState<Tab>("profile");
   const [toast, setToast] = useState<string | null>(null);
 
-  // Profile state (seeded from localStorage, updated from API)
-  const storedUser = typeof window !== "undefined" ? getAdminUser() : null;
-  const [name, setName] = useState(storedUser?.name ?? "");
-  const [email, setEmail] = useState(storedUser?.email ?? "");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
   // Password state
@@ -154,7 +152,7 @@ export function AccountConsole() {
   const [pwdSaving, setPwdSaving] = useState(false);
 
   // 2FA state
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(storedUser?.twoFactor ?? false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [resetMode, setResetMode] = useState(false);
   const [resetVerifyCode, setResetVerifyCode] = useState("");
   const [showBackup, setShowBackup] = useState(false);
@@ -169,8 +167,15 @@ export function AccountConsole() {
   const otpAuth = setup2FAData?.otpauth_url ?? "";
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
-  // Load real account data + sessions on mount
+  // Load profile from API (and localStorage fallback before API responds)
   useEffect(() => {
+    const stored = getAdminUser();
+    if (stored) {
+      setName(stored.name);
+      setEmail(stored.email);
+      setTwoFactorEnabled(stored.twoFactor);
+    }
+
     getAccount()
       .then((a) => {
         setName(a.name);

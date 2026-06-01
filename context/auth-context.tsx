@@ -14,12 +14,15 @@ import { clearToken, getAdminUser, type AdminUser } from "@/lib/auth";
 
 type AuthContextValue = {
   user: AdminUser | null;
+  /** False during SSR and first client paint — avoids hydration mismatch with localStorage. */
+  ready: boolean;
   logout: () => Promise<void>;
   refreshUser: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
+  ready: false,
   logout: async () => {},
   refreshUser: () => {},
 });
@@ -27,9 +30,11 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<AdminUser | null>(null);
+  const [ready, setReady] = useState(false);
 
   const refreshUser = useCallback(() => {
     setUser(getAdminUser());
+    setReady(true);
   }, []);
 
   useEffect(() => {
@@ -48,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   return (
-    <AuthContext.Provider value={{ user, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, ready, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

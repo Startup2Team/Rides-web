@@ -334,13 +334,14 @@ export const getSatisfaction = () =>
 export type Driver = {
   id: string;
   user_id?: string;
-  full_name: string;
+  full_name?: string | null;
   phone?: string;
   transport_type: string;
   vehicle_plate?: string;
-  approval_status: string;   // APPROVED | PENDING | REJECTED
+  approval_status: string;
   is_online?: boolean;
-  acceptance_rate?: number;  // 0.0–1.0
+  on_trip?: boolean;
+  acceptance_rate?: number;
   total_rides?: number;
   city?: string;
   created_at: string;
@@ -355,10 +356,11 @@ export type DriversResponse = {
 
 export type DriversOverview = {
   total: number;
-  active: number;
+  active?: number;
+  online: number;
+  on_trip: number;
   pending: number;
   suspended: number;
-  online: number;
 };
 
 export const getDrivers = (params: Record<string, string> = {}) => {
@@ -366,9 +368,46 @@ export const getDrivers = (params: Record<string, string> = {}) => {
   return request<DriversResponse>(`/admin/drivers${qs ? `?${qs}` : ""}`);
 };
 
-export const getDriversOverview = () => request<DriversOverview>("/admin/drivers/overview");
+export const getDriversOverview = (params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request<DriversOverview>(`/admin/drivers/overview${qs ? `?${qs}` : ""}`);
+};
 
-export const getDriver = (id: string) => request<Driver>(`/admin/drivers/${id}`);
+export type DriverDetail = {
+  id: string;
+  full_name?: string | null;
+  phone?: string;
+  transport_type: string;
+  vehicle_plate?: string;
+  license_number?: string;
+  date_of_birth?: string | null;
+  city?: string;
+  address?: {
+    province?: string | null;
+    district?: string | null;
+    sector?: string | null;
+    cell?: string | null;
+    village?: string | null;
+  };
+  momo_provider?: string | null;
+  momo_pay_code?: string;
+  approval_status: string;
+  created_at: string;
+  is_online?: boolean;
+  documents?: Array<{
+    document_type: string;
+    file_url: string;
+    uploaded_at: string;
+  }>;
+};
+
+export const getDriver = (id: string) => request<DriverDetail>(`/admin/drivers/${id}`);
+
+export const createDriver = (body: Record<string, unknown>) =>
+  request<{ id: string; message: string }>("/admin/drivers", { method: "POST", body });
+
+export const forceDriverOffline = (id: string) =>
+  request<{ message: string }>(`/admin/drivers/${id}/force-offline`, { method: "POST" });
 
 export const approveDriver = (id: string) =>
   request<void>(`/admin/drivers/${id}/approve`, { method: "POST" });

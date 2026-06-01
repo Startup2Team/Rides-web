@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { createDriver } from "@/lib/api";
+import { slugToTransportType } from "@/lib/drivers";
 
 type VehicleType = "moto" | "cab" | "hilux" | "fuso";
 
@@ -230,6 +233,7 @@ export function AddDriverButton({
     ? { ...INITIAL_FORM, vehicleType: defaultVehicle }
     : INITIAL_FORM;
 
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(initialForm);
@@ -239,13 +243,56 @@ export function AddDriverButton({
     authorization: false,
   });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const reset = () => {
     setStep(0);
     setForm(initialForm);
     setDocs({ license: false, insurance: false, authorization: false });
     setAcceptedTerms(false);
+    setSubmitError(null);
+    setSubmitting(false);
   };
+
+  async function handleSubmit() {
+    if (!acceptedTerms) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const transportType = slugToTransportType(form.vehicleType);
+      await createDriver({
+        full_name: form.fullName.trim(),
+        phone: form.phone.trim(),
+        transport_type: transportType,
+        vehicle_plate: form.plate.trim().toUpperCase(),
+        license_number: form.license.trim().toUpperCase(),
+        date_of_birth: form.dob || undefined,
+        province: form.province,
+        district: form.district,
+        sector: form.sector,
+        cell: form.cell,
+        village: form.village,
+        city: "Kigali",
+        momo_provider: form.momoProvider,
+        momo_pay_code: form.momoCode.trim(),
+        passenger_seats: form.passengerSeats
+          ? parseInt(form.passengerSeats, 10)
+          : undefined,
+        load_capacity_kg: form.loadCapacityKg
+          ? parseInt(form.loadCapacityKg, 10)
+          : undefined,
+      });
+      close();
+      router.refresh();
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Failed to register driver",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   const close = () => {
     setOpen(false);
@@ -649,14 +696,19 @@ export function AddDriverButton({
               ) : (
                 <button
                   type="button"
-                  onClick={close}
-                  disabled={!acceptedTerms}
+                  onClick={() => void handleSubmit()}
+                  disabled={!acceptedTerms || submitting}
                   className="inline-flex h-10 items-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Submit registration
+                  {submitting ? "Submitting…" : "Submit registration"}
                 </button>
               )}
             </div>
+            {submitError ? (
+              <p className="border-t border-border px-6 py-2 text-center text-xs font-semibold text-red-600">
+                {submitError}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}
