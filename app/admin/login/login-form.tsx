@@ -1,25 +1,33 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { OtpQrCode } from "@/lib/otp-qr-code";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import {
-  adminLogin,
-  adminVerify2FA,
-  adminVerifyBackup,
-  enable2FA,
-  get2FASetup,
-  getAccount,
-} from "@/lib/api";
-import { setToken, type AdminUser } from "@/lib/auth";
-import QRCodeLib from "qrcode";
 
-type Step = "credentials" | "setup" | "verify";
+type CredentialsStep = "credentials";
+type TotpStep = "totp_setup" | "totp_verify";
+type Step = CredentialsStep | TotpStep;
 
-// ── Icons ──────────────────────────────────────────────────────────────────
+type LoginPayload = {
+  status?: string;
+  challenge_token?: string;
+  email?: string;
+  full_name?: string;
+};
 
 function EyeIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
       <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -28,7 +36,16 @@ function EyeIcon({ className }: { className?: string }) {
 
 function EyeOffIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
       <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
       <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
       <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
@@ -46,85 +63,6 @@ function CopyIcon({ className }: { className?: string }) {
   );
 }
 
-// ── Real scannable QR code from otpauth:// URL ────────────────────────────
-
-function QRCanvas({ url }: { url: string }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (!ref.current || !url) return;
-    QRCodeLib.toCanvas(ref.current, url, {
-      width: 176,
-      margin: 1,
-      color: { dark: "#0f172a", light: "#ffffff" },
-    });
-  }, [url]);
-
-  return (
-    <canvas
-      ref={ref}
-      width={176}
-      height={176}
-      className="rounded-lg"
-      aria-label="QR code for authenticator app"
-    />
-  );
-}
-
-function OtpAuthDisplay({ secret, otpauthUrl }: { secret: string; otpauthUrl: string }) {
-  const [copied, setCopied] = useState(false);
-
-  function copySecret() {
-    navigator.clipboard.writeText(secret).catch(() => null);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
-  return (
-    <div className="space-y-4 rounded-2xl border border-border bg-surface/40 p-4">
-      <div className="flex gap-4">
-        {/* Real scannable QR code */}
-        <div className="flex h-44 w-44 shrink-0 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border">
-          {otpauthUrl ? <QRCanvas url={otpauthUrl} /> : (
-            <span className="text-xs text-muted-foreground">Loading…</span>
-          )}
-        </div>
-
-        {/* Manual entry fallback */}
-        <div className="flex min-w-0 flex-1 flex-col justify-center space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-            Can't scan? Enter manually
-          </p>
-          <div className="rounded-lg border border-border bg-card p-2">
-            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Setup key</p>
-            <div className="mt-1 flex items-start gap-1.5">
-              <code className="flex-1 break-all font-mono text-[11px] font-semibold leading-relaxed text-foreground">
-                {secret.match(/.{1,4}/g)?.join(" ") ?? secret}
-              </code>
-              <button
-                type="button"
-                onClick={copySecret}
-                aria-label="Copy secret"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <CopyIcon className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            {copied ? (
-              <p className="mt-1 text-[10px] font-semibold text-primary">Copied!</p>
-            ) : null}
-          </div>
-          <p className="text-[10px] leading-relaxed text-muted-foreground">
-            Works with Google Authenticator, Authy, 1Password, Bitwarden, or any TOTP app.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── 6-digit code boxes ─────────────────────────────────────────────────────
-
 function CodeBoxes({
   value,
   onChange,
@@ -141,7 +79,9 @@ function CodeBoxes({
       {value.map((v, i) => (
         <input
           key={i}
-          ref={(el) => { refs.current[i] = el; }}
+          ref={(el) => {
+            refs.current[i] = el;
+          }}
           inputMode="numeric"
           pattern="[0-9]*"
           maxLength={1}
@@ -155,7 +95,9 @@ function CodeBoxes({
             if (digit && i < 5) refs.current[i + 1]?.focus();
           }}
           onKeyDown={(e) => {
-            if (e.key === "Backspace" && !value[i] && i > 0) refs.current[i - 1]?.focus();
+            if (e.key === "Backspace" && !value[i] && i > 0) {
+              refs.current[i - 1]?.focus();
+            }
           }}
           onPaste={(e) => {
             const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
@@ -163,7 +105,8 @@ function CodeBoxes({
             e.preventDefault();
             const next = value.map((_, idx) => text[idx] ?? "");
             onChange(next);
-            refs.current[Math.min(text.length, 6) - 1]?.focus();
+            const lastIdx = Math.min(text.length, 6) - 1;
+            refs.current[lastIdx]?.focus();
           }}
           className="h-12 w-10 rounded-lg border border-border bg-surface text-center text-lg font-bold text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50 sm:w-12"
         />
@@ -172,186 +115,208 @@ function CodeBoxes({
   );
 }
 
-// ── Main component ─────────────────────────────────────────────────────────
-
-export function LoginForm() {
+export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next")?.startsWith("/admin") ? searchParams.get("next")! : "/admin";
 
   const [step, setStep] = useState<Step>("credentials");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Credentials step
-  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [provisioningLoading, setProvisioningLoading] = useState(false);
+  const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // In-flight state (held in memory, not persisted)
-  const [preAuthToken, setPreAuthToken] = useState("");
-  const [pendingAccessToken, setPendingAccessToken] = useState(""); // access_token while setting up 2FA
-
-  // 2FA setup step (real data from backend)
+  const [challengeToken, setChallengeToken] = useState("");
+  const [otpauthUrl, setOtpauthUrl] = useState("");
   const [setupSecret, setSetupSecret] = useState("");
-  const [setupOtpauthUrl, setSetupOtpauthUrl] = useState("");
+  const [loadProvisioningFailed, setLoadProvisioningFailed] = useState<string | null>(null);
 
-  // Verify step
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
-  const [usingBackup, setUsingBackup] = useState(false);
-  const [backupCode, setBackupCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const provisioningFired = useRef(false);
+
+  useEffect(() => {
+    if (defaultEmail) setEmail(defaultEmail);
+  }, [defaultEmail]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  useEffect(() => {
+    if (step !== "totp_setup" || !challengeToken) return;
+    // Prevent React StrictMode's double-invoke from firing two concurrent
+    // provisioning requests (which would race to write different TOTP secrets).
+    if (provisioningFired.current) return;
+    provisioningFired.current = true;
+
+    let cancelled = false;
+    const run = async () => {
+      setLoadProvisioningFailed(null);
+      setProvisioningLoading(true);
+      try {
+        const r = await fetch(
+          `/api/admin/auth/provisioning/${encodeURIComponent(challengeToken)}`,
+          { method: "GET", cache: "no-store" },
+        );
+        const j = (await r.json()) as {
+          data?: { otpauth_url?: string; secret?: string };
+          error?: { message?: string };
+        };
+        if (cancelled) return;
+        if (!r.ok || !j.data?.otpauth_url) {
+          setLoadProvisioningFailed(j.error?.message ?? "Could not load 2FA setup data.");
+          return;
+        }
+        setOtpauthUrl(j.data.otpauth_url);
+        setSetupSecret(j.data.secret ?? "");
+      } catch {
+        if (!cancelled) setLoadProvisioningFailed("Network error while loading provisioning.");
+      } finally {
+        if (!cancelled) setProvisioningLoading(false);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [step, challengeToken]);
 
   const fullCode = code.join("");
-  const codeReady = usingBackup
-    ? backupCode.replace(/\D/g, "").length >= 10
-    : fullCode.length === 6;
+  const codeReady = fullCode.length === 6;
 
-  // Auto-submit once 6 digits are entered. Tracks the last auto-submitted code
-  // so a failed submit doesn't loop — the user can edit a digit to retry.
-  const lastAutoSubmitRef = useRef("");
-  useEffect(() => {
-    if (loading || usingBackup || fullCode.length !== 6) return;
-    if (lastAutoSubmitRef.current === fullCode) return;
-    lastAutoSubmitRef.current = fullCode;
-    if (step === "setup") void handleEnableAndFinish();
-    else if (step === "verify") void handleVerify();
-    // handlers are stable enough; depending on them would re-trigger on every render
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullCode, step, loading, usingBackup]);
-
-  function resetVerifyInputs() {
-    setCode(["", "", "", "", "", ""]);
-    setBackupCode("");
-    setUsingBackup(false);
-    setError(null);
-    lastAutoSubmitRef.current = "";
-  }
-
-  async function finishLogin(accessToken: string) {
-    try {
-      // pass token directly — not in localStorage yet
-      const account = await getAccount(accessToken);
-      const user: AdminUser = {
-        id: account.id,
-        name: account.name,
-        email: account.email,
-        role: account.role_name,
-        twoFactor: account.two_factor,
-      };
-      setToken(accessToken, user);
-      router.push("/admin");
-    } catch {
-      // Fallback: we still have the token, construct user from known email
-      const user: AdminUser = {
-        id: "",
-        name: email.split("@")[0],
-        email,
-        role: "Admin",
-        twoFactor: true,
-      };
-      setToken(accessToken, user);
-      router.push("/admin");
-    }
-  }
-
-  // Step 1: credentials
   async function handleCredentials(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!email.trim()) return setError("Enter your email.");
-    if (!password.trim()) return setError("Enter your password.");
 
-    setLoading(true);
+    const em = email.trim();
+    if (!em) return setError("Enter your email to continue.");
+    if (!password) return setError("Enter your password.");
+
+    setBusy(true);
     try {
-      const result = await adminLogin(email.trim(), password.trim());
+      const r = await fetch("/api/admin/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: em, password }),
+      });
 
-      if (!result.two_factor_required) {
-        // No 2FA set up yet — force setup before granting access
-        const accessToken = (result as { access_token: string }).access_token;
-        setPendingAccessToken(accessToken);
+      const j = (await r.json()) as { data?: LoginPayload; error?: { message?: string } };
 
-        // Fetch the real 2FA setup data from backend
-        const setup = await get2FASetup(accessToken);
-        setSetupSecret(setup.secret);
-        setSetupOtpauthUrl(setup.otpauth_url);
-        setStep("setup");
-      } else {
-        // 2FA already set up — go to verify step
-        setPreAuthToken((result as { pre_auth_token: string }).pre_auth_token);
-        resetVerifyInputs();
-        setStep("verify");
+      if (!r.ok) {
+        setError(j.error?.message ?? "Could not sign in.");
+        return;
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed. Check your credentials.");
-    } finally {
-      setLoading(false);
-    }
-  }
 
-  // Step 2 (setup): enable 2FA then finish login
-  async function handleEnableAndFinish(e?: React.FormEvent) {
-    e?.preventDefault();
-    setError(null);
-    if (fullCode.length !== 6) return setError("Enter the 6-digit code from your authenticator app.");
+      const status = j.data?.status;
+      const token = j.data?.challenge_token ?? "";
 
-    setLoading(true);
-    try {
-      await enable2FA(setupSecret, fullCode, pendingAccessToken);
-      await finishLogin(pendingAccessToken);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to enable 2FA. Check the code and try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Step 3 (verify): verify TOTP or backup code
-  async function handleVerify(e?: React.FormEvent) {
-    e?.preventDefault();
-    setError(null);
-    if (!codeReady) {
-      return setError(
-        usingBackup
-          ? "Enter a 10-digit backup code (e.g. 12345-67890)."
-          : "Enter the 6-digit code from your authenticator app."
-      );
-    }
-
-    setLoading(true);
-    try {
-      let result: { access_token: string };
-      if (usingBackup) {
-        result = await adminVerifyBackup(preAuthToken, backupCode.replace(/\s/g, ""));
-      } else {
-        result = await adminVerify2FA(preAuthToken, fullCode);
+      if (!token || (status !== "totp_required" && status !== "totp_setup_required")) {
+        setError("Unexpected response from server.");
+        return;
       }
-      await finishLogin(result.access_token);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed. Check your code.");
+
+      setChallengeToken(token);
+      setPassword("");
+      setCode(["", "", "", "", "", ""]);
+
+      if (status === "totp_setup_required") {
+        setOtpauthUrl("");
+        setSetupSecret("");
+        setStep("totp_setup");
+      } else {
+        setStep("totp_verify");
+      }
+    } catch {
+      setError("Network error. Is the backend running?");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
-  // ── Render: credentials step ─────────────────────────────────────────────
+  async function handleTotpComplete(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (!challengeToken) {
+      setError("Session expired — start sign-in again.");
+      return;
+    }
+
+    const totpDigits = fullCode.replace(/\D/g, "");
+    if (totpDigits.length !== 6) {
+      setError("Enter the 6-digit code from your authenticator app.");
+      return;
+    }
+
+    const path = step === "totp_setup" ? "/api/admin/auth/enable-totp" : "/api/admin/auth/verify-totp";
+
+    setBusy(true);
+    try {
+      const r = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge_token: challengeToken, totp_code: totpDigits }),
+      });
+
+      const j = (await r.json()) as { error?: { message?: string } };
+
+      if (!r.ok) {
+        setError(j.error?.message ?? "Verification failed.");
+        return;
+      }
+
+      router.replace(nextPath);
+      router.refresh();
+    } catch {
+      setError("Network error while verifying.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function resetToCredentials() {
+    setStep("credentials");
+    setError(null);
+    setChallengeToken("");
+    setCode(["", "", "", "", "", ""]);
+    setOtpauthUrl("");
+    setSetupSecret("");
+    setLoadProvisioningFailed(null);
+    setProvisioningLoading(false);
+    provisioningFired.current = false;
+  }
+
+  function copySecret() {
+    if (!setupSecret) return;
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      void navigator.clipboard.writeText(setupSecret.replace(/\s/g, ""));
+    }
+    setCopied(true);
+  }
 
   if (step === "credentials") {
     return (
       <form onSubmit={handleCredentials} className="mt-8 space-y-4">
         <h1 className="text-3xl font-bold tracking-[-0.02em] text-foreground">Sign in</h1>
         <p className="text-sm text-muted-foreground">
-          Welcome back. Please enter your credentials to continue.
+          Welcome back. Sign in with your admin email and password. You&apos;ll confirm with your authenticator app.
         </p>
 
         <label className="block pt-4">
-          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-            Email
-          </span>
+          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Email</span>
           <input
             name="email"
             type="email"
-            autoComplete="email"
+            autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@rides.com"
+            placeholder="you@example.com"
             className="mt-2 block h-11 w-full rounded-xl border border-border bg-surface px-3.5 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
         </label>
@@ -381,51 +346,10 @@ export function LoginForm() {
               </button>
             </div>
           </label>
-        </div>
-
-        {error ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
-            {error}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-2 flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? "Signing in…" : "Continue"}
-        </button>
-      </form>
-    );
-  }
-
-  // ── Render: 2FA setup step ───────────────────────────────────────────────
-
-  if (step === "setup") {
-    return (
-      <form onSubmit={handleEnableAndFinish} className="mt-8 space-y-5">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">
-            Step 2 of 2 · Set up 2FA
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground">
-            Secure your account
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Add a second factor before continuing. Copy the setup key into your authenticator app,
-            then enter the 6-digit code to confirm.
-          </p>
-        </div>
-
-        <OtpAuthDisplay secret={setupSecret} otpauthUrl={setupOtpauthUrl} />
-
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-            Enter 6-digit code
-          </p>
-          <div className="mt-2">
-            <CodeBoxes value={code} onChange={setCode} disabled={loading} />
+          <div className="mt-2 flex justify-end">
+            <span className="text-xs font-medium text-muted-foreground">
+              Forgot password? Contact a super admin.
+            </span>
           </div>
         </div>
 
@@ -437,15 +361,102 @@ export function LoginForm() {
 
         <button
           type="submit"
-          disabled={!codeReady || loading}
+          disabled={busy}
+          className="mt-2 flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {busy ? "Signing in…" : "Continue"}
+        </button>
+      </form>
+    );
+  }
+
+  if (step === "totp_setup") {
+    const showQr = otpauthUrl && !loadProvisioningFailed;
+
+    return (
+      <form onSubmit={handleTotpComplete} className="mt-8 space-y-5">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">
+            Step 2 of 2 · Set up 2FA
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground">Secure your account</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Scan the QR code with your authenticator app, then enter the 6-digit code to confirm. This replaces any
+            previous demo QR on this screen — secrets come from the live API.
+          </p>
+        </div>
+
+        {loadProvisioningFailed ? (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
+            {loadProvisioningFailed}
+          </p>
+        ) : null}
+
+        <div className="grid gap-4 rounded-2xl border border-border bg-surface/40 p-4 sm:grid-cols-[auto,1fr]">
+          <div className="flex h-[180px] w-[180px] items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border">
+            {provisioningLoading && !otpauthUrl ? (
+              <span className="text-xs text-muted-foreground">Loading…</span>
+            ) : showQr ? (
+              <OtpQrCode value={otpauthUrl} />
+            ) : (
+              <span className="text-xs text-muted-foreground">Waiting for provisioning…</span>
+            )}
+          </div>
+
+          <div className="min-w-0 space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Can&apos;t scan?</p>
+            <div className="rounded-lg border border-border bg-card p-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Setup key (base32)</p>
+              <div className="mt-1 flex items-center gap-2">
+                <code className="flex-1 break-all font-mono text-[11px] font-semibold text-foreground">
+                  {setupSecret || "…"}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => copySecret()}
+                  aria-label="Copy secret"
+                  disabled={!setupSecret}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                >
+                  <CopyIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {copied ? (
+                <p className="mt-1 text-[10px] font-semibold text-primary">Copied to clipboard</p>
+              ) : null}
+            </div>
+            <p className="text-[10px] leading-relaxed text-muted-foreground">
+              Use Google Authenticator, Authy, 1Password, Bitwarden, or any RFC 6238 TOTP app.
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            Confirm 6-digit code
+          </p>
+          <div className="mt-2">
+            <CodeBoxes value={code} onChange={setCode} disabled={busy} />
+          </div>
+        </div>
+
+        {error ? (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
+            {error}
+          </p>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={!codeReady || busy || provisioningLoading || !!loadProvisioningFailed}
           className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {loading ? "Verifying…" : "Enable & continue"}
+          {busy ? "Verifying…" : provisioningLoading ? "Loading setup…" : "Enable 2FA & enter dashboard"}
         </button>
 
         <button
           type="button"
-          onClick={() => { setStep("credentials"); setError(null); }}
+          onClick={() => resetToCredentials()}
           className="block w-full text-center text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
         >
           ← Back to sign in
@@ -454,60 +465,25 @@ export function LoginForm() {
     );
   }
 
-  // ── Render: verify step ──────────────────────────────────────────────────
-
+  // totp_verify
   return (
-    <form onSubmit={handleVerify} className="mt-8 space-y-5">
+    <form onSubmit={handleTotpComplete} className="mt-8 space-y-5">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">
-          Step 2 of 2
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground">
-          Two-factor authentication
-        </h1>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">Step 2 of 2</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground">Two-factor authentication</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {usingBackup
-            ? "Enter one of your 10-digit backup codes."
-            : "Enter the 6-digit code from your authenticator app."}
+          Enter the 6-digit code from your authenticator app for{" "}
+          <span className="font-semibold text-foreground">{email || "your account"}</span>.
         </p>
       </div>
 
       <div className="rounded-2xl border border-border bg-surface/40 p-4">
-        {usingBackup ? (
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-              Backup code
-            </span>
-            <input
-              value={backupCode}
-              onChange={(e) => setBackupCode(e.target.value)}
-              placeholder="12345-67890"
-              className="mt-2 block h-12 w-full rounded-xl border border-border bg-card px-3.5 text-center font-mono text-lg tracking-wider text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-            />
-          </label>
-        ) : (
-          <>
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-              Authenticator code
-            </p>
-            <div className="mt-3">
-              <CodeBoxes value={code} onChange={setCode} disabled={loading} />
-            </div>
-          </>
-        )}
-
-        <button
-          type="button"
-          onClick={() => {
-            setUsingBackup((v) => !v);
-            setError(null);
-            setCode(["", "", "", "", "", ""]);
-            setBackupCode("");
-          }}
-          className="mt-3 text-[11px] font-semibold text-primary transition-colors hover:underline"
-        >
-          {usingBackup ? "Use authenticator app instead" : "Use a backup code instead"}
-        </button>
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+          Authenticator code
+        </p>
+        <div className="mt-3">
+          <CodeBoxes value={code} onChange={setCode} disabled={busy} />
+        </div>
       </div>
 
       {error ? (
@@ -518,15 +494,22 @@ export function LoginForm() {
 
       <button
         type="submit"
-        disabled={!codeReady || loading}
+        disabled={!codeReady || busy}
         className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {loading ? "Verifying…" : "Verify & continue"}
+        {busy ? "Verifying…" : "Verify & continue"}
       </button>
+
+      <p className="text-center text-[11px] text-muted-foreground">
+        Prefer to leave?{" "}
+        <Link href="/" className="font-semibold text-primary hover:underline">
+          Back to marketing site
+        </Link>
+      </p>
 
       <button
         type="button"
-        onClick={() => { setStep("credentials"); setError(null); }}
+        onClick={() => resetToCredentials()}
         className="block w-full text-center text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
       >
         ← Back to sign in
