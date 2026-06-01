@@ -429,10 +429,13 @@ export const reinstateDriver = (id: string) =>
 export type Customer = {
   id: string;
   full_name: string;
-  phone_number: string;
+  phone: string;
   email?: string;
-  status: string;
+  role_state: string;
+  is_suspended: boolean;
+  suspension_until?: string | null;
   total_rides: number;
+  total_spend?: number;
   created_at: string;
   last_active_at?: string;
   notes?: string;
