@@ -7,6 +7,41 @@ import {
   type CustomerProfile,
   type CustomerStatus,
 } from "./customer-modal";
+import {
+  getCustomers,
+  suspendCustomer,
+  reinstateCustomer,
+  banCustomer,
+  type Customer as ApiCustomer,
+} from "@/lib/api";
+
+function mapApiCustomer(c: ApiCustomer): Customer {
+  return {
+    id: c.id,
+    name: c.full_name,
+    email: c.email ?? "",
+    phone: c.phone_number,
+    location: "",
+    joined: new Date(c.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+    trips: c.total_rides,
+    spend: 0,
+    avgFare: 0,
+    lastTrip: c.last_active_at
+      ? new Date(c.last_active_at).toLocaleDateString()
+      : "—",
+    rating: 0,
+    preferredVehicle: "",
+    status: mapCustomerStatus(c.status),
+    recentTrips: [],
+    notes: c.notes,
+  };
+}
+
+function mapCustomerStatus(status: string): CustomerStatus {
+  if (status === "BANNED" || status === "SUSPENDED") return "Suspended";
+  if (status === "FLAGGED") return "Flagged";
+  return "Active";
+}
 
 type Customer = CustomerProfile;
 
@@ -796,9 +831,17 @@ export function CustomersTable() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [viewingId, setViewingId] = useState<string | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  useEffect(() => {
+    getCustomers({ limit: "100", offset: "0" })
+      .then((res) => setCustomers((res.customers ?? []).map(mapApiCustomer)))
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -893,11 +936,13 @@ export function CustomersTable() {
         updateStatus(c.id, "Active");
         setToast(`${c.name} flag removed`);
       }}
-      onSuspend={() => {
+      onSuspend={async () => {
+        try { await suspendCustomer(c.id, 24); } catch { /* ignore */ }
         updateStatus(c.id, "Suspended");
         setToast(`${c.name} suspended`);
       }}
-      onReinstate={() => {
+      onReinstate={async () => {
+        try { await reinstateCustomer(c.id); } catch { /* ignore */ }
         updateStatus(c.id, "Active");
         setToast(`${c.name} reinstated`);
       }}

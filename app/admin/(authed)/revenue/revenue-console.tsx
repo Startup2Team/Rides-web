@@ -7,6 +7,35 @@ import {
   type Transaction,
   type TransactionStatus,
 } from "./transaction-modal";
+import {
+  getTransactions,
+  disbursePayouts,
+  type Transaction as ApiTransaction,
+} from "@/lib/api";
+
+function mapApiTransaction(t: ApiTransaction): Transaction {
+  const status: TransactionStatus =
+    t.status === "PENDING" ? "Pending payout"
+    : t.status === "REFUNDED" ? "Refunded"
+    : t.status === "DISPUTED" ? "Disputed"
+    : "Settled";
+  return {
+    id: t.id,
+    customer: { name: t.customer_name, phone: "" },
+    driver: { name: t.driver_name, phone: "", vehicleType: "", plate: "—" },
+    pickup: "—",
+    destination: "—",
+    vehicleType: "Cab Taxi",
+    fare: t.amount,
+    commission: t.platform_fee,
+    payout: t.driver_payout,
+    paymentMethod: "MTN MoMo",
+    status,
+    completedAt: new Date(t.created_at).toLocaleString(),
+    duration: "—",
+    district: "—",
+  };
+}
 
 type Period = "today" | "week" | "month" | "quarter" | "year";
 
@@ -680,7 +709,13 @@ export function RevenueConsole() {
   const [txPage, setTxPage] = useState(1);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [txList, setTxList] = useState<Transaction[]>(transactions);
+  const [txList, setTxList] = useState<Transaction[]>([]);
+
+  useEffect(() => {
+    getTransactions({ limit: "100", offset: "0" })
+      .then((res) => setTxList((res.transactions ?? []).map(mapApiTransaction)))
+      .catch(() => null);
+  }, []);
   const [sortKey, setSortKey] = useState<SortKey>("completedAt");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 

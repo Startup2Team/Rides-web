@@ -7,6 +7,36 @@ import {
   type RideDetail,
   type RideStatus,
 } from "./ride-detail-modal";
+import { getLiveRides, type Ride as ApiRide } from "@/lib/api";
+
+function mapRideStatus(s: string): RideStatus {
+  if (s === "NEGOTIATING") return "Negotiating";
+  if (s === "DRIVER_ARRIVING") return "Driver arriving";
+  if (s === "ON_TRIP" || s === "IN_PROGRESS") return "On trip";
+  return "Searching";
+}
+
+function mapApiRide(r: ApiRide): Ride {
+  return {
+    id: r.id,
+    customer: { name: r.customer_name, phone: "", rating: 0 },
+    driver: r.driver_name
+      ? { name: r.driver_name, phone: "", vehicleType: r.transport_type, plate: "—", rating: 0 }
+      : null,
+    pickup: r.pickup_location,
+    destination: r.dropoff_location,
+    vehicleType: "Cab Taxi",
+    status: mapRideStatus(r.status),
+    startedAt: new Date(r.created_at).toLocaleString(),
+    eta: null,
+    fare: r.fare,
+    paymentMethod: "MTN MoMo",
+    district: "—",
+    timeline: [],
+    negotiation: [],
+    position: { x: Math.random() * 80 + 10, y: Math.random() * 70 + 10 },
+  };
+}
 
 type VehicleType = "Moto Bike" | "Cab Taxi" | "Light Hilux" | "Heavy Fuso";
 
@@ -608,7 +638,13 @@ function RideCard({
 }
 
 export function LiveRidesConsole() {
-  const [rides, setRides] = useState<Ride[]>(baseRides);
+  const [rides, setRides] = useState<Ride[]>([]);
+
+  useEffect(() => {
+    getLiveRides({ page: "1", page_size: "100" })
+      .then((res) => setRides((res.rides ?? []).map(mapApiRide)))
+      .catch(() => null);
+  }, []);
   const [tab, setTab] = useState<Tab["id"]>("all");
   const [vehicleFilter, setVehicleFilter] = useState<VehicleType | "all">("all");
   const [query, setQuery] = useState("");
