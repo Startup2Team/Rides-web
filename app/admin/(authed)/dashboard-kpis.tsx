@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { getDashboard, getAnalyticsOverviewData, type DashboardSnapshot, type AnalyticsOverview } from "@/lib/api";
+import { periodToDays, periodLabel, readPeriod, readCustomRange } from "./_period-filter";
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -93,7 +95,7 @@ function fmt(n: number) {
   return n.toLocaleString();
 }
 
-function buildKpis(snap: DashboardSnapshot, analytics: AnalyticsOverview): Kpi[] {
+function buildKpis(snap: DashboardSnapshot, analytics: AnalyticsOverview, periodText: string): Kpi[] {
   return [
     {
       label: "Active Drivers",
@@ -113,13 +115,13 @@ function buildKpis(snap: DashboardSnapshot, analytics: AnalyticsOverview): Kpi[]
       badge: "Live",
     },
     {
-      label: "Rides Today",
-      value: fmt(analytics.total_rides_today),
+      label: `Rides ${periodText}`,
+      value: fmt(snap.ridesInPeriod),
       icon: <Icon><circle cx="12" cy="12" r="10" /><polyline points="9 12 11 14 15 10" /></Icon>,
     },
     {
-      label: "Revenue Today",
-      value: `${fmt(analytics.total_revenue_today)} RWF`,
+      label: `Revenue ${periodText}`,
+      value: `${fmt(snap.revenueInPeriod)} RWF`,
       icon: <Icon><line x1="12" y1="2" x2="12" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></Icon>,
     },
     {
@@ -141,19 +143,35 @@ function buildKpis(snap: DashboardSnapshot, analytics: AnalyticsOverview): Kpi[]
 }
 
 export function DashboardKpis() {
+  const searchParams = useSearchParams();
+  const period = readPeriod(searchParams);
+  const range = readCustomRange(searchParams);
+  const isCustom = period === "custom" && range !== null;
+  const days = periodToDays(period);
+  const label = periodLabel(period, range);
+
+  // Effect dep — flat strings so we re-fetch when either changes
+  const fetchKey = isCustom ? `from=${range.from}&to=${range.to}` : `days=${days}`;
+
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getDashboard(), getAnalyticsOverviewData()])
+    setLoading(true);
+    const dashboardCall = isCustom
+      ? getDashboard({ from: range.from, to: range.to })
+      : getDashboard({ days });
+    Promise.all([dashboardCall, getAnalyticsOverviewData()])
       .then(([snap, anl]) => {
         setSnapshot(snap);
         setAnalytics(anl);
       })
       .catch(() => null)
       .finally(() => setLoading(false));
-  }, []);
+    // fetchKey collapses (days, from, to) into a single primitive
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchKey]);
 
   if (loading) {
     return (
@@ -173,7 +191,7 @@ export function DashboardKpis() {
     );
   }
 
-  const kpis = buildKpis(snapshot, analytics);
+  const kpis = buildKpis(snapshot, analytics, label);
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

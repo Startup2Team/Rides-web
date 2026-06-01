@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/auth-context";
 
 function computeGreeting(date: Date) {
   const hour = date.getHours();
@@ -10,7 +11,8 @@ function computeGreeting(date: Date) {
   return "Working late";
 }
 
-export function Greeting({ name }: { name: string }) {
+export function Greeting() {
+  const { user } = useAuth();
   const [greeting, setGreeting] = useState("Welcome back");
 
   useEffect(() => {
@@ -20,9 +22,11 @@ export function Greeting({ name }: { name: string }) {
     return () => clearInterval(id);
   }, []);
 
+  const firstName = user?.name?.trim().split(/\s+/)[0] ?? "Admin";
+
   return (
     <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl">
-      {greeting}, {name} 👋
+      {greeting}, {firstName} 👋
     </h1>
   );
 }

@@ -123,7 +123,8 @@ export type DashboardSnapshot = {
   liveRides: number;
   onlineDrivers: number;
   openTickets: number;
-  revenueToday: number;
+  revenueInPeriod: number;
+  ridesInPeriod: number;
   pendingVerifications: number;
   openIncidents: number;
 };
@@ -135,7 +136,164 @@ export type AnalyticsOverview = {
   total_rides_today: number;
 };
 
-export const getDashboard = () => request<DashboardSnapshot>("/admin/dashboard");
+export type DashboardWindow =
+  | { days?: number; from?: undefined; to?: undefined }
+  | { from: string; to: string; days?: undefined };
+
+export const getDashboard = (window?: DashboardWindow) => {
+  let path = "/admin/dashboard";
+  if (window?.from && window.to) {
+    const qs = new URLSearchParams({ from: window.from, to: window.to }).toString();
+    path = `/admin/dashboard?${qs}`;
+  } else if (window?.days && window.days > 0) {
+    path = `/admin/dashboard?days=${window.days}`;
+  }
+  return request<DashboardSnapshot>(path);
+};
+
+export type RevenuePoint = { t: string; v: number };
+export type RevenueSeriesSide = {
+  label: string;
+  points: RevenuePoint[];
+  total: number;
+  peak?: RevenuePoint | null;
+};
+export type RevenueSeries = {
+  bucket: "hour" | "day";
+  current: RevenueSeriesSide;
+  previous: RevenueSeriesSide;
+  deltaPct: number;
+};
+
+function dashboardQS(window: DashboardWindow | undefined): string {
+  if (window?.from && window.to) {
+    return `?${new URLSearchParams({ from: window.from, to: window.to }).toString()}`;
+  }
+  if (window?.days && window.days > 0) {
+    return `?days=${window.days}`;
+  }
+  return "";
+}
+
+export const getRevenueSeries = (window?: DashboardWindow) =>
+  request<RevenueSeries>(`/admin/dashboard/revenue-series${dashboardQS(window)}`);
+
+export type RidesPoint = { t: string; completed: number; cancelled: number };
+export type RidesSeriesSide = {
+  label: string;
+  points: RidesPoint[];
+  totalCompleted: number;
+  totalCancelled: number;
+};
+export type RidesSeries = {
+  bucket: "hour" | "day";
+  current: RidesSeriesSide;
+  previous: RidesSeriesSide;
+  deltaPct: number;
+};
+
+export const getRidesSeries = (window?: DashboardWindow) =>
+  request<RidesSeries>(`/admin/dashboard/rides-series${dashboardQS(window)}`);
+
+export type DriverStatusSnapshot = {
+  online: number;
+  onTrip: number;
+  offline: number;
+};
+
+export const getDriverStatus = () =>
+  request<DriverStatusSnapshot>("/admin/dashboard/driver-status");
+
+export type TopDriver = {
+  id: string;
+  name: string;
+  rides: number;
+  isOnline: boolean;
+  earnings: number;
+};
+
+export const getTopDrivers = (window?: DashboardWindow, limit = 4) =>
+  request<TopDriver[]>(
+    `/admin/dashboard/top-drivers${dashboardQS(window)}${
+      dashboardQS(window) ? "&" : "?"
+    }limit=${limit}`
+  );
+
+export type RecentActivity = {
+  id: number;
+  type: string;
+  actorRole?: string;
+  actorName?: string;
+  rideId?: string | null;
+  payload?: unknown;
+  occurredAt: string;
+};
+
+export type RecentActivityQuery = {
+  limit?: number;
+  beforeId?: number;
+  type?: string;
+};
+
+export const getRecentActivity = (q: RecentActivityQuery | number = {}) => {
+  const opts: RecentActivityQuery = typeof q === "number" ? { limit: q } : q;
+  const params = new URLSearchParams();
+  if (opts.limit) params.set("limit", String(opts.limit));
+  if (opts.beforeId) params.set("beforeId", String(opts.beforeId));
+  if (opts.type) params.set("type", opts.type);
+  const qs = params.toString();
+  return request<RecentActivity[]>(
+    `/admin/dashboard/recent-activity${qs ? `?${qs}` : ""}`
+  );
+};
+
+export type DashboardAlert = {
+  id: string;
+  kind: "incident" | "ticket";
+  tone: "danger" | "warn" | "info";
+  title: string;
+  detail: string;
+  severity?: string;
+  rideId?: string | null;
+  occurredAt: string;
+};
+
+export type LiveMapDriver = {
+  id: string;
+  lat: number;
+  lng: number;
+  isOnline: boolean;
+  onTrip: boolean;
+};
+
+export type LiveMapHeatPoint = { lat: number; lng: number; weight: number };
+
+export type LiveMap = {
+  updatedAt: string;
+  activeRides: number;
+  onlineDrivers: number;
+  hotZones: number;
+  drivers: LiveMapDriver[];
+  heatPoints: LiveMapHeatPoint[];
+};
+
+export const getLiveMap = () => request<LiveMap>("/admin/dashboard/live-map");
+
+export type AlertsQuery = {
+  limit?: number;
+  kind?: "incident" | "ticket";
+};
+
+export const getDashboardAlerts = (q: AlertsQuery | number = {}) => {
+  const opts: AlertsQuery = typeof q === "number" ? { limit: q } : q;
+  const params = new URLSearchParams();
+  if (opts.limit) params.set("limit", String(opts.limit));
+  if (opts.kind) params.set("kind", opts.kind);
+  const qs = params.toString();
+  return request<DashboardAlert[]>(
+    `/admin/dashboard/alerts${qs ? `?${qs}` : ""}`
+  );
+};
 export const getAnalyticsOverviewData = () => request<AnalyticsOverview>("/admin/analytics/overview");
 
 // ── Analytics ─────────────────────────────────────────────────────────────

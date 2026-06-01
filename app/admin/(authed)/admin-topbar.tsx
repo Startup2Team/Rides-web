@@ -32,53 +32,7 @@ type Notification = {
   href: string;
 };
 
-const notifications: Notification[] = [
-  {
-    id: "n1",
-    tone: "danger",
-    title: "SOS triggered on ride #4821",
-    detail: "Aiden M. · Kimironko area",
-    time: "Just now",
-    unread: true,
-    href: "/admin/safety-center",
-  },
-  {
-    id: "n2",
-    tone: "warn",
-    title: "Driver complaint received",
-    detail: "Unsafe driving · Trip #4815",
-    time: "14m ago",
-    unread: true,
-    href: "/admin/support",
-  },
-  {
-    id: "n3",
-    tone: "warn",
-    title: "Possible fraud detected",
-    detail: "Unusual cancellation pattern · 3 accounts",
-    time: "32m ago",
-    unread: true,
-    href: "/admin/safety-center",
-  },
-  {
-    id: "n4",
-    tone: "info",
-    title: "Payment gateway latency",
-    detail: "MoMo API responding above threshold",
-    time: "1h ago",
-    unread: false,
-    href: "/admin/settings",
-  },
-  {
-    id: "n5",
-    tone: "info",
-    title: "New driver application",
-    detail: "Florence I. submitted documents",
-    time: "2h ago",
-    unread: false,
-    href: "/admin/drivers",
-  },
-];
+const notifications: Notification[] = [];
 
 export function AdminTopbar({
   onOpenMobile,
@@ -192,10 +146,28 @@ export function AdminTopbar({
                     </span>
                   ) : null}
                 </div>
-                <button className="text-[11px] font-medium text-muted-foreground hover:text-primary">
-                  Mark all read
-                </button>
+                {notifications.length > 0 ? (
+                  <button className="text-[11px] font-medium text-muted-foreground hover:text-primary">
+                    Mark all read
+                  </button>
+                ) : null}
               </div>
+              {notifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-muted-foreground">
+                    <Icon>
+                      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                    </Icon>
+                  </span>
+                  <p className="text-xs font-semibold tracking-tight text-foreground">
+                    You're all caught up
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    No new notifications.
+                  </p>
+                </div>
+              ) : (
               <ul className="max-h-80 divide-y divide-border overflow-y-auto">
                 {notifications.map((n) => (
                   <li key={n.id}>
@@ -241,15 +213,18 @@ export function AdminTopbar({
                   </li>
                 ))}
               </ul>
-              <div className="border-t border-border bg-surface/50 px-4 py-2 text-center">
-                <Link
-                  href="/admin/safety-center"
-                  onClick={() => setOpenNotif(false)}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  View all notifications
-                </Link>
-              </div>
+              )}
+              {notifications.length > 0 ? (
+                <div className="border-t border-border bg-surface/50 px-4 py-2 text-center">
+                  <Link
+                    href="/admin/safety-center"
+                    onClick={() => setOpenNotif(false)}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    View all notifications
+                  </Link>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
