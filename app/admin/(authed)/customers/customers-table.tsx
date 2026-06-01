@@ -49,7 +49,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c1",
     name: "Alice Mukamana",
-    email: "alice.m@taravelis.io",
+    email: "alice.m@rides.io",
     phone: "+250 788 213 005",
     location: "Kacyiru, Gasabo, Kigali City",
     joined: "Jan 2026",
@@ -69,7 +69,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c2",
     name: "Boris Habineza",
-    email: "boris.h@taravelis.io",
+    email: "boris.h@rides.io",
     phone: "+250 788 552 198",
     location: "Remera, Gasabo, Kigali City",
     joined: "Mar 2026",
@@ -88,7 +88,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c3",
     name: "Christine Niyibizi",
-    email: "christine.n@taravelis.io",
+    email: "christine.n@rides.io",
     phone: "+250 788 614 770",
     location: "Nyarutarama, Gasabo, Kigali City",
     joined: "Jul 2024",
@@ -110,7 +110,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c4",
     name: "Daniel Iradukunda",
-    email: "daniel.i@taravelis.io",
+    email: "daniel.i@rides.io",
     phone: "+250 788 102 441",
     location: "Gikondo, Kicukiro, Kigali City",
     joined: "Apr 2026",
@@ -129,7 +129,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c5",
     name: "Elise Twagiramungu",
-    email: "elise.t@taravelis.io",
+    email: "elise.t@rides.io",
     phone: "+250 788 339 882",
     location: "Nyamirambo, Nyarugenge, Kigali City",
     joined: "Dec 2025",
@@ -146,7 +146,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c6",
     name: "Fabrice Bizimana",
-    email: "fabrice.b@taravelis.io",
+    email: "fabrice.b@rides.io",
     phone: "+250 788 477 113",
     location: "Niboye, Kicukiro, Kigali City",
     joined: "May 2026",
@@ -167,7 +167,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c7",
     name: "Grace Uwineza",
-    email: "grace.u@taravelis.io",
+    email: "grace.u@rides.io",
     phone: "+250 788 823 005",
     location: "Kacyiru, Gasabo, Kigali City",
     joined: "Sep 2024",
@@ -187,7 +187,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c8",
     name: "Henri Mugisha",
-    email: "henri.m@taravelis.io",
+    email: "henri.m@rides.io",
     phone: "+250 788 156 992",
     location: "Kimironko, Gasabo, Kigali City",
     joined: "Feb 2026",
@@ -205,7 +205,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c9",
     name: "Irene Mukasa",
-    email: "irene.m@taravelis.io",
+    email: "irene.m@rides.io",
     phone: "+250 788 290 552",
     location: "Remera, Gasabo, Kigali City",
     joined: "Nov 2025",
@@ -224,7 +224,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c10",
     name: "Jean-Paul Karangwa",
-    email: "jp.k@taravelis.io",
+    email: "jp.k@rides.io",
     phone: "+250 788 705 887",
     location: "Muhima, Nyarugenge, Kigali City",
     joined: "Aug 2025",
@@ -245,7 +245,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c11",
     name: "Kalisa Eric",
-    email: "kalisa.e@taravelis.io",
+    email: "kalisa.e@rides.io",
     phone: "+250 788 412 003",
     location: "Gahanga, Kicukiro, Kigali City",
     joined: "Feb 2026",
@@ -263,7 +263,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c12",
     name: "Liliane Uwase",
-    email: "liliane.u@taravelis.io",
+    email: "liliane.u@rides.io",
     phone: "+250 788 904 660",
     location: "Kacyiru, Gasabo, Kigali City",
     joined: "Jun 2024",
@@ -283,7 +283,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c13",
     name: "Maurice Nshuti",
-    email: "maurice.n@taravelis.io",
+    email: "maurice.n@rides.io",
     phone: "+250 788 156 224",
     location: "Niboye, Kicukiro, Kigali City",
     joined: "Jan 2026",
@@ -301,7 +301,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c14",
     name: "Nadia Kayitesi",
-    email: "nadia.k@taravelis.io",
+    email: "nadia.k@rides.io",
     phone: "+250 788 803 117",
     location: "Muhima, Nyarugenge, Kigali City",
     joined: "Oct 2025",
@@ -319,7 +319,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c15",
     name: "Olivier Habimana",
-    email: "olivier.h@taravelis.io",
+    email: "olivier.h@rides.io",
     phone: "+250 788 449 660",
     location: "Kanyinya, Nyarugenge, Kigali City",
     joined: "Dec 2025",
@@ -337,7 +337,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c16",
     name: "Patricia Mukamana",
-    email: "patricia.m@taravelis.io",
+    email: "patricia.m@rides.io",
     phone: "+250 788 322 178",
     location: "Nyarugunga, Kicukiro, Kigali City",
     joined: "Feb 2026",
@@ -357,7 +357,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c17",
     name: "Queen Niyonsenga",
-    email: "queen.n@taravelis.io",
+    email: "queen.n@rides.io",
     phone: "+250 788 187 504",
     location: "Kimironko, Gasabo, Kigali City",
     joined: "Mar 2026",
@@ -373,7 +373,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c18",
     name: "Robert Tuyizere",
-    email: "robert.t@taravelis.io",
+    email: "robert.t@rides.io",
     phone: "+250 788 670 219",
     location: "Remera, Gasabo, Kigali City",
     joined: "Sep 2025",
@@ -389,7 +389,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c19",
     name: "Sandrine Uwimana",
-    email: "sandrine.u@taravelis.io",
+    email: "sandrine.u@rides.io",
     phone: "+250 788 091 553",
     location: "Gikondo, Kicukiro, Kigali City",
     joined: "Jun 2025",
@@ -406,7 +406,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c20",
     name: "Théo Bizimana",
-    email: "theo.b@taravelis.io",
+    email: "theo.b@rides.io",
     phone: "+250 788 558 002",
     location: "Ndera, Gasabo, Kigali City",
     joined: "Mar 2024",
@@ -423,7 +423,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c21",
     name: "Umutoni Aline",
-    email: "aline.u@taravelis.io",
+    email: "aline.u@rides.io",
     phone: "+250 788 567 102",
     location: "Remera, Gasabo, Kigali City",
     joined: "Jul 2025",
@@ -439,7 +439,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c22",
     name: "Vincent Karangwa",
-    email: "vincent.k@taravelis.io",
+    email: "vincent.k@rides.io",
     phone: "+250 788 821 003",
     location: "Gisozi, Gasabo, Kigali City",
     joined: "Jan 2026",
@@ -455,7 +455,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c23",
     name: "Winnie Mukamana",
-    email: "winnie.m@taravelis.io",
+    email: "winnie.m@rides.io",
     phone: "+250 788 123 456",
     location: "Kacyiru, Gasabo, Kigali City",
     joined: "Apr 2026",
@@ -471,7 +471,7 @@ const initialCustomers: Customer[] = [
   {
     id: "c24",
     name: "Xavier Iradukunda",
-    email: "xavier.i@taravelis.io",
+    email: "xavier.i@rides.io",
     phone: "+250 788 614 005",
     location: "Kimironko, Gasabo, Kigali City",
     joined: "Feb 2026",

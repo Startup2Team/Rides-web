@@ -1,88 +1,11 @@
+import { CarIcon, FusoIcon, HiluxIcon, MotoIcon } from "./vehicle-icons";
+
 const step01Features = [
   "Multiple vehicle types",
   "Real-time availability",
   "Instant route estimation",
   "Smart matching system",
 ];
-
-function CarIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2" />
-      <circle cx="6.5" cy="16.5" r="2.5" />
-      <circle cx="16.5" cy="16.5" r="2.5" />
-    </svg>
-  );
-}
-
-function MotoIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <circle cx="6" cy="17" r="3" />
-      <circle cx="18" cy="17" r="3" />
-      <path d="M14 6h2l1 5-3 3M9 17l3-6L9 6" />
-    </svg>
-  );
-}
-
-function FusoIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <rect x="1" y="9" width="13" height="8" rx="1" />
-      <path d="M14 12h5l3 3v2h-8" />
-      <circle cx="6" cy="18" r="1.5" />
-      <circle cx="17" cy="18" r="1.5" />
-    </svg>
-  );
-}
-
-function HiluxIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <path d="M2 17V12l3-4h7l2 3" />
-      <path d="M14 11h6v6" />
-      <path d="M2 17h18" />
-      <circle cx="6" cy="17" r="1.5" />
-      <circle cx="17" cy="17" r="1.5" />
-    </svg>
-  );
-}
 
 function DriverPin({
   top,
@@ -137,126 +60,109 @@ function Step01() {
       <div className="relative">
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
         />
 
-        <div className="relative w-52 sm:w-60">
+        <div className="relative w-64 sm:w-72">
           <span
             aria-hidden
-            className="absolute left-[-3px] top-16 h-6 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-900 to-zinc-700"
+            className="absolute left-[-3px] top-20 h-7 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-900 to-zinc-700"
           />
           <span
             aria-hidden
-            className="absolute left-[-3px] top-28 h-10 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-900 to-zinc-700"
+            className="absolute left-[-3px] top-32 h-12 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-900 to-zinc-700"
           />
           <span
             aria-hidden
-            className="absolute left-[-3px] top-44 h-10 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-900 to-zinc-700"
+            className="absolute left-[-3px] top-48 h-12 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-900 to-zinc-700"
           />
           <span
             aria-hidden
-            className="absolute right-[-3px] top-24 h-14 w-[3px] rounded-r-sm bg-gradient-to-l from-zinc-900 to-zinc-700"
+            className="absolute right-[-3px] top-28 h-16 w-[3px] rounded-r-sm bg-gradient-to-l from-zinc-900 to-zinc-700"
           />
 
           <div className="relative overflow-hidden rounded-[3rem] bg-gradient-to-b from-zinc-700 via-zinc-800 to-zinc-950 p-1 shadow-2xl shadow-primary/20 ring-1 ring-inset ring-white/10">
             <div className="relative aspect-[9/19.5] overflow-hidden rounded-[2.7rem] bg-black p-[3px]">
               <div className="relative h-full w-full overflow-hidden rounded-[2.55rem] bg-card">
-                <div className="absolute left-1/2 top-2 z-10 flex h-6 w-24 -translate-x-1/2 items-center justify-end rounded-full bg-black pr-2.5">
+                {/* Dynamic island */}
+                <div className="absolute left-1/2 top-3 z-10 flex h-7 w-28 -translate-x-1/2 items-center justify-end rounded-full bg-black pr-3">
                   <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
                 </div>
 
-                <div className="absolute inset-0 flex flex-col px-4 pb-4 pt-11">
+                <div className="absolute inset-0 flex flex-col px-5 pb-4 pt-14">
+                  {/* Header */}
                   <div className="flex items-center justify-between">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface ring-1 ring-inset ring-border">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="h-4 w-4 text-foreground"
-                        aria-hidden
-                      >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface ring-1 ring-inset ring-border">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-foreground" aria-hidden>
                         <polyline points="15 18 9 12 15 6" />
                       </svg>
                     </span>
-                    <span className="text-sm font-semibold tracking-tight text-foreground">
+                    <span className="text-base font-bold tracking-tight text-foreground">
                       Book a Ride
                     </span>
-                    <span className="h-8 w-8" />
+                    <span className="h-9 w-9" />
                   </div>
 
-                  <div className="mt-5 space-y-2">
-                    <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-2.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          className="h-3 w-3"
-                          aria-hidden
-                        >
-                          <circle cx="12" cy="12" r="6" />
-                        </svg>
+                  {/* Location fields */}
+                  <div className="mt-5 space-y-2.5">
+                    <div className="flex items-center gap-3 rounded-2xl bg-surface px-3 py-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                        <span className="h-2.5 w-2.5 rounded-full bg-primary" />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="text-[10px] font-medium text-muted-foreground">
+                        <div className="text-[11px] font-semibold text-foreground">
                           Pickup
                         </div>
-                        <div className="mt-1 h-2 w-3/4 rounded-full bg-muted" />
+                        <div className="mt-1.5 h-1.5 w-3/4 rounded-full bg-muted" />
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-2.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-foreground">
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="h-3.5 w-3.5"
-                          aria-hidden
-                        >
+                    <div className="flex items-center gap-3 rounded-2xl bg-surface px-3 py-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground/10">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-foreground" aria-hidden>
                           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
                           <circle cx="12" cy="10" r="2.5" fill="currentColor" />
                         </svg>
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="text-[10px] font-medium text-muted-foreground">
+                        <div className="text-[11px] font-semibold text-foreground">
                           Destination
                         </div>
-                        <div className="mt-1 h-2 w-2/3 rounded-full bg-muted" />
+                        <div className="mt-1.5 h-1.5 w-2/3 rounded-full bg-muted" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-4">
-                    <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {/* Vehicle Type */}
+                  <div className="mt-5">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       Vehicle Type
                     </div>
-                    <div className="mt-2 grid grid-cols-4 gap-1">
+                    <div className="mt-2.5 grid grid-cols-4 gap-1.5">
                       {[
-                        { name: "Moto Bike", active: false, IconComp: MotoIcon },
+                        { name: "Moto\nBike", active: false, IconComp: MotoIcon },
                         { name: "Cab Taxi", active: true, IconComp: CarIcon },
-                        { name: "Heavy Fuso", active: false, IconComp: FusoIcon },
-                        { name: "Light Hilux", active: false, IconComp: HiluxIcon },
+                        { name: "Heavy\nFuso", active: false, IconComp: FusoIcon },
+                        { name: "Light\nHilux", active: false, IconComp: HiluxIcon },
                       ].map((v) => (
                         <div
                           key={v.name}
-                          className={`flex flex-col items-center rounded-lg border p-1.5 ${
+                          className={`flex flex-col items-center justify-center rounded-xl border-[1.5px] px-1 py-2 ${
                             v.active
-                              ? "border-primary bg-primary/10 ring-1 ring-inset ring-primary/30"
-                              : "border-border bg-surface"
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-card"
                           }`}
                         >
                           <v.IconComp
-                            className={`h-4 w-4 ${
-                              v.active ? "text-primary" : "text-muted-foreground"
+                            className={`h-5 w-5 ${
+                              v.active ? "text-primary" : "text-foreground"
                             }`}
                           />
-                          <div className="mt-1 text-center text-[7px] font-semibold leading-tight text-foreground">
+                          <div
+                            className={`mt-1 whitespace-pre-line text-center text-[8px] font-semibold leading-tight ${
+                              v.active ? "text-primary" : "text-foreground"
+                            }`}
+                          >
                             {v.name}
                           </div>
                         </div>
@@ -264,13 +170,14 @@ function Step01() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-border bg-surface p-3">
-                    <div className="flex items-center justify-between">
+                  {/* Fare card */}
+                  <div className="mt-4 rounded-2xl border border-border bg-card p-3.5">
+                    <div className="flex items-start justify-between">
                       <div>
                         <div className="text-[10px] font-medium text-muted-foreground">
                           Estimated Fare
                         </div>
-                        <div className="mt-0.5 text-lg font-bold tracking-tight text-foreground">
+                        <div className="mt-0.5 text-xl font-bold tracking-tight text-foreground">
                           3,000 RWF
                         </div>
                       </div>
@@ -278,15 +185,16 @@ function Step01() {
                         <div className="text-[10px] font-medium text-muted-foreground">
                           ETA
                         </div>
-                        <div className="mt-0.5 text-sm font-bold text-foreground">
+                        <div className="mt-0.5 text-base font-bold tracking-tight text-foreground">
                           5 min
                         </div>
                       </div>
                     </div>
                   </div>
 
+                  {/* Confirm */}
                   <div className="mt-auto pt-3">
-                    <div className="flex h-11 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30">
+                    <div className="flex h-12 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-lg shadow-primary/30">
                       Confirm Ride
                     </div>
                   </div>

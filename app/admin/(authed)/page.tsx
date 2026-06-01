@@ -215,7 +215,7 @@ function Sparkline({
       ? "#9ca3af"
       : tone === "alert"
       ? "#f59e0b"
-      : "#00C853";
+      : "#007AFF";
   const fill =
     tone === "down"
       ? "rgba(239,68,68,0.1)"
@@ -356,9 +356,9 @@ function LiveMapWidget() {
         >
           <defs>
             <radialGradient id="heat-prim" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#00C853" stopOpacity="0.55" />
-              <stop offset="60%" stopColor="#00C853" stopOpacity="0.18" />
-              <stop offset="100%" stopColor="#00C853" stopOpacity="0" />
+              <stop offset="0%" stopColor="#007AFF" stopOpacity="0.55" />
+              <stop offset="60%" stopColor="#007AFF" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#007AFF" stopOpacity="0" />
             </radialGradient>
             <radialGradient id="heat-amb" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.5" />
@@ -373,7 +373,7 @@ function LiveMapWidget() {
 
           <path
             d="M 40 180 Q 130 150 200 165 T 360 130"
-            stroke="#00C853"
+            stroke="#007AFF"
             strokeWidth="2.5"
             strokeDasharray="6 4"
             fill="none"
@@ -381,7 +381,7 @@ function LiveMapWidget() {
           />
           <path
             d="M 80 60 Q 180 90 280 75 T 380 100"
-            stroke="#00C853"
+            stroke="#007AFF"
             strokeWidth="2.5"
             strokeDasharray="6 4"
             fill="none"
@@ -493,7 +493,7 @@ function RevenueWidget() {
             />
             <path
               d="M0 65 Q 20 55 40 50 T 80 35 T 120 30 T 160 18 T 200 10"
-              stroke="#00C853"
+              stroke="#007AFF"
               strokeWidth="2"
               fill="none"
               strokeLinecap="round"
@@ -515,7 +515,7 @@ function RevenueWidget() {
               strokeWidth="0.75"
               strokeDasharray="2 2"
             />
-            <circle cx="160" cy="18" r="3" fill="#00C853" stroke="white" strokeWidth="1.5" />
+            <circle cx="160" cy="18" r="3" fill="#007AFF" stroke="white" strokeWidth="1.5" />
           </svg>
         </div>
 

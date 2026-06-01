@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About Taravelis",
+  title: "About Rides",
   description:
     "Building the future of mobility in Africa — safe, transparent, and connected.",
 };
@@ -43,7 +43,7 @@ export default function AboutPage() {
               <span className="text-primary">Africa</span>
             </h1>
             <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-              Taravelis connects riders and drivers through real-time
+              Rides connects riders and drivers through real-time
               intelligence — making everyday travel safer, more transparent, and
               more connected.
             </p>

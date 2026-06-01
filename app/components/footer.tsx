@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RidesLogo } from "./rides-logo";
 
 const productLinks = [
   { label: "Features", href: "/#features" },
@@ -27,20 +28,10 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-6 py-16 lg:py-20">
         <div className="grid gap-10 lg:grid-cols-12">
           <div className="lg:col-span-5">
-            <Link href="/" className="inline-flex items-center gap-2.5">
-              <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary to-[#00A040] shadow-lg shadow-primary/30 ring-1 ring-inset ring-white/15">
-                <svg
-                  viewBox="0 0 24 24"
-                  aria-hidden
-                  className="h-5 w-5 text-primary-foreground"
-                  fill="currentColor"
-                >
-                  <path d="M4 4.5h16v4h-6V20h-4V8.5H4z" />
-                  <circle cx="20" cy="20" r="2" />
-                </svg>
-              </span>
+            <Link href="/" className="inline-flex items-center gap-2">
+              <RidesLogo size={72} className="shrink-0" />
               <span className="text-lg font-semibold tracking-[-0.02em] text-foreground">
-                Taravelis
+                Rides
               </span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
@@ -140,7 +131,7 @@ export default function Footer() {
 
         <div className="mt-12 flex flex-col-reverse items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
           <p className="text-xs text-muted-foreground">
-            © {year} Taravelis. All rights reserved.
+            © {year} Rides. All rights reserved.
           </p>
           <p className="text-xs text-muted-foreground">
             Built for the future of mobility in Africa.

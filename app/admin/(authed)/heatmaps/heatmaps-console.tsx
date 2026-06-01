@@ -482,9 +482,9 @@ export function HeatmapsConsole() {
                   <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
                 </radialGradient>
                 <radialGradient id="hot-green" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#00C853" stopOpacity="0.5" />
-                  <stop offset="60%" stopColor="#00C853" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#00C853" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#007AFF" stopOpacity="0.5" />
+                  <stop offset="60%" stopColor="#007AFF" stopOpacity="0.15" />
+                  <stop offset="100%" stopColor="#007AFF" stopOpacity="0" />
                 </radialGradient>
               </defs>
               {zones.map((z) => {

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Drivers from "../../components/drivers";
 
 export const metadata: Metadata = {
-  title: "Drive with Taravelis",
+  title: "Drive with Rides",
   description:
-    "Set your fares, choose your hours, and get paid instantly to your mobile money. Join Taravelis as a driver.",
+    "Set your fares, choose your hours, and get paid instantly to your mobile money. Join Rides as a driver.",
 };
 
 export default function DriversPage() {

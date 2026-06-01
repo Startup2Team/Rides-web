@@ -44,7 +44,7 @@ const initial: ContactMessage[] = [
     category: "Driver application",
     status: "New",
     receivedAt: "12 min ago",
-    body: "Hello,\n\nI'm a Moto driver in Kigali with 8 years experience and a clean record. I'd love to join Taravelis. How do I sign up properly? My bike is registered as RAA 887 K.\n\nThanks,\nAlphonse",
+    body: "Hello,\n\nI'm a Moto driver in Kigali with 8 years experience and a clean record. I'd love to join Rides. How do I sign up properly? My bike is registered as RAA 887 K.\n\nThanks,\nAlphonse",
     replies: [],
   },
   {
@@ -55,13 +55,13 @@ const initial: ContactMessage[] = [
     category: "Partnership",
     status: "New",
     receivedAt: "1h ago",
-    body: "Hi Taravelis team,\n\nWe'd like to discuss a corporate Cab agreement for ~120 staff. Looking for quarterly invoicing, monthly statements, and a single point of contact.\n\nCan we schedule a 30-min call this week?\n\nBest,\nBPR Partnerships",
+    body: "Hi Rides team,\n\nWe'd like to discuss a corporate Cab agreement for ~120 staff. Looking for quarterly invoicing, monthly statements, and a single point of contact.\n\nCan we schedule a 30-min call this week?\n\nBest,\nBPR Partnerships",
     replies: [],
   },
   {
     id: "MSG-1840",
     name: "Claude Niyitegeka",
-    email: "claude.n@taravelis.io",
+    email: "claude.n@rides.io",
     phone: "+250 788 552 110",
     subject: "Wrong fare charged twice",
     category: "Complaint",
@@ -96,7 +96,7 @@ const initial: ContactMessage[] = [
     category: "General",
     status: "Replied",
     receivedAt: "Yesterday",
-    body: "I want to delete my Taravelis account. Where do I do this in the app?",
+    body: "I want to delete my Rides account. Where do I do this in the app?",
     replies: [
       {
         id: "r1",
@@ -126,7 +126,7 @@ const initial: ContactMessage[] = [
     category: "Driver application",
     status: "Replied",
     receivedAt: "3 days ago",
-    body: "Does Taravelis provide insurance for drivers during a trip, or do we need our own?",
+    body: "Does Rides provide insurance for drivers during a trip, or do we need our own?",
     replies: [
       {
         id: "r1",
@@ -144,7 +144,7 @@ const initial: ContactMessage[] = [
     category: "General",
     status: "Archived",
     receivedAt: "1 week ago",
-    body: "Would Taravelis ever subsidize helmets for drivers? My neighbor died because his helmet wasn't proper.",
+    body: "Would Rides ever subsidize helmets for drivers? My neighbor died because his helmet wasn't proper.",
     replies: [
       {
         id: "r1",
@@ -196,6 +196,24 @@ export function InboxConsole() {
     const t = setTimeout(() => setToast(null), 2500);
     return () => clearTimeout(t);
   }, [toast]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("rides-contact-submissions");
+      if (!raw) return;
+      const submissions: ContactMessage[] = JSON.parse(raw);
+      if (!Array.isArray(submissions) || submissions.length === 0) return;
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const fresh = submissions.filter((s) => !existingIds.has(s.id));
+        if (fresh.length === 0) return prev;
+        return [...fresh, ...prev];
+      });
+    } catch {
+      // ignore malformed localStorage payloads
+    }
+  }, []);
 
   const counts: Record<"all" | MessageStatus, number> = useMemo(
     () => ({
