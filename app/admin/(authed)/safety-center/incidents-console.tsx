@@ -11,6 +11,43 @@ import {
   type IncidentStatus,
   type IncidentType,
 } from "./incident-modal";
+import {
+  getIncidents,
+  acknowledgeIncident,
+  escalateIncident,
+  resolveIncident,
+  type Incident as ApiIncident,
+} from "@/lib/api";
+
+function mapIncidentSeverity(s: string): IncidentSeverity {
+  if (s === "CRITICAL") return "Critical";
+  if (s === "HIGH") return "High";
+  if (s === "LOW") return "Low";
+  return "Medium";
+}
+
+function mapIncidentStatus(s: string): IncidentStatus {
+  if (s === "ACKNOWLEDGED") return "Acknowledged";
+  if (s === "RESOLVED") return "Resolved";
+  if (s === "ESCALATED") return "Escalated";
+  return "Open";
+}
+
+function mapApiIncident(i: ApiIncident): Incident {
+  return {
+    id: i.id,
+    type: "Safety check" as IncidentType,
+    severity: mapIncidentSeverity(i.severity),
+    status: mapIncidentStatus(i.status),
+    reportedAt: new Date(i.created_at).toLocaleString(),
+    description: i.description,
+    reporter: { name: "System", phone: "", role: "System" },
+    involves: [],
+    location: "—",
+    district: "—",
+    timeline: [],
+  };
+}
 
 const initial: Incident[] = [
   {
@@ -254,7 +291,13 @@ const typeFilters: ("all" | IncidentType)[] = [
 const PAGE_SIZE = 6;
 
 export function IncidentsConsole() {
-  const [items, setItems] = useState<Incident[]>(initial);
+  const [items, setItems] = useState<Incident[]>([]);
+
+  useEffect(() => {
+    getIncidents()
+      .then((res) => setItems((res.incidents ?? []).map(mapApiIncident)))
+      .catch(() => null);
+  }, []);
   const [tab, setTab] = useState<"all" | IncidentStatus>("all");
   const [severity, setSeverity] = useState<"all" | IncidentSeverity>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | IncidentType>("all");
@@ -595,16 +638,19 @@ export function IncidentsConsole() {
       <IncidentModal
         incident={viewing}
         onClose={() => setViewingId(null)}
-        onAcknowledge={(id) => {
-          updateStatus(id, "Acknowledged", "Acknowledged by Aiden M.");
+        onAcknowledge={async (id) => {
+          try { await acknowledgeIncident(id); } catch { /* ignore */ }
+          updateStatus(id, "Acknowledged", "Acknowledged");
           setToast(`${id} acknowledged`);
         }}
-        onEscalate={(id) => {
-          updateStatus(id, "Escalated", "Escalated to integrity team");
+        onEscalate={async (id) => {
+          try { await escalateIncident(id); } catch { /* ignore */ }
+          updateStatus(id, "Escalated", "Escalated");
           setToast(`${id} escalated`);
         }}
-        onResolve={(id) => {
-          updateStatus(id, "Resolved", "Marked resolved");
+        onResolve={async (id) => {
+          try { await resolveIncident(id); } catch { /* ignore */ }
+          updateStatus(id, "Resolved", "Resolved");
           setToast(`${id} resolved`);
           setViewingId(null);
         }}

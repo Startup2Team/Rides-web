@@ -1,11 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-const SETUP_KEY = "taravelis-admin-2fa-setup";
+import { useEffect, useRef, useState } from "react";
+import {
+  adminLogin,
+  adminVerify2FA,
+  adminVerifyBackup,
+  enable2FA,
+  get2FASetup,
+  getAccount,
+} from "@/lib/api";
+import { setToken, type AdminUser } from "@/lib/auth";
+import QRCodeLib from "qrcode";
 
 type Step = "credentials" | "setup" | "verify";
+
+// ── Icons ──────────────────────────────────────────────────────────────────
 
 function EyeIcon({ className }: { className?: string }) {
   return (
@@ -36,90 +46,84 @@ function CopyIcon({ className }: { className?: string }) {
   );
 }
 
-// Deterministic 25×25 grid that looks like a QR code, seeded from `seed`.
-function QRCode({ seed }: { seed: string }) {
-  const cells = useMemo(() => {
-    const size = 25;
-    let h = 2166136261;
-    for (let i = 0; i < seed.length; i++) {
-      h ^= seed.charCodeAt(i);
-      h = Math.imul(h, 16777619) >>> 0;
-    }
-    const rand = () => {
-      h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0;
-      h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
-      h = (h ^ (h >>> 16)) >>> 0;
-      return h / 4294967295;
-    };
+// ── Real scannable QR code from otpauth:// URL ────────────────────────────
 
-    const grid: boolean[][] = Array.from({ length: size }, () =>
-      Array.from({ length: size }, () => rand() > 0.5),
-    );
+function QRCanvas({ url }: { url: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
 
-    // Finder patterns at three corners (7×7 with inner border).
-    const drawFinder = (sx: number, sy: number) => {
-      for (let y = 0; y < 7; y++) {
-        for (let x = 0; x < 7; x++) {
-          const onEdge = x === 0 || x === 6 || y === 0 || y === 6;
-          const center = x >= 2 && x <= 4 && y >= 2 && y <= 4;
-          grid[sy + y][sx + x] = onEdge || center;
-        }
-      }
-      // Clear the 1-cell border around the finder pattern.
-      for (let y = -1; y <= 7; y++) {
-        for (let x = -1; x <= 7; x++) {
-          if ((x === -1 || x === 7 || y === -1 || y === 7) &&
-              sx + x >= 0 && sx + x < size && sy + y >= 0 && sy + y < size) {
-            grid[sy + y][sx + x] = false;
-          }
-        }
-      }
-    };
-    drawFinder(0, 0);
-    drawFinder(size - 7, 0);
-    drawFinder(0, size - 7);
-
-    return grid;
-  }, [seed]);
+  useEffect(() => {
+    if (!ref.current || !url) return;
+    QRCodeLib.toCanvas(ref.current, url, {
+      width: 176,
+      margin: 1,
+      color: { dark: "#0f172a", light: "#ffffff" },
+    });
+  }, [url]);
 
   return (
-    <svg viewBox="0 0 25 25" className="h-44 w-44" shapeRendering="crispEdges" aria-hidden>
-      <rect width="25" height="25" fill="white" />
-      {cells.map((row, y) =>
-        row.map((on, x) =>
-          on ? <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="#0f172a" /> : null,
-        ),
-      )}
-    </svg>
+    <canvas
+      ref={ref}
+      width={176}
+      height={176}
+      className="rounded-lg"
+      aria-label="QR code for authenticator app"
+    />
   );
 }
 
-function generateSecret(seed: string) {
-  // 32-char base32 secret, deterministic from seed.
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let h = 5381;
-  for (let i = 0; i < seed.length; i++) h = (h * 33) ^ seed.charCodeAt(i);
-  let out = "";
-  for (let i = 0; i < 32; i++) {
-    h = (h * 1103515245 + 12345) & 0x7fffffff;
-    out += alphabet[h % alphabet.length];
+function OtpAuthDisplay({ secret, otpauthUrl }: { secret: string; otpauthUrl: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function copySecret() {
+    navigator.clipboard.writeText(secret).catch(() => null);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   }
-  return out.match(/.{1,4}/g)?.join(" ") ?? out;
+
+  return (
+    <div className="space-y-4 rounded-2xl border border-border bg-surface/40 p-4">
+      <div className="flex gap-4">
+        {/* Real scannable QR code */}
+        <div className="flex h-44 w-44 shrink-0 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border">
+          {otpauthUrl ? <QRCanvas url={otpauthUrl} /> : (
+            <span className="text-xs text-muted-foreground">Loading…</span>
+          )}
+        </div>
+
+        {/* Manual entry fallback */}
+        <div className="flex min-w-0 flex-1 flex-col justify-center space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            Can't scan? Enter manually
+          </p>
+          <div className="rounded-lg border border-border bg-card p-2">
+            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Setup key</p>
+            <div className="mt-1 flex items-start gap-1.5">
+              <code className="flex-1 break-all font-mono text-[11px] font-semibold leading-relaxed text-foreground">
+                {secret.match(/.{1,4}/g)?.join(" ") ?? secret}
+              </code>
+              <button
+                type="button"
+                onClick={copySecret}
+                aria-label="Copy secret"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <CopyIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {copied ? (
+              <p className="mt-1 text-[10px] font-semibold text-primary">Copied!</p>
+            ) : null}
+          </div>
+          <p className="text-[10px] leading-relaxed text-muted-foreground">
+            Works with Google Authenticator, Authy, 1Password, Bitwarden, or any TOTP app.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function generateBackupCodes(seed: string) {
-  let h = 1;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  const codes: string[] = [];
-  for (let i = 0; i < 10; i++) {
-    h = (h * 1664525 + 1013904223) >>> 0;
-    const a = (h % 100000).toString().padStart(5, "0");
-    h = (h * 1664525 + 1013904223) >>> 0;
-    const b = (h % 100000).toString().padStart(5, "0");
-    codes.push(`${a}-${b}`);
-  }
-  return codes;
-}
+// ── 6-digit code boxes ─────────────────────────────────────────────────────
 
 function CodeBoxes({
   value,
@@ -137,9 +141,7 @@ function CodeBoxes({
       {value.map((v, i) => (
         <input
           key={i}
-          ref={(el) => {
-            refs.current[i] = el;
-          }}
+          ref={(el) => { refs.current[i] = el; }}
           inputMode="numeric"
           pattern="[0-9]*"
           maxLength={1}
@@ -153,9 +155,7 @@ function CodeBoxes({
             if (digit && i < 5) refs.current[i + 1]?.focus();
           }}
           onKeyDown={(e) => {
-            if (e.key === "Backspace" && !value[i] && i > 0) {
-              refs.current[i - 1]?.focus();
-            }
+            if (e.key === "Backspace" && !value[i] && i > 0) refs.current[i - 1]?.focus();
           }}
           onPaste={(e) => {
             const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
@@ -163,8 +163,7 @@ function CodeBoxes({
             e.preventDefault();
             const next = value.map((_, idx) => text[idx] ?? "");
             onChange(next);
-            const lastIdx = Math.min(text.length, 6) - 1;
-            refs.current[lastIdx]?.focus();
+            refs.current[Math.min(text.length, 6) - 1]?.focus();
           }}
           className="h-12 w-10 rounded-lg border border-border bg-surface text-center text-lg font-bold text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50 sm:w-12"
         />
@@ -173,84 +172,164 @@ function CodeBoxes({
   );
 }
 
+// ── Main component ─────────────────────────────────────────────────────────
+
 export function LoginForm() {
   const router = useRouter();
+
   const [step, setStep] = useState<Step>("credentials");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Credentials step
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // In-flight state (held in memory, not persisted)
+  const [preAuthToken, setPreAuthToken] = useState("");
+  const [pendingAccessToken, setPendingAccessToken] = useState(""); // access_token while setting up 2FA
+
+  // 2FA setup step (real data from backend)
+  const [setupSecret, setSetupSecret] = useState("");
+  const [setupOtpauthUrl, setSetupOtpauthUrl] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [backupCopied, setBackupCopied] = useState(false);
+
+  // Verify step
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const [usingBackup, setUsingBackup] = useState(false);
   const [backupCode, setBackupCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"secret" | "codes" | null>(null);
-
-  const accountSeed = email || "demo@taravelis.com";
-  const secret = useMemo(() => generateSecret(accountSeed), [accountSeed]);
-  const otpAuth = `otpauth://totp/Taravelis:${encodeURIComponent(accountSeed)}?secret=${secret.replace(/\s/g, "")}&issuer=Taravelis`;
-  const backupCodes = useMemo(() => generateBackupCodes(accountSeed), [accountSeed]);
-
-  useEffect(() => {
-    if (copied) {
-      const t = setTimeout(() => setCopied(null), 1500);
-      return () => clearTimeout(t);
-    }
-  }, [copied]);
 
   const fullCode = code.join("");
-  const codeReady = usingBackup ? backupCode.replace(/\D/g, "").length >= 10 : fullCode.length === 6;
+  const codeReady = usingBackup
+    ? backupCode.replace(/\D/g, "").length >= 10
+    : fullCode.length === 6;
 
-  function handleCredentials(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (!email.trim()) return setError("Enter your email to continue.");
-    if (!password.trim()) return setError("Enter your password.");
-    const setupDone =
-      typeof window !== "undefined" && localStorage.getItem(SETUP_KEY) === "true";
-    setStep(setupDone ? "verify" : "setup");
+  function resetVerifyInputs() {
     setCode(["", "", "", "", "", ""]);
     setBackupCode("");
     setUsingBackup(false);
+    setError(null);
   }
 
-  function handleVerify(e: React.FormEvent) {
+  async function finishLogin(accessToken: string) {
+    try {
+      // pass token directly — not in localStorage yet
+      const account = await getAccount(accessToken);
+      const user: AdminUser = {
+        id: account.id,
+        name: account.name,
+        email: account.email,
+        role: account.role_name,
+        twoFactor: account.two_factor,
+      };
+      setToken(accessToken, user);
+      router.push("/admin");
+    } catch {
+      // Fallback: we still have the token, construct user from known email
+      const user: AdminUser = {
+        id: "",
+        name: email.split("@")[0],
+        email,
+        role: "Admin",
+        twoFactor: true,
+      };
+      setToken(accessToken, user);
+      router.push("/admin");
+    }
+  }
+
+  // Step 1: credentials
+  async function handleCredentials(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!email.trim()) return setError("Enter your email.");
+    if (!password.trim()) return setError("Enter your password.");
+
+    setLoading(true);
+    try {
+      const result = await adminLogin(email.trim(), password.trim());
+
+      if (!result.two_factor_required) {
+        // No 2FA set up yet — force setup before granting access
+        const accessToken = (result as { access_token: string }).access_token;
+        setPendingAccessToken(accessToken);
+
+        // Fetch the real 2FA setup data from backend
+        const setup = await get2FASetup(accessToken);
+        setSetupSecret(setup.secret);
+        setSetupOtpauthUrl(setup.otpauth_url);
+        setStep("setup");
+      } else {
+        // 2FA already set up — go to verify step
+        setPreAuthToken((result as { pre_auth_token: string }).pre_auth_token);
+        resetVerifyInputs();
+        setStep("verify");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed. Check your credentials.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Step 2 (setup): enable 2FA then finish login
+  async function handleEnableAndFinish(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (fullCode.length !== 6) return setError("Enter the 6-digit code from your authenticator app.");
+
+    setLoading(true);
+    try {
+      const result = await enable2FA(setupSecret, fullCode, pendingAccessToken);
+      setBackupCodes(result.backup_codes ?? []);
+      // Stay on setup step to show backup codes — then user clicks "Continue"
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to enable 2FA. Check the code and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleFinishAfterSetup() {
+    await finishLogin(pendingAccessToken);
+  }
+
+  // Step 3 (verify): verify TOTP or backup code
+  async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!codeReady) {
-      setError(
+      return setError(
         usingBackup
-          ? "Enter a backup code (e.g. 12345-67890)."
-          : "Enter the 6-digit code from your authenticator app.",
+          ? "Enter a 10-digit backup code (e.g. 12345-67890)."
+          : "Enter the 6-digit code from your authenticator app."
       );
-      return;
     }
-    if (typeof window !== "undefined") {
-      localStorage.setItem(SETUP_KEY, "true");
+
+    setLoading(true);
+    try {
+      let result: { access_token: string };
+      if (usingBackup) {
+        result = await adminVerifyBackup(preAuthToken, backupCode.replace(/\s/g, ""));
+      } else {
+        result = await adminVerify2FA(preAuthToken, fullCode);
+      }
+      await finishLogin(result.access_token);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Verification failed. Check your code.");
+    } finally {
+      setLoading(false);
     }
-    router.push("/admin");
   }
 
-  function copy(value: string, kind: "secret" | "codes") {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(value).catch(() => null);
-    }
-    setCopied(kind);
-  }
-
-  function resetTo(step: Step) {
-    setStep(step);
-    setError(null);
-    setCode(["", "", "", "", "", ""]);
-    setBackupCode("");
-    setUsingBackup(false);
-  }
+  // ── Render: credentials step ─────────────────────────────────────────────
 
   if (step === "credentials") {
     return (
       <form onSubmit={handleCredentials} className="mt-8 space-y-4">
-        <h1 className="text-3xl font-bold tracking-[-0.02em] text-foreground">
-          Sign in
-        </h1>
+        <h1 className="text-3xl font-bold tracking-[-0.02em] text-foreground">Sign in</h1>
         <p className="text-sm text-muted-foreground">
           Welcome back. Please enter your credentials to continue.
         </p>
@@ -291,22 +370,10 @@ export function LoginForm() {
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                {showPassword ? (
-                  <EyeOffIcon className="h-4 w-4" />
-                ) : (
-                  <EyeIcon className="h-4 w-4" />
-                )}
+                {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
               </button>
             </div>
           </label>
-          <div className="mt-2 flex justify-end">
-            <a
-              href="#"
-              className="text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-            >
-              Forgot password?
-            </a>
-          </div>
         </div>
 
         {error ? (
@@ -317,116 +384,91 @@ export function LoginForm() {
 
         <button
           type="submit"
-          className="mt-2 flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+          disabled={loading}
+          className="mt-2 flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Continue
+          {loading ? "Signing in…" : "Continue"}
         </button>
       </form>
     );
   }
 
+  // ── Render: 2FA setup step ───────────────────────────────────────────────
+
   if (step === "setup") {
-    return (
-      <form onSubmit={handleVerify} className="mt-8 space-y-5">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">
-            Step 2 of 2 · Set up
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground">
-            Secure your account
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Add a second factor before continuing. Scan the QR code with your
-            authenticator app, then enter the 6-digit code to confirm.
-          </p>
-        </div>
-
-        <div className="grid gap-4 rounded-2xl border border-border bg-surface/40 p-4 sm:grid-cols-[auto,1fr]">
-          <div className="flex h-44 w-44 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border">
-            <QRCode seed={otpAuth} />
-          </div>
-          <div className="min-w-0 space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-              Can't scan?
+    // After backup codes are shown, show a "Continue to dashboard" button
+    if (backupCodes.length > 0) {
+      return (
+        <div className="mt-8 space-y-5">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">
+              Step 2 of 2 · Save backup codes
             </p>
-            <div className="rounded-lg border border-border bg-card p-2">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Setup key
-              </p>
-              <div className="mt-1 flex items-center gap-2">
-                <code className="flex-1 break-all font-mono text-[11px] font-semibold text-foreground">
-                  {secret}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => copy(secret.replace(/\s/g, ""), "secret")}
-                  aria-label="Copy secret"
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <CopyIcon className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              {copied === "secret" ? (
-                <p className="mt-1 text-[10px] font-semibold text-primary">
-                  Copied to clipboard
-                </p>
-              ) : null}
-            </div>
-            <p className="text-[10px] leading-relaxed text-muted-foreground">
-              Works with Google Authenticator, Authy, 1Password, Bitwarden, or
-              any TOTP-compatible app.
+            <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground">
+              Save your backup codes
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Store these somewhere safe. Each code works once if you lose your authenticator app.
             </p>
           </div>
-        </div>
 
-        <details className="group rounded-xl border border-border bg-surface/40">
-          <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-semibold text-foreground">
-            <span>Backup codes (save these somewhere safe)</span>
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-3.5 w-3.5 transition-transform group-open:rotate-180"
-              aria-hidden
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </summary>
-          <div className="space-y-2 border-t border-border px-3 py-3">
+          <div className="rounded-xl border border-border bg-surface/40 p-4">
             <div className="grid grid-cols-2 gap-1.5 font-mono text-[11px] text-foreground">
               {backupCodes.map((c) => (
-                <code
-                  key={c}
-                  className="rounded-md bg-card px-2 py-1 ring-1 ring-border"
-                >
+                <code key={c} className="rounded-md bg-card px-2 py-1 ring-1 ring-border">
                   {c}
                 </code>
               ))}
             </div>
             <button
               type="button"
-              onClick={() => copy(backupCodes.join("\n"), "codes")}
-              className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2 text-[11px] font-medium text-foreground transition-colors hover:bg-surface"
+              onClick={() => {
+                navigator.clipboard.writeText(backupCodes.join("\n")).catch(() => null);
+                setBackupCopied(true);
+                setTimeout(() => setBackupCopied(false), 1500);
+              }}
+              className="mt-3 inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2 text-[11px] font-medium text-foreground transition-colors hover:bg-surface"
             >
               <CopyIcon className="h-3 w-3" />
-              {copied === "codes" ? "Copied" : "Copy all"}
+              {backupCopied ? "Copied" : "Copy all"}
             </button>
-            <p className="text-[10px] leading-relaxed text-muted-foreground">
-              Each backup code works once if you lose access to your
-              authenticator app.
-            </p>
           </div>
-        </details>
+
+          <button
+            type="button"
+            onClick={handleFinishAfterSetup}
+            disabled={loading}
+            className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
+          >
+            {loading ? "Loading…" : "Continue to dashboard →"}
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <form onSubmit={handleEnableAndFinish} className="mt-8 space-y-5">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">
+            Step 2 of 2 · Set up 2FA
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground">
+            Secure your account
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Add a second factor before continuing. Copy the setup key into your authenticator app,
+            then enter the 6-digit code to confirm.
+          </p>
+        </div>
+
+        <OtpAuthDisplay secret={setupSecret} otpauthUrl={setupOtpauthUrl} />
 
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             Enter 6-digit code
           </p>
           <div className="mt-2">
-            <CodeBoxes value={code} onChange={setCode} />
+            <CodeBoxes value={code} onChange={setCode} disabled={loading} />
           </div>
         </div>
 
@@ -438,15 +480,15 @@ export function LoginForm() {
 
         <button
           type="submit"
-          disabled={!codeReady}
+          disabled={!codeReady || loading}
           className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Verify & enter dashboard
+          {loading ? "Verifying…" : "Enable & continue"}
         </button>
 
         <button
           type="button"
-          onClick={() => resetTo("credentials")}
+          onClick={() => { setStep("credentials"); setError(null); }}
           className="block w-full text-center text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
         >
           ← Back to sign in
@@ -455,7 +497,8 @@ export function LoginForm() {
     );
   }
 
-  // step === "verify"
+  // ── Render: verify step ──────────────────────────────────────────────────
+
   return (
     <form onSubmit={handleVerify} className="mt-8 space-y-5">
       <div>
@@ -491,7 +534,7 @@ export function LoginForm() {
               Authenticator code
             </p>
             <div className="mt-3">
-              <CodeBoxes value={code} onChange={setCode} />
+              <CodeBoxes value={code} onChange={setCode} disabled={loading} />
             </div>
           </>
         )}
@@ -506,9 +549,7 @@ export function LoginForm() {
           }}
           className="mt-3 text-[11px] font-semibold text-primary transition-colors hover:underline"
         >
-          {usingBackup
-            ? "Use authenticator app instead"
-            : "Use a backup code instead"}
+          {usingBackup ? "Use authenticator app instead" : "Use a backup code instead"}
         </button>
       </div>
 
@@ -520,15 +561,15 @@ export function LoginForm() {
 
       <button
         type="submit"
-        disabled={!codeReady}
+        disabled={!codeReady || loading}
         className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Verify & continue
+        {loading ? "Verifying…" : "Verify & continue"}
       </button>
 
       <button
         type="button"
-        onClick={() => resetTo("credentials")}
+        onClick={() => { setStep("credentials"); setError(null); }}
         className="block w-full text-center text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
       >
         ← Back to sign in

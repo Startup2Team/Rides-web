@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { DateSubtitle, Greeting } from "./_greeting";
 import { PeriodFilter } from "./_period-filter";
+import { DashboardKpis } from "./dashboard-kpis";
 
 export const metadata = {
   title: "Admin · Dashboard",
@@ -1053,11 +1054,7 @@ export default function AdminDashboardPage() {
         <PeriodFilter />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {kpis.map((kpi) => (
-          <KpiCard key={kpi.label} kpi={kpi} />
-        ))}
-      </div>
+      <DashboardKpis />
 
       <div className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-8">

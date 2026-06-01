@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useAuth } from "@/context/auth-context";
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -80,12 +81,22 @@ const notifications: Notification[] = [
 ];
 
 export function AdminTopbar() {
+  const { user, logout } = useAuth();
   const searchRef = useRef<HTMLInputElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
   const [openNotif, setOpenNotif] = useState(false);
   const [openUser, setOpenUser] = useState(false);
+
+  const displayName = user?.name ?? "Admin";
+  const displayEmail = user?.email ?? "";
+  const initials = displayName
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -238,10 +249,10 @@ export function AdminTopbar() {
             className="flex h-10 items-center gap-2.5 rounded-full border border-border bg-card pl-1 pr-3 transition-colors hover:bg-surface"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#00A040] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
-              <span className="text-xs font-bold tracking-tight">AM</span>
+              <span className="text-xs font-bold tracking-tight">{initials}</span>
             </span>
             <span className="hidden text-sm font-semibold tracking-tight text-foreground sm:inline">
-              Aiden Mugisha
+              {displayName}
             </span>
             <Icon>
               <polyline points="6 9 12 15 18 9" />
@@ -251,14 +262,14 @@ export function AdminTopbar() {
             <div className="absolute right-0 top-full mt-2 w-64 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
               <div className="flex items-center gap-3 border-b border-border bg-surface/40 px-4 py-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#00A040] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
-                  <span className="text-sm font-bold tracking-tight">AM</span>
+                  <span className="text-sm font-bold tracking-tight">{initials}</span>
                 </span>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold tracking-tight text-foreground">
-                    Aiden Mugisha
+                    {displayName}
                   </div>
                   <div className="truncate text-[11px] text-muted-foreground">
-                    admin@taravelis.com
+                    {displayEmail}
                   </div>
                 </div>
               </div>
@@ -329,10 +340,10 @@ export function AdminTopbar() {
                 </li>
               </ul>
               <div className="border-t border-border p-1.5">
-                <Link
-                  href="/admin/login"
-                  onClick={() => setOpenUser(false)}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface"
+                <button
+                  type="button"
+                  onClick={() => { setOpenUser(false); logout(); }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface"
                 >
                   <span className="text-muted-foreground">
                     <Icon>
@@ -342,7 +353,7 @@ export function AdminTopbar() {
                     </Icon>
                   </span>
                   Sign out
-                </Link>
+                </button>
               </div>
             </div>
           ) : null}

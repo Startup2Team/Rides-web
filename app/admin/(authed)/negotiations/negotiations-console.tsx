@@ -7,6 +7,35 @@ import {
   type NegotiationDetail,
   type NegotiationStatus,
 } from "./negotiation-modal";
+import { getNegotiations, type Negotiation as ApiNegotiation } from "@/lib/api";
+
+function mapNegStatus(s: string): NegotiationStatus {
+  if (s === "AGREED" || s === "COMPLETED") return "Agreed";
+  if (s === "FAILED" || s === "EXPIRED") return "Failed";
+  if (s === "DISPUTED") return "Disputed";
+  return "In progress";
+}
+
+function mapApiNegotiation(n: ApiNegotiation): NegotiationDetail {
+  return {
+    id: n.id,
+    customer: { name: n.customer_name, phone: "", rating: 0 },
+    driver: n.driver_name
+      ? { name: n.driver_name, phone: "", vehicleType: "Cab Taxi", plate: "—", rating: 0 }
+      : null,
+    pickup: n.pickup_location,
+    destination: "—",
+    vehicleType: "Cab Taxi",
+    initial: n.initial_offer,
+    final: n.final_price ?? null,
+    rounds: 0,
+    status: mapNegStatus(n.status),
+    startedAt: new Date(n.created_at).toLocaleString(),
+    duration: "—",
+    paymentMethod: "MTN MoMo",
+    offers: [],
+  };
+}
 
 type Negotiation = NegotiationDetail;
 
@@ -711,7 +740,13 @@ function MiniBarChart({ data }: { data: { label: string; value: number }[] }) {
 }
 
 export function NegotiationsConsole() {
-  const [negotiations, setNegotiations] = useState<Negotiation[]>(initialNegotiations);
+  const [negotiations, setNegotiations] = useState<Negotiation[]>([]);
+
+  useEffect(() => {
+    getNegotiations({ limit: "100", offset: "0" })
+      .then((res) => setNegotiations((res.negotiations ?? []).map(mapApiNegotiation)))
+      .catch(() => null);
+  }, []);
   const [tab, setTab] = useState<Tab["id"]>("all");
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("id");

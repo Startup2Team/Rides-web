@@ -10,6 +10,29 @@ import {
   type MessageCategory,
   type MessageStatus,
 } from "./message-modal";
+import {
+  getInbox,
+  archiveMessage,
+  markSpam,
+  deleteMessage as deleteMsg,
+  replyToMessage,
+  type InboxMessage as ApiMessage,
+} from "@/lib/api";
+
+function mapApiMessage(m: ApiMessage): ContactMessage {
+  const status: MessageStatus = m.is_spam ? "Spam" : m.status === "ARCHIVED" ? "Archived" : m.status === "REPLIED" ? "Replied" : "New";
+  return {
+    id: m.id,
+    name: m.from,
+    email: "",
+    subject: m.subject,
+    category: "General" as MessageCategory,
+    status,
+    receivedAt: new Date(m.created_at).toLocaleString(),
+    body: "",
+    replies: [],
+  };
+}
 
 const initial: ContactMessage[] = [
   {
@@ -154,7 +177,13 @@ const categoryFilters: ("all" | MessageCategory)[] = [
 ];
 
 export function InboxConsole() {
-  const [messages, setMessages] = useState<ContactMessage[]>(initial);
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+
+  useEffect(() => {
+    getInbox({ limit: "100", offset: "0" })
+      .then((res) => setMessages((res.messages ?? []).map(mapApiMessage)))
+      .catch(() => null);
+  }, []);
   const [tab, setTab] = useState<"all" | MessageStatus>("all");
   const [category, setCategory] = useState<"all" | MessageCategory>("all");
   const [query, setQuery] = useState("");
@@ -406,12 +435,14 @@ export function InboxConsole() {
           );
           setToast(`Reply sent to ${viewing?.email}`);
         }}
-        onArchive={(id) => {
+        onArchive={async (id) => {
+          try { await archiveMessage(id); } catch { /* ignore */ }
           update(id, { status: "Archived" });
           setToast(`${id} archived`);
           setViewingId(null);
         }}
-        onSpam={(id) => {
+        onSpam={async (id) => {
+          try { await markSpam(id); } catch { /* ignore */ }
           update(id, { status: "Spam" });
           setToast(`${id} marked as spam`);
           setViewingId(null);

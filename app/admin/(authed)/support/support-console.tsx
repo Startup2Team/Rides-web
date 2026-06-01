@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Avatar, Card } from "../_components";
 import {
+  getTickets,
+  resolveTicket,
+  type Ticket as ApiTicket,
+} from "@/lib/api";
+import {
   priorityStyles,
   statusStyles,
   TicketModal,
@@ -11,6 +16,24 @@ import {
   type TicketStatus,
   type TicketType,
 } from "./ticket-modal";
+
+function mapApiTicket(t: ApiTicket): Ticket {
+  return {
+    id: t.id,
+    subject: t.subject,
+    type: "Other" as TicketType,
+    priority: (t.priority as TicketPriority) ?? "Medium",
+    status: (t.status as TicketStatus) ?? "Open",
+    fromName: t.created_by,
+    fromRole: "Customer",
+    fromEmail: "",
+    fromPhone: "",
+    assignedTo: t.assigned_to,
+    createdAt: new Date(t.created_at).toLocaleString(),
+    lastActivity: new Date(t.updated_at).toLocaleString(),
+    messages: [],
+  };
+}
 
 const initial: Ticket[] = [
   {
@@ -182,7 +205,13 @@ const typeFilters: ("all" | TicketType)[] = [
 const priorityFilters: ("all" | TicketPriority)[] = ["all", "High", "Medium", "Low"];
 
 export function SupportConsole() {
-  const [tickets, setTickets] = useState<Ticket[]>(initial);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+
+  useEffect(() => {
+    getTickets({ limit: "100", offset: "0" })
+      .then((res) => setTickets((res.tickets ?? []).map(mapApiTicket)))
+      .catch(() => null);
+  }, []);
   const [tab, setTab] = useState<"all" | TicketStatus>("all");
   const [priority, setPriority] = useState<"all" | TicketPriority>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | TicketType>("all");
@@ -426,7 +455,8 @@ export function SupportConsole() {
           updateTicket(id, { assignedTo: "Aiden Mugisha", status: "Pending" });
           setToast(`${id} assigned to you`);
         }}
-        onResolve={(id) => {
+        onResolve={async (id) => {
+          try { await resolveTicket(id); } catch { /* ignore */ }
           updateTicket(id, { status: "Resolved" });
           setToast(`${id} marked resolved`);
           setViewingId(null);

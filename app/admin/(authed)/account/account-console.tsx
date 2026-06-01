@@ -3,6 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Avatar, Card } from "../_components";
 import { QRCode } from "./qr-code";
+import {
+  getAccount,
+  updateAccount,
+  changePassword,
+  getSessions,
+  revokeSession,
+  disable2FA,
+  get2FASetup,
+  enable2FA,
+} from "@/lib/api";
+import { getAdminUser } from "@/lib/auth";
 
 type Tab = "profile" | "security" | "sessions";
 
@@ -155,31 +166,45 @@ export function AccountConsole() {
   const [tab, setTab] = useState<Tab>("profile");
   const [toast, setToast] = useState<string | null>(null);
 
-  // Profile state
-  const [name, setName] = useState("Aiden Mugisha");
-  const [email, setEmail] = useState("aiden@taravelis.com");
-  const [phone, setPhone] = useState("+250 788 213 005");
+  // Profile state (seeded from localStorage, updated from API)
+  const storedUser = typeof window !== "undefined" ? getAdminUser() : null;
+  const [name, setName] = useState(storedUser?.name ?? "");
+  const [email, setEmail] = useState(storedUser?.email ?? "");
+  const [phone, setPhone] = useState("");
 
   // Password state
   const [currentPwd, setCurrentPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
   const [pwdError, setPwdError] = useState<string | null>(null);
+  const [pwdSaving, setPwdSaving] = useState(false);
 
   // 2FA state
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(storedUser?.twoFactor ?? false);
   const [resetMode, setResetMode] = useState(false);
   const [resetVerifyCode, setResetVerifyCode] = useState("");
   const [showBackup, setShowBackup] = useState(false);
   const [disable2faPwd, setDisable2faPwd] = useState("");
   const [confirmingDisable, setConfirmingDisable] = useState(false);
+  const [setup2FAData, setSetup2FAData] = useState<{ secret: string; otpauth_url: string } | null>(null);
 
   // Sessions
   const [sessions, setSessions] = useState<Session[]>(initialSessions);
 
-  const secret = useMemo(() => generateSecret(email), [email]);
-  const otpAuth = `otpauth://totp/Taravelis:${encodeURIComponent(email)}?secret=${secret.replace(/\s/g, "")}&issuer=Taravelis`;
+  const secret = setup2FAData?.secret ?? "";
+  const otpAuth = setup2FAData?.otpauth_url ?? "";
   const backupCodes = useMemo(() => generateBackupCodes(email), [email]);
+
+  // Load real account data on mount
+  useEffect(() => {
+    getAccount()
+      .then((a) => {
+        setName(a.name);
+        setEmail(a.email);
+        setTwoFactorEnabled(a.two_factor);
+      })
+      .catch(() => null);
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -187,16 +212,47 @@ export function AccountConsole() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  function changePassword(e: React.FormEvent) {
+  async function handleSaveProfile() {
+    try {
+      await updateAccount(name);
+      setToast("Profile saved");
+    } catch {
+      setToast("Failed to save profile");
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     setPwdError(null);
     if (!currentPwd) return setPwdError("Enter your current password.");
     if (newPwd.length < 10) return setPwdError("New password must be at least 10 characters.");
     if (newPwd !== confirmPwd) return setPwdError("Passwords don't match.");
-    setCurrentPwd("");
-    setNewPwd("");
-    setConfirmPwd("");
-    setToast("Password updated");
+    setPwdSaving(true);
+    try {
+      await changePassword(currentPwd, newPwd);
+      setCurrentPwd("");
+      setNewPwd("");
+      setConfirmPwd("");
+      setToast("Password updated");
+    } catch (err) {
+      setPwdError(err instanceof Error ? err.message : "Failed to change password.");
+    } finally {
+      setPwdSaving(false);
+    }
+  }
+
+  async function handleDisable2FA(e: React.FormEvent) {
+    e.preventDefault();
+    if (!disable2faPwd) return;
+    try {
+      await disable2FA(disable2faPwd);
+      setTwoFactorEnabled(false);
+      setDisable2faPwd("");
+      setConfirmingDisable(false);
+      setToast("Two-factor authentication disabled");
+    } catch {
+      setToast("Failed to disable 2FA. Check your password.");
+    }
   }
 
   function confirmReset(e: React.FormEvent) {
@@ -210,15 +266,6 @@ export function AccountConsole() {
   function regenerateBackupCodes() {
     setShowBackup(true);
     setToast("Backup codes regenerated · save the new set");
-  }
-
-  function disable2FA(e: React.FormEvent) {
-    e.preventDefault();
-    if (!disable2faPwd) return;
-    setTwoFactorEnabled(false);
-    setDisable2faPwd("");
-    setConfirmingDisable(false);
-    setToast("Two-factor authentication disabled");
   }
 
   return (
@@ -312,7 +359,7 @@ export function AccountConsole() {
             <div className="mt-5 flex justify-end">
               <button
                 type="button"
-                onClick={() => setToast("Profile saved")}
+                onClick={handleSaveProfile}
                 className="inline-flex h-9 items-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 Save changes
@@ -325,7 +372,7 @@ export function AccountConsole() {
       {tab === "security" ? (
         <div className="space-y-6">
           <Card title="Change password">
-            <form onSubmit={changePassword} className="space-y-4 p-5">
+            <form onSubmit={handleChangePassword} className="space-y-4 p-5">
               <div className="grid gap-4 sm:grid-cols-3">
                 <PasswordField
                   label="Current password"
@@ -562,7 +609,7 @@ export function AccountConsole() {
 
               {confirmingDisable ? (
                 <form
-                  onSubmit={disable2FA}
+                  onSubmit={handleDisable2FA}
                   className="mt-5 space-y-3 rounded-xl border border-red-200 bg-red-50 p-4"
                 >
                   <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-red-700">

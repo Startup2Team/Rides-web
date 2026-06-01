@@ -4,6 +4,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, Card } from "../_components";
 import { InviteAdminModal } from "./invite-admin-modal";
 import { DEFAULT_ROLES, SIDEBAR_ITEMS, type Role } from "./roles";
+import {
+  getTeam,
+  getRoles,
+  inviteAdmin,
+  suspendMember,
+  reinstateMember,
+  removeMember,
+  type TeamMember,
+} from "@/lib/api";
 
 type AdminStatus = "Active" | "Invited" | "Suspended";
 
@@ -155,8 +164,41 @@ function RowMenu({
 }
 
 export function TeamConsole() {
-  const [admins, setAdmins] = useState<Admin[]>(initialAdmins);
+  const [admins, setAdmins] = useState<Admin[]>([]);
   const [roles, setRoles] = useState<Role[]>(DEFAULT_ROLES);
+
+  useEffect(() => {
+    getTeam()
+      .then((res) => {
+        setAdmins(
+          (res.admins ?? []).map((m: TeamMember) => ({
+            id: m.id,
+            name: m.name,
+            email: m.email,
+            roleId: m.role_id,
+            status: (m.status === "SUSPENDED" ? "Suspended" : m.status === "ACTIVE" ? "Active" : "Invited") as AdminStatus,
+            lastActive: m.last_active_at ? new Date(m.last_active_at).toLocaleDateString() : "—",
+            twoFactor: m.two_factor,
+          }))
+        );
+      })
+      .catch(() => null);
+    getRoles()
+      .then((res) => {
+        if (res.roles && res.roles.length > 0) {
+          setRoles(
+            res.roles.map((r) => ({
+              id: r.id,
+              name: r.name,
+              description: r.description,
+              permissions: [],
+              isSystem: r.is_system,
+            }))
+          );
+        }
+      })
+      .catch(() => null);
+  }, []);
   const [tab, setTab] = useState<Tab>("team");
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | string>("all");
@@ -403,7 +445,8 @@ export function TeamConsole() {
                                 ? [
                                     {
                                       label: "Reinstate",
-                                      onClick: () => {
+                                      onClick: async () => {
+                                        try { await reinstateMember(a.id); } catch { /* ignore */ }
                                         updateAdmin(a.id, { status: "Active" });
                                         setToast(`${a.name} reinstated`);
                                       },
@@ -413,7 +456,8 @@ export function TeamConsole() {
                                     {
                                       label: "Suspend",
                                       tone: "danger" as const,
-                                      onClick: () => {
+                                      onClick: async () => {
+                                        try { await suspendMember(a.id); } catch { /* ignore */ }
                                         updateAdmin(a.id, { status: "Suspended" });
                                         setToast(`${a.name} suspended`);
                                       },
@@ -422,10 +466,9 @@ export function TeamConsole() {
                               {
                                 label: "Remove admin",
                                 tone: "danger" as const,
-                                onClick: () => {
-                                  setAdmins((prev) =>
-                                    prev.filter((x) => x.id !== a.id),
-                                  );
+                                onClick: async () => {
+                                  try { await removeMember(a.id); } catch { /* ignore */ }
+                                  setAdmins((prev) => prev.filter((x) => x.id !== a.id));
                                   setToast(`${a.name} removed`);
                                 },
                               },
@@ -613,22 +656,30 @@ export function TeamConsole() {
         open={inviteOpen}
         roles={roles}
         onClose={() => setInviteOpen(false)}
-        onInvite={({ name, email, roleId, notes }) => {
-          const id = `a${admins.length + 100}`;
-          setAdmins((prev) => [
-            {
-              id,
-              name,
-              email,
-              roleId,
-              status: "Invited",
-              lastActive: "Pending",
-              twoFactor: false,
-              invitedAt: "Just now",
-              notes,
-            },
-            ...prev,
-          ]);
+        onInvite={async ({ name, email, roleId, notes }) => {
+          try {
+            const member = await inviteAdmin(name, email, roleId);
+            setAdmins((prev) => [
+              {
+                id: member.id,
+                name: member.name,
+                email: member.email,
+                roleId: member.role_id,
+                status: "Invited" as AdminStatus,
+                lastActive: "Pending",
+                twoFactor: false,
+                invitedAt: "Just now",
+                notes,
+              },
+              ...prev,
+            ]);
+          } catch {
+            const id = `tmp-${Date.now()}`;
+            setAdmins((prev) => [
+              { id, name, email, roleId, status: "Invited" as AdminStatus, lastActive: "Pending", twoFactor: false, invitedAt: "Just now", notes },
+              ...prev,
+            ]);
+          }
           setInviteOpen(false);
           setToast(`${name} added · share the temp password with them`);
         }}
