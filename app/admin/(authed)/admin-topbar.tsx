@@ -79,7 +79,7 @@ const notifications: Notification[] = [
   },
 ];
 
-export function AdminTopbar() {
+export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}) {
   const searchRef = useRef<HTMLInputElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);

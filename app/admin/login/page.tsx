@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { RidesLogo } from "../../components/rides-logo";
@@ -82,7 +83,9 @@ export default function AdminLoginPage() {
             </span>
           </div>
 
-          <LoginForm />
+          <Suspense>
+            <LoginForm />
+          </Suspense>
         </div>
       </div>
     </div>

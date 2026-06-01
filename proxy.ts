@@ -1,26 +1,34 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const COOKIE_NAME = "taravelis-admin-session";
+// Cookie name must match lib/admin-session.ts ADMIN_ACCESS_COOKIE
+const COOKIE_NAME = "admin_access_token";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(COOKIE_NAME);
 
-  // Protect all /admin routes except /admin/login
-  const isAdminRoute = pathname.startsWith("/admin");
   const isLoginPage = pathname === "/admin/login" || pathname.startsWith("/admin/login/");
+  const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
 
-  if (isAdminRoute && !isLoginPage && !hasSession) {
+  // Redirect authenticated users away from the login page
+  if (isLoginPage && hasSession) {
+    const next = request.nextUrl.searchParams.get("next");
+    const safe =
+      next && next.startsWith("/admin") && !next.startsWith("/admin/login")
+        ? next
+        : "/admin";
     const url = request.nextUrl.clone();
-    url.pathname = "/admin/login";
+    url.pathname = safe;
+    url.search = "";
     return NextResponse.redirect(url);
   }
 
-  // Already logged in — redirect away from login page
-  if (isLoginPage && hasSession) {
+  // Redirect unauthenticated users to login
+  if (isAdminRoute && !isLoginPage && !hasSession) {
     const url = request.nextUrl.clone();
-    url.pathname = "/admin";
+    url.pathname = "/admin/login";
+    url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
@@ -28,5 +36,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin", "/admin/:path*"],
 };

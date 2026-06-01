@@ -1,15 +1,30 @@
 import { NextResponse } from "next/server";
-import { backendGetProvisioning } from "../../_shared";
+import { getBackendOrigin } from "@/lib/admin-backend-url";
+import type { ApiEnvelope } from "@/lib/api-envelope";
 
 type RouteCtx = { params: Promise<{ token: string }> };
 
+// GET /api/admin/auth/provisioning/[token]
+// challenge_token here IS the access_token (issued on login when 2FA not set up yet).
+// We use it as a Bearer token to fetch the real TOTP setup data from the backend.
 export async function GET(_request: Request, ctx: RouteCtx) {
   const { token } = await ctx.params;
   if (!token) {
     return NextResponse.json({ error: { code: "BAD_REQUEST", message: "Missing token" } }, { status: 400 });
   }
 
-  const { res, envelope } = await backendGetProvisioning(token);
+  const url = `${getBackendOrigin()}/api/v1/admin/account/2fa/setup`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  let envelope: ApiEnvelope<{ secret?: string; otpauth_url?: string }> = {};
+  try {
+    envelope = await res.json();
+  } catch {
+    envelope = {};
+  }
 
   if (!res.ok) {
     return NextResponse.json(
@@ -19,13 +34,10 @@ export async function GET(_request: Request, ctx: RouteCtx) {
   }
 
   const d = envelope.data;
-  const data = {
-    email: typeof d?.email === "string" ? d.email : undefined,
-    full_name: typeof d?.full_name === "string" ? d.full_name : undefined,
-    admin_role: typeof d?.admin_role === "string" ? d.admin_role : undefined,
-    secret: typeof d?.secret === "string" ? d.secret : undefined,
-    otpauth_url: typeof d?.otpauth_url === "string" ? d.otpauth_url : undefined,
-  };
-
-  return NextResponse.json({ data }, { status: 200 });
+  return NextResponse.json({
+    data: {
+      secret: d?.secret ?? "",
+      otpauth_url: d?.otpauth_url ?? "",
+    },
+  });
 }

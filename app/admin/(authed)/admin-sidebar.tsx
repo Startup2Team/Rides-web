@@ -262,9 +262,9 @@ export function AdminSidebar({
               <span className="block truncate text-sm font-semibold tracking-[-0.02em] text-foreground">
                 {showUser ? user.name : "Rides"}
               </span>
-              {showUser && user.role ? (
+              {showUser && user.role_name ? (
                 <span className="mt-0.5 inline-block rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-primary">
-                  {user.role === "Super Admin" ? "Admin" : user.role}
+                  {user.role_name === "Super Admin" ? "Admin" : user.role_name}
                 </span>
               ) : null}
             </div>

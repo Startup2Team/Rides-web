@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { getSettings, updateCommissionSettings, updateNegotiationSettings, updateFareSettings } from "@/lib/api";
 import { Card } from "../_components";
 
 type Tab = "commission" | "negotiation" | "fares" | "regions" | "integrations" | "notifications";
@@ -178,6 +179,57 @@ export function SettingsConsole() {
   const [savedState, setSavedState] = useState<State>(initial);
   const [toast, setToast] = useState<string | null>(null);
 
+  // Load real settings from backend
+  useEffect(() => {
+    getSettings()
+      .then((s) => {
+        const mapped: Partial<State> = {};
+        if (s.commission) {
+          mapped.commission = {
+            moto: String((s.commission as Record<string, unknown>).moto ?? initial.commission.moto),
+            cab: String((s.commission as Record<string, unknown>).cab ?? initial.commission.cab),
+            hilux: String((s.commission as Record<string, unknown>).hilux ?? initial.commission.hilux),
+            fuso: String((s.commission as Record<string, unknown>).fuso ?? initial.commission.fuso),
+          };
+        }
+        if (s.negotiation) {
+          const n = s.negotiation as Record<string, unknown>;
+          mapped.negotiation = {
+            maxRounds: String(n.maxRounds ?? initial.negotiation.maxRounds),
+            responseTimeoutSec: String(n.responseTimeoutSec ?? initial.negotiation.responseTimeoutSec),
+            maskedCallSec: String(n.maskedCallSec ?? initial.negotiation.maskedCallSec),
+          };
+        }
+        if (s.fares) {
+          const f = s.fares as Record<string, unknown>;
+          mapped.fares = {
+            motoBase: String(f.motoBase ?? initial.fares.motoBase),
+            motoPerKm: String(f.motoPerKm ?? initial.fares.motoPerKm),
+            cabBase: String(f.cabBase ?? initial.fares.cabBase),
+            cabPerKm: String(f.cabPerKm ?? initial.fares.cabPerKm),
+            hiluxBase: String(f.hiluxBase ?? initial.fares.hiluxBase),
+            hiluxPerKm: String(f.hiluxPerKm ?? initial.fares.hiluxPerKm),
+            fusoBase: String(f.fusoBase ?? initial.fares.fusoBase),
+            fusoPerKm: String(f.fusoPerKm ?? initial.fares.fusoPerKm),
+          };
+        }
+        if (s.integrations) mapped.integrations = s.integrations as State["integrations"];
+        if (s.notifications) mapped.notifications = s.notifications as State["notifications"];
+        if (Array.isArray(s.regions)) {
+          mapped.regions = (s.regions as Array<Record<string, unknown>>).map((r) => ({
+            id: String(r.id ?? ""),
+            name: String(r.name ?? ""),
+            status: (["Active", "Pilot", "Coming soon"].includes(String(r.status)) ? String(r.status) : "Active") as "Active" | "Pilot" | "Coming soon",
+            drivers: Number(r.driverCount ?? 0),
+          }));
+        }
+        const merged = { ...initial, ...mapped };
+        setState(merged);
+        setSavedState(merged);
+      })
+      .catch(() => null);
+  }, []);
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 2500);
@@ -224,7 +276,14 @@ export function SettingsConsole() {
           <button
             type="button"
             disabled={!dirty}
-            onClick={() => {
+            onClick={async () => {
+              try {
+                await Promise.all([
+                  updateCommissionSettings(state.commission),
+                  updateNegotiationSettings(state.negotiation),
+                  updateFareSettings(state.fares),
+                ]);
+              } catch { /* ignore individual failures */ }
               setSavedState(state);
               setToast("Settings saved");
             }}

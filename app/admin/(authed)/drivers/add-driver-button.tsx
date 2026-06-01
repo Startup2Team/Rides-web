@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createDriver } from "@/lib/api";
@@ -137,13 +137,15 @@ const DOCS: { key: DocKey; label: string; hint: string }[] = [
 
 function DocUpload({
   doc,
-  uploaded,
-  onToggle,
+  file,
+  onFile,
 }: {
   doc: { key: DocKey; label: string; hint: string };
-  uploaded: boolean;
-  onToggle: () => void;
+  file: File | null;
+  onFile: (f: File | null) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div>
       <div className="flex items-baseline justify-between">
@@ -153,21 +155,28 @@ function DocUpload({
         </p>
         <p className="text-[10px] text-muted-foreground">{doc.hint}</p>
       </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".jpg,.jpeg,.png,.pdf"
+        className="hidden"
+        onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+      />
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => inputRef.current?.click()}
         className={`mt-1.5 flex h-20 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors ${
-          uploaded
+          file
             ? "border-primary/40 bg-primary/5 text-primary"
             : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:bg-surface"
         }`}
       >
-        {uploaded ? (
+        {file ? (
           <>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
               <polyline points="20 6 9 17 4 12" />
             </svg>
-            <span className="text-sm font-semibold">Uploaded · click to replace</span>
+            <span className="text-sm font-semibold truncate max-w-[200px]">{file.name}</span>
           </>
         ) : (
           <>
@@ -237,10 +246,10 @@ export function AddDriverButton({
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(initialForm);
-  const [docs, setDocs] = useState<Record<DocKey, boolean>>({
-    license: false,
-    insurance: false,
-    authorization: false,
+  const [docs, setDocs] = useState<Record<DocKey, File | null>>({
+    license: null,
+    insurance: null,
+    authorization: null,
   });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -249,7 +258,7 @@ export function AddDriverButton({
   const reset = () => {
     setStep(0);
     setForm(initialForm);
-    setDocs({ license: false, insurance: false, authorization: false });
+    setDocs({ license: null, insurance: null, authorization: null });
     setAcceptedTerms(false);
     setSubmitError(null);
     setSubmitting(false);
@@ -590,10 +599,8 @@ export function AddDriverButton({
                     <DocUpload
                       key={d.key}
                       doc={d}
-                      uploaded={docs[d.key]}
-                      onToggle={() =>
-                        setDocs((prev) => ({ ...prev, [d.key]: !prev[d.key] }))
-                      }
+                      file={docs[d.key]}
+                      onFile={(f) => setDocs((prev) => ({ ...prev, [d.key]: f }))}
                     />
                   ))}
                 </div>

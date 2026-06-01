@@ -8,33 +8,43 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
-import { adminLogout } from "@/lib/api";
-import { clearToken, getAdminUser, type AdminUser } from "@/lib/auth";
+import { getAccount, type AdminAccount } from "@/lib/api";
+
+export type AuthUser = Pick<AdminAccount, "id" | "name" | "email" | "role_name" | "two_factor">;
 
 type AuthContextValue = {
-  user: AdminUser | null;
-  /** False during SSR and first client paint — avoids hydration mismatch with localStorage. */
+  user: AuthUser | null;
   ready: boolean;
   logout: () => Promise<void>;
-  refreshUser: () => void;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   ready: false,
   logout: async () => {},
-  refreshUser: () => {},
+  refreshUser: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const [user, setUser] = useState<AdminUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
 
-  const refreshUser = useCallback(() => {
-    setUser(getAdminUser());
-    setReady(true);
+  const refreshUser = useCallback(async () => {
+    try {
+      const account = await getAccount();
+      setUser({
+        id: account.id,
+        name: account.name,
+        email: account.email,
+        role_name: account.role_name,
+        two_factor: account.two_factor,
+      });
+    } catch {
+      setUser(null);
+    } finally {
+      setReady(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -43,14 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await adminLogout();
+      // Call the Next.js API route which clears the HTTP-only cookie
+      await fetch("/api/admin/auth/logout", { method: "POST" });
     } catch {
-      // ignore — still clear local state
+      // ignore
     }
-    clearToken();
     setUser(null);
-    router.push("/admin/login");
-  }, [router]);
+    window.location.href = "/admin/login";
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, ready, logout, refreshUser }}>
