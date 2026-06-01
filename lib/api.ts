@@ -85,6 +85,12 @@ export const disable2FA = (password: string) =>
     body: { password },
   });
 
+export const resetTOTP = (currentCode: string) =>
+  request<{ secret: string; qr_code_url: string; backup_codes: string[] }>("/admin/auth/totp/reset", {
+    method: "POST",
+    body: { code: currentCode },
+  });
+
 // ── Account ───────────────────────────────────────────────────────────────
 
 export type AdminAccount = {
