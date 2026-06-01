@@ -615,15 +615,15 @@ function TrendChart({ data }: { data: { label: string; value: number }[] }) {
       >
         <defs>
           <linearGradient id="rev-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#00C853" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#00C853" stopOpacity="0" />
+            <stop offset="0%" stopColor="#007AFF" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#007AFF" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={area} fill="url(#rev-grad)" />
         <polyline
           points={points}
           fill="none"
-          stroke="#00C853"
+          stroke="#007AFF"
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -634,7 +634,7 @@ function TrendChart({ data }: { data: { label: string; value: number }[] }) {
             cx={i * stepX}
             cy={h - (d.value / max) * (h - 20) - 10}
             r="3"
-            fill="#00C853"
+            fill="#007AFF"
             stroke="white"
             strokeWidth="1.5"
           />

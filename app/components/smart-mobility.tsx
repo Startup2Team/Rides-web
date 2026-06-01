@@ -92,9 +92,9 @@ function LiveOpsDashboard() {
       >
         <defs>
           <radialGradient id="heat-primary-light" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#00C853" stopOpacity="0.55" />
-            <stop offset="60%" stopColor="#00C853" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#00C853" stopOpacity="0" />
+            <stop offset="0%" stopColor="#007AFF" stopOpacity="0.55" />
+            <stop offset="60%" stopColor="#007AFF" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#007AFF" stopOpacity="0" />
           </radialGradient>
           <radialGradient id="heat-warm-light" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.5" />
@@ -109,7 +109,7 @@ function LiveOpsDashboard() {
 
         <path
           d="M 40 270 Q 130 230 200 240 T 360 200"
-          stroke="#00C853"
+          stroke="#007AFF"
           strokeWidth="2.5"
           strokeDasharray="6 4"
           fill="none"
@@ -117,7 +117,7 @@ function LiveOpsDashboard() {
         />
         <path
           d="M 80 90 Q 180 130 280 110 T 380 150"
-          stroke="#00C853"
+          stroke="#007AFF"
           strokeWidth="2.5"
           strokeDasharray="6 4"
           fill="none"
@@ -173,7 +173,7 @@ function LiveOpsDashboard() {
           />
           <path
             d="M0 25 Q 18 22 30 18 T 60 10 T 100 6"
-            stroke="#00C853"
+            stroke="#007AFF"
             strokeWidth="1.5"
             fill="none"
             strokeLinecap="round"
@@ -202,7 +202,7 @@ function LiveOpsDashboard() {
           />
           <path
             d="M0 22 Q 20 12 40 16 T 80 6 L 100 8"
-            stroke="#00C853"
+            stroke="#007AFF"
             strokeWidth="1.5"
             fill="none"
             strokeLinecap="round"

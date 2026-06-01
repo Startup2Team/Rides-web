@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, Card } from "../_components";
 import { QRCode } from "./qr-code";
 import {
@@ -13,7 +13,7 @@ import {
   get2FASetup,
   enable2FA,
 } from "@/lib/api";
-import { getAdminUser } from "@/lib/auth";
+import { getAdminUser, getToken } from "@/lib/auth";
 
 type Tab = "profile" | "security" | "sessions";
 
@@ -68,32 +68,6 @@ const initialSessions: Session[] = [
     lastActive: "Yesterday",
   },
 ];
-
-function generateSecret(seed: string) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let h = 5381;
-  for (let i = 0; i < seed.length; i++) h = (h * 33) ^ seed.charCodeAt(i);
-  let out = "";
-  for (let i = 0; i < 32; i++) {
-    h = (h * 1103515245 + 12345) & 0x7fffffff;
-    out += alphabet[h % alphabet.length];
-  }
-  return out.match(/.{1,4}/g)?.join(" ") ?? out;
-}
-
-function generateBackupCodes(seed: string) {
-  let h = 1;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  const codes: string[] = [];
-  for (let i = 0; i < 10; i++) {
-    h = (h * 1664525 + 1013904223) >>> 0;
-    const a = (h % 100000).toString().padStart(5, "0");
-    h = (h * 1664525 + 1013904223) >>> 0;
-    const b = (h % 100000).toString().padStart(5, "0");
-    codes.push(`${a}-${b}`);
-  }
-  return codes;
-}
 
 function deviceIcon(device: string) {
   if (device.toLowerCase().includes("iphone") || device.toLowerCase().includes("android"))
@@ -193,15 +167,32 @@ export function AccountConsole() {
 
   const secret = setup2FAData?.secret ?? "";
   const otpAuth = setup2FAData?.otpauth_url ?? "";
-  const backupCodes = useMemo(() => generateBackupCodes(email), [email]);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
-  // Load real account data on mount
+  // Load real account data + sessions on mount
   useEffect(() => {
     getAccount()
       .then((a) => {
         setName(a.name);
         setEmail(a.email);
         setTwoFactorEnabled(a.two_factor);
+      })
+      .catch(() => null);
+
+    getSessions()
+      .then((res) => {
+        if (!res?.sessions?.length) return;
+        setSessions(
+          res.sessions.map((s) => ({
+            id: s.id,
+            device: "Active session",
+            browser: "",
+            location: "—",
+            ip: "—",
+            lastActive: "Active now",
+            current: s.current,
+          })),
+        );
       })
       .catch(() => null);
   }, []);
@@ -255,17 +246,46 @@ export function AccountConsole() {
     }
   }
 
-  function confirmReset(e: React.FormEvent) {
+  async function start2FASetup() {
+    const token = getToken();
+    if (!token) {
+      setToast("Sign in again to set up 2FA");
+      return;
+    }
+    try {
+      const data = await get2FASetup(token);
+      setSetup2FAData(data);
+      setResetMode(true);
+    } catch {
+      setToast("Couldn't load 2FA setup. Try again.");
+    }
+  }
+
+  async function confirmReset(e: React.FormEvent) {
     e.preventDefault();
     if (resetVerifyCode.length !== 6) return;
-    setResetMode(false);
-    setResetVerifyCode("");
-    setToast("Authenticator reset · backup codes regenerated");
+    const token = getToken();
+    if (!token || !setup2FAData) {
+      setToast("Setup data missing — restart the flow");
+      return;
+    }
+    try {
+      const res = await enable2FA(setup2FAData.secret, resetVerifyCode, token);
+      setBackupCodes(res.backup_codes);
+      setTwoFactorEnabled(res.two_factor_enabled);
+      setResetMode(false);
+      setResetVerifyCode("");
+      setSetup2FAData(null);
+      setShowBackup(true);
+      setToast("Authenticator enabled · save the backup codes");
+    } catch {
+      setToast("Invalid code. Try again.");
+    }
   }
 
   function regenerateBackupCodes() {
-    setShowBackup(true);
-    setToast("Backup codes regenerated · save the new set");
+    void start2FASetup();
+    setToast("Re-scan the new QR to refresh your backup codes");
   }
 
   return (
@@ -447,10 +467,7 @@ export function AccountConsole() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => {
-                      setTwoFactorEnabled(true);
-                      setResetMode(true);
-                    }}
+                    onClick={() => void start2FASetup()}
                     className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-[11px] font-semibold text-primary-foreground shadow-sm shadow-primary/30"
                   >
                     Enable
@@ -462,7 +479,7 @@ export function AccountConsole() {
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <button
                     type="button"
-                    onClick={() => setResetMode(true)}
+                    onClick={() => void start2FASetup()}
                     className="flex items-start gap-3 rounded-xl border border-border bg-surface/40 p-4 text-left transition-colors hover:border-primary/30"
                   >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -700,9 +717,14 @@ export function AccountConsole() {
                 {!s.current ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      setSessions((prev) => prev.filter((x) => x.id !== s.id));
-                      setToast(`Session on ${s.device} signed out`);
+                    onClick={async () => {
+                      try {
+                        await revokeSession(s.id);
+                        setSessions((prev) => prev.filter((x) => x.id !== s.id));
+                        setToast(`Session on ${s.device} signed out`);
+                      } catch {
+                        setToast("Couldn't sign out that session");
+                      }
                     }}
                     className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-[11px] font-medium text-foreground transition-colors hover:bg-surface"
                   >

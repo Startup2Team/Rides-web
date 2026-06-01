@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { RidesLogo } from "../../components/rides-logo";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
@@ -7,32 +8,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function BrandMark({ inverse = false }: { inverse?: boolean }) {
-  return (
-    <span
-      className={`relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl shadow-lg ${
-        inverse
-          ? "bg-white text-primary shadow-black/20 ring-1 ring-inset ring-black/5"
-          : "bg-gradient-to-br from-primary to-[#00A040] text-primary-foreground shadow-primary/30 ring-1 ring-inset ring-white/15"
-      }`}
-    >
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden
-        className="h-5 w-5"
-        fill="currentColor"
-      >
-        <path d="M4 4.5h16v4h-6V20h-4V8.5H4z" />
-        <circle cx="20" cy="20" r="2" />
-      </svg>
-    </span>
-  );
+function BrandMark({ inverse: _inverse = false }: { inverse?: boolean }) {
+  return <RidesLogo size={80} priority className="shrink-0" />;
 }
 
 export default function AdminLoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden flex-col overflow-hidden bg-gradient-to-br from-primary via-primary to-[#00A040] p-10 text-white lg:flex xl:p-14">
+      <div className="relative hidden flex-col overflow-hidden bg-gradient-to-br from-primary via-primary to-[#0056B3] p-10 text-white lg:flex xl:p-14">
         <div
           aria-hidden
           className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-white/20 blur-3xl"
@@ -64,7 +47,7 @@ export default function AdminLoginPage() {
         <Link href="/" className="relative inline-flex items-center gap-2.5">
           <BrandMark inverse />
           <span className="text-base font-semibold tracking-[-0.02em] text-white">
-            Taravelis
+            Rides
           </span>
         </Link>
 
@@ -75,7 +58,7 @@ export default function AdminLoginPage() {
               Admin Console
             </p>
             <h2 className="mt-5 text-balance text-4xl font-bold leading-[1.05] tracking-[-0.02em] text-white xl:text-5xl">
-              Operate Taravelis with confidence.
+              Operate Rides with confidence.
             </h2>
             <p className="mt-5 text-pretty text-base leading-relaxed text-white/85 xl:text-lg">
               Real-time visibility into rides, drivers, and demand zones — all
@@ -86,7 +69,7 @@ export default function AdminLoginPage() {
 
         <div className="relative flex items-center justify-between text-xs text-white/60">
           <span>Built for the future of mobility in Africa.</span>
-          <span>© {new Date().getFullYear()} Taravelis</span>
+          <span>© {new Date().getFullYear()} Rides</span>
         </div>
       </div>
 
@@ -95,7 +78,7 @@ export default function AdminLoginPage() {
           <div className="flex items-center gap-2.5 lg:hidden">
             <BrandMark />
             <span className="text-base font-semibold tracking-[-0.02em] text-foreground">
-              Taravelis
+              Rides
             </span>
           </div>
 

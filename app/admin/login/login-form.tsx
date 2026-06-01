@@ -193,8 +193,6 @@ export function LoginForm() {
   // 2FA setup step (real data from backend)
   const [setupSecret, setSetupSecret] = useState("");
   const [setupOtpauthUrl, setSetupOtpauthUrl] = useState("");
-  const [backupCodes, setBackupCodes] = useState<string[]>([]);
-  const [backupCopied, setBackupCopied] = useState(false);
 
   // Verify step
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
@@ -206,11 +204,25 @@ export function LoginForm() {
     ? backupCode.replace(/\D/g, "").length >= 10
     : fullCode.length === 6;
 
+  // Auto-submit once 6 digits are entered. Tracks the last auto-submitted code
+  // so a failed submit doesn't loop — the user can edit a digit to retry.
+  const lastAutoSubmitRef = useRef("");
+  useEffect(() => {
+    if (loading || usingBackup || fullCode.length !== 6) return;
+    if (lastAutoSubmitRef.current === fullCode) return;
+    lastAutoSubmitRef.current = fullCode;
+    if (step === "setup") void handleEnableAndFinish();
+    else if (step === "verify") void handleVerify();
+    // handlers are stable enough; depending on them would re-trigger on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullCode, step, loading, usingBackup]);
+
   function resetVerifyInputs() {
     setCode(["", "", "", "", "", ""]);
     setBackupCode("");
     setUsingBackup(false);
     setError(null);
+    lastAutoSubmitRef.current = "";
   }
 
   async function finishLogin(accessToken: string) {
@@ -275,16 +287,15 @@ export function LoginForm() {
   }
 
   // Step 2 (setup): enable 2FA then finish login
-  async function handleEnableAndFinish(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleEnableAndFinish(e?: React.FormEvent) {
+    e?.preventDefault();
     setError(null);
     if (fullCode.length !== 6) return setError("Enter the 6-digit code from your authenticator app.");
 
     setLoading(true);
     try {
-      const result = await enable2FA(setupSecret, fullCode, pendingAccessToken);
-      setBackupCodes(result.backup_codes ?? []);
-      // Stay on setup step to show backup codes — then user clicks "Continue"
+      await enable2FA(setupSecret, fullCode, pendingAccessToken);
+      await finishLogin(pendingAccessToken);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to enable 2FA. Check the code and try again.");
     } finally {
@@ -292,13 +303,9 @@ export function LoginForm() {
     }
   }
 
-  async function handleFinishAfterSetup() {
-    await finishLogin(pendingAccessToken);
-  }
-
   // Step 3 (verify): verify TOTP or backup code
-  async function handleVerify(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleVerify(e?: React.FormEvent) {
+    e?.preventDefault();
     setError(null);
     if (!codeReady) {
       return setError(
@@ -344,7 +351,7 @@ export function LoginForm() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@taravelis.com"
+            placeholder="you@rides.com"
             className="mt-2 block h-11 w-full rounded-xl border border-border bg-surface px-3.5 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
         </label>
@@ -396,56 +403,6 @@ export function LoginForm() {
   // ── Render: 2FA setup step ───────────────────────────────────────────────
 
   if (step === "setup") {
-    // After backup codes are shown, show a "Continue to dashboard" button
-    if (backupCodes.length > 0) {
-      return (
-        <div className="mt-8 space-y-5">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">
-              Step 2 of 2 · Save backup codes
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground">
-              Save your backup codes
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Store these somewhere safe. Each code works once if you lose your authenticator app.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-surface/40 p-4">
-            <div className="grid grid-cols-2 gap-1.5 font-mono text-[11px] text-foreground">
-              {backupCodes.map((c) => (
-                <code key={c} className="rounded-md bg-card px-2 py-1 ring-1 ring-border">
-                  {c}
-                </code>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(backupCodes.join("\n")).catch(() => null);
-                setBackupCopied(true);
-                setTimeout(() => setBackupCopied(false), 1500);
-              }}
-              className="mt-3 inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2 text-[11px] font-medium text-foreground transition-colors hover:bg-surface"
-            >
-              <CopyIcon className="h-3 w-3" />
-              {backupCopied ? "Copied" : "Copy all"}
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleFinishAfterSetup}
-            disabled={loading}
-            className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
-          >
-            {loading ? "Loading…" : "Continue to dashboard →"}
-          </button>
-        </div>
-      );
-    }
-
     return (
       <form onSubmit={handleEnableAndFinish} className="mt-8 space-y-5">
         <div>

@@ -80,7 +80,9 @@ const notifications: Notification[] = [
   },
 ];
 
-export function AdminTopbar() {
+export function AdminTopbar({
+  onOpenMobile,
+}: { onOpenMobile?: () => void } = {}) {
   const { user, logout } = useAuth();
   const searchRef = useRef<HTMLInputElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -125,8 +127,21 @@ export function AdminTopbar() {
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
-    <header className="sticky top-0 z-30 grid h-20 shrink-0 grid-cols-[1fr_minmax(0,28rem)_1fr] items-center gap-4 border-b border-border/60 bg-card/70 px-4 backdrop-blur-xl backdrop-saturate-150 lg:px-6">
-      <div />
+    <header className="sticky top-0 z-30 grid h-16 shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border/60 bg-card/70 px-4 backdrop-blur-xl backdrop-saturate-150 sm:h-20 sm:gap-4 lg:grid-cols-[1fr_minmax(0,28rem)_1fr] lg:px-6">
+      <div className="flex items-center">
+        <button
+          type="button"
+          onClick={onOpenMobile}
+          aria-label="Open menu"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-foreground transition-colors hover:bg-surface lg:hidden"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+      </div>
 
       <div className="relative">
         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -248,7 +263,7 @@ export function AdminTopbar() {
             }}
             className="flex h-10 items-center gap-2.5 rounded-full border border-border bg-card pl-1 pr-3 transition-colors hover:bg-surface"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#00A040] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
               <span className="text-xs font-bold tracking-tight">{initials}</span>
             </span>
             <span className="hidden text-sm font-semibold tracking-tight text-foreground sm:inline">
@@ -261,7 +276,7 @@ export function AdminTopbar() {
           {openUser ? (
             <div className="absolute right-0 top-full mt-2 w-64 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
               <div className="flex items-center gap-3 border-b border-border bg-surface/40 px-4 py-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#00A040] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
                   <span className="text-sm font-bold tracking-tight">{initials}</span>
                 </span>
                 <div className="min-w-0">

@@ -32,7 +32,7 @@ const initialAdmins: Admin[] = [
   {
     id: "a1",
     name: "Aiden Mugisha",
-    email: "aiden@taravelis.com",
+    email: "aiden@rides.com",
     roleId: "super",
     status: "Active",
     lastActive: "Just now",
@@ -41,7 +41,7 @@ const initialAdmins: Admin[] = [
   {
     id: "a2",
     name: "Beatrice Iradukunda",
-    email: "beatrice@taravelis.com",
+    email: "beatrice@rides.com",
     roleId: "ops",
     status: "Active",
     lastActive: "12m ago",
@@ -50,7 +50,7 @@ const initialAdmins: Admin[] = [
   {
     id: "a3",
     name: "Cyril Habineza",
-    email: "cyril@taravelis.com",
+    email: "cyril@rides.com",
     roleId: "finance",
     status: "Active",
     lastActive: "1h ago",
@@ -59,7 +59,7 @@ const initialAdmins: Admin[] = [
   {
     id: "a4",
     name: "Diana Ntirenganya",
-    email: "diana@taravelis.com",
+    email: "diana@rides.com",
     roleId: "support",
     status: "Active",
     lastActive: "3h ago",
@@ -68,7 +68,7 @@ const initialAdmins: Admin[] = [
   {
     id: "a5",
     name: "Eric Bizimana",
-    email: "eric@taravelis.com",
+    email: "eric@rides.com",
     roleId: "analytics",
     status: "Active",
     lastActive: "Yesterday",
@@ -77,7 +77,7 @@ const initialAdmins: Admin[] = [
   {
     id: "a6",
     name: "Florence Mukasine",
-    email: "florence@taravelis.com",
+    email: "florence@rides.com",
     roleId: "support",
     status: "Invited",
     lastActive: "Pending",

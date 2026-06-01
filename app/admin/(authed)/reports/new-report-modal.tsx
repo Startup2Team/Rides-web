@@ -249,7 +249,7 @@ export function NewReportModal({
                 type="text"
                 value={recipients}
                 onChange={(e) => setRecipients(e.target.value)}
-                placeholder="ops@taravelis.io, finance@taravelis.io"
+                placeholder="ops@rides.io, finance@rides.io"
                 className="mt-2 h-9 w-full rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary"
               />
               <p className="mt-1 text-[10px] text-muted-foreground">

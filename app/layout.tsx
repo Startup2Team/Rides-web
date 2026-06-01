@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Taravelis",
-  description: "Taravelis — ride-sharing for travelers",
+  title: "Rides",
+  description: "Rides — ride-sharing for travelers",
 };
 
 export default function RootLayout({

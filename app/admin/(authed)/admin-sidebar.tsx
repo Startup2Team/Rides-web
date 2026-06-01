@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { RidesLogo } from "../../components/rides-logo";
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -195,7 +196,13 @@ function isChildActive(
   return true;
 }
 
-export function AdminSidebar() {
+export function AdminSidebar({
+  mobileOpen = false,
+  onClose,
+}: {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+} = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -224,23 +231,41 @@ export function AdminSidebar() {
     });
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card lg:flex">
-      <div className="flex h-20 shrink-0 items-center gap-2.5 border-b border-border px-5">
-        <span className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-primary to-[#00A040] shadow-md shadow-primary/30 ring-1 ring-inset ring-white/15">
-          <svg
-            viewBox="0 0 24 24"
-            aria-hidden
-            className="h-4 w-4 text-primary-foreground"
-            fill="currentColor"
+    <>
+      {/* Mobile backdrop */}
+      {mobileOpen ? (
+        <button
+          type="button"
+          aria-label="Close menu"
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+        />
+      ) : null}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-border bg-card transition-transform duration-200 lg:static lg:translate-x-0 ${
+          mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        } lg:shadow-none`}
+      >
+        <div className="flex h-16 shrink-0 items-center justify-between gap-2.5 border-b border-border px-4 sm:h-20 sm:px-5">
+          <div className="flex items-center gap-2.5">
+            <RidesLogo size={56} className="shrink-0" />
+            <span className="text-sm font-semibold tracking-[-0.02em] text-foreground">
+              Rides
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close menu"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground lg:hidden"
           >
-            <path d="M4 4.5h16v4h-6V20h-4V8.5H4z" />
-            <circle cx="20" cy="20" r="2" />
-          </svg>
-        </span>
-        <span className="text-sm font-semibold tracking-[-0.02em] text-foreground">
-          Taravelis
-        </span>
-      </div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
         {groups.map((group) => (
@@ -367,5 +392,6 @@ export function AdminSidebar() {
         ))}
       </nav>
     </aside>
+    </>
   );
 }
