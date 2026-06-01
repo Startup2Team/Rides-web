@@ -20,26 +20,26 @@ function mapApiCustomer(c: ApiCustomer): Customer {
     id: c.id,
     name: c.full_name,
     email: c.email ?? "",
-    phone: c.phone_number,
+    phone: c.phone,
     location: "",
     joined: new Date(c.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
     trips: c.total_rides,
-    spend: 0,
-    avgFare: 0,
+    spend: c.total_spend ?? 0,
+    avgFare: c.total_rides > 0 ? Math.round((c.total_spend ?? 0) / c.total_rides) : 0,
     lastTrip: c.last_active_at
       ? new Date(c.last_active_at).toLocaleDateString()
       : "—",
     rating: 0,
     preferredVehicle: "",
-    status: mapCustomerStatus(c.status),
+    status: mapCustomerStatus(c.role_state, c.is_suspended),
     recentTrips: [],
     notes: c.notes,
   };
 }
 
-function mapCustomerStatus(status: string): CustomerStatus {
-  if (status === "BANNED" || status === "SUSPENDED") return "Suspended";
-  if (status === "FLAGGED") return "Flagged";
+function mapCustomerStatus(roleState: string, isSuspended: boolean): CustomerStatus {
+  if (isSuspended) return "Suspended";
+  if (roleState === "CUSTOMER_ONLY") return "Active";
   return "Active";
 }
 
