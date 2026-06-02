@@ -500,21 +500,59 @@ export const reinstateCustomer = (id: string) =>
 
 // ── Rides ─────────────────────────────────────────────────────────────────
 
+export type RideParticipant = {
+  id: string | null;
+  phone: string | null;
+  name: string | null;
+};
+
+export type RideDriverParticipant = RideParticipant & { plate: string | null };
+
 export type Ride = {
   id: string;
   status: string;
   transport_type: string;
-  customer_name: string;
-  driver_name?: string;
-  pickup_location: string;
-  dropoff_location: string;
-  fare: number;
+  customer: RideParticipant;
+  driver: RideDriverParticipant;
+  pickup_address: string;
+  destination_address: string;
+  agreed_fare: number | null;
+  initial_fare: number | null;
+  distance_km: number | null;
   created_at: string;
+  completed_at: string | null;
+};
+
+export type NegotiationRound = {
+  round: number;
+  proposed_by: string;
+  amount: number;
+  response: string | null;
+  at: string;
+};
+
+export type RideEvent = {
+  type: string;
+  actor_role: string;
+  at: string;
+};
+
+export type RideDetail = Ride & {
+  negotiation_rounds: NegotiationRound[];
+  events: RideEvent[];
 };
 
 export type RidesResponse = {
   rides: Ride[];
   total: number;
+};
+
+export type LiveRidesStats = {
+  total: number;
+  searching: number;
+  negotiating: number;
+  driver_en_route: number;
+  on_trip: number;
 };
 
 export const getRides = (params: Record<string, string> = {}) => {
@@ -527,7 +565,12 @@ export const getLiveRides = (params: Record<string, string> = {}) => {
   return request<RidesResponse>(`/admin/rides/live${qs ? `?${qs}` : ""}`);
 };
 
-export const getRide = (id: string) => request<Ride>(`/admin/rides/${id}`);
+export const getLiveRidesStats = () =>
+  request<LiveRidesStats>("/admin/rides/live/stats");
+
+export const getRide = (id: string) => request<RideDetail>(`/admin/rides/${id}`);
+
+export const getLiveRide = (id: string) => request<RideDetail>(`/admin/rides/live/${id}`);
 
 export const interveneRide = (id: string, action: string, reason: string) =>
   request<void>(`/admin/rides/live/${id}/intervene`, {
