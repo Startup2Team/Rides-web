@@ -85,6 +85,12 @@ export const disable2FA = (password: string) =>
     body: { password },
   });
 
+export const resetTOTP = (currentCode: string) =>
+  request<{ secret: string; qr_code_url: string; backup_codes: string[] }>("/admin/auth/totp/reset", {
+    method: "POST",
+    body: { code: currentCode },
+  });
+
 // ── Account ───────────────────────────────────────────────────────────────
 
 export type AdminAccount = {
@@ -298,36 +304,77 @@ export const getAnalyticsOverviewData = () => request<AnalyticsOverview>("/admin
 
 // ── Analytics ─────────────────────────────────────────────────────────────
 
-export const getAnalyticsOverview = () => request<Record<string, unknown>>("/admin/analytics/overview");
+export type AnalyticsOverviewFull = {
+  active_drivers: number;
+  active_rides: number;
+  total_rides_today: number;
+  total_revenue_today: number;
+};
 
-export const getRidesDaily = () => request<Record<string, unknown>>("/admin/analytics/rides/daily");
+export type DailyRidePoint = {
+  day: string;
+  total: number;
+  completed: number;
+  cancelled: number;
+};
 
-export const getRidesWeekly = () => request<Record<string, unknown>>("/admin/analytics/rides/weekly");
+export type FunnelData = {
+  booked: number;
+  matched: number;
+  confirmed: number;
+  completed: number;
+  cancelled: number;
+};
 
+export type VehicleMixItem = {
+  transport_type: string;
+  rides: number;
+  revenue: number;
+};
+
+export type DriverPerf = {
+  driver_id: string;
+  phone: string;
+  full_name: string | null;
+  transport_type: string;
+  total_rides: number;
+  acceptance_rate: number;
+  priority_tier: number;
+  earnings_30d: number;
+};
+
+export type SatisfactionData = {
+  completion_rate_pct: number;
+  total_rides_30d: number;
+  completed_rides_30d: number;
+};
+
+export const getAnalyticsOverview = () => request<AnalyticsOverviewFull>("/admin/analytics/overview");
+export const getRidesDaily = (days = 30) =>
+  request<DailyRidePoint[]>(`/admin/analytics/rides/daily?days=${days}`);
+export const getRidesWeekly = () => request<DailyRidePoint[]>("/admin/analytics/rides/weekly");
 export const getRevenueBreakdown = () =>
   request<Record<string, unknown>>("/admin/analytics/revenue/breakdown");
-
 export const getDriverPerformance = () =>
-  request<Record<string, unknown>>("/admin/analytics/drivers/performance");
-
+  request<DriverPerf[]>("/admin/analytics/drivers/performance");
 export const getNegotiationStats = () =>
   request<Record<string, unknown>>("/admin/analytics/negotiation/stats");
 
-export const getHeatmap = () => request<Record<string, unknown>>("/admin/analytics/heatmap");
+export type HeatPoint = { lat: number; lng: number; count: number };
+export type HeatZone = { lat: number; lng: number; demand: number; trips: number; avg_fare: number };
+export type ActivityCell = { day: number; hour: number; count: number };
 
-export const getHeatmapZones = () =>
-  request<Record<string, unknown>>("/admin/analytics/heatmap/zones");
-
+export const getHeatmap = () => request<HeatPoint[]>("/admin/analytics/heatmap");
+export const getHeatmapZones = () => request<HeatZone[]>("/admin/analytics/heatmap/zones");
+export const getActivityHeatmap = () => request<ActivityCell[]>("/admin/analytics/activity-heatmap");
 export const getCancellations = () =>
   request<Record<string, unknown>>("/admin/analytics/cancellations");
-
-export const getFunnel = () => request<Record<string, unknown>>("/admin/analytics/funnel");
-
-export const getVehicleMix = () =>
-  request<Record<string, unknown>>("/admin/analytics/vehicle-mix");
-
+export const getFunnel = (days = 30) =>
+  request<FunnelData>(`/admin/analytics/funnel?days=${days}`);
+export const getVehicleMix = (days = 30) =>
+  request<VehicleMixItem[]>(`/admin/analytics/vehicle-mix?days=${days}`);
 export const getSatisfaction = () =>
-  request<Record<string, unknown>>("/admin/analytics/satisfaction");
+  request<SatisfactionData>("/admin/analytics/satisfaction");
 
 // ── Drivers ───────────────────────────────────────────────────────────────
 
@@ -428,17 +475,32 @@ export const reinstateDriver = (id: string) =>
 
 export type Customer = {
   id: string;
-  full_name: string;
+  full_name: string | null;
   phone: string;
-  email?: string;
+  email?: string | null;
   role_state: string;
   is_suspended: boolean;
   suspension_until?: string | null;
   total_rides: number;
   total_spend?: number;
   created_at: string;
-  last_active_at?: string;
+  last_seen_at?: string | null;
+  rating?: number;
   notes?: string;
+};
+
+export type CustomerTrip = {
+  id: string;
+  status: string;
+  transport_type: string;
+  agreed_fare: number | null;
+  pickup_address: string;
+  destination_address: string;
+  created_at: string;
+};
+
+export type CustomerDetail = Customer & {
+  recent_trips: CustomerTrip[];
 };
 
 export type CustomersResponse = {
@@ -448,12 +510,22 @@ export type CustomersResponse = {
   offset: number;
 };
 
+export type CustomerOverview = {
+  total: number;
+  active: number;
+  suspended: number;
+  active_this_week: number;
+};
+
 export const getCustomers = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
   return request<CustomersResponse>(`/admin/customers${qs ? `?${qs}` : ""}`);
 };
 
-export const getCustomer = (id: string) => request<Customer>(`/admin/customers/${id}`);
+export const getCustomersOverview = () =>
+  request<CustomerOverview>("/admin/customers/overview");
+
+export const getCustomer = (id: string) => request<CustomerDetail>(`/admin/customers/${id}`);
 
 export const banCustomer = (id: string, reason: string) =>
   request<void>(`/admin/customers/${id}/ban`, { method: "PATCH", body: { reason } });
@@ -469,21 +541,59 @@ export const reinstateCustomer = (id: string) =>
 
 // ── Rides ─────────────────────────────────────────────────────────────────
 
+export type RideParticipant = {
+  id: string | null;
+  phone: string | null;
+  name: string | null;
+};
+
+export type RideDriverParticipant = RideParticipant & { plate: string | null };
+
 export type Ride = {
   id: string;
   status: string;
   transport_type: string;
-  customer_name: string;
-  driver_name?: string;
-  pickup_location: string;
-  dropoff_location: string;
-  fare: number;
+  customer: RideParticipant;
+  driver: RideDriverParticipant;
+  pickup_address: string;
+  destination_address: string;
+  agreed_fare: number | null;
+  initial_fare: number | null;
+  distance_km: number | null;
   created_at: string;
+  completed_at: string | null;
+};
+
+export type NegotiationRound = {
+  round: number;
+  proposed_by: string;
+  amount: number;
+  response: string | null;
+  at: string;
+};
+
+export type RideEvent = {
+  type: string;
+  actor_role: string;
+  at: string;
+};
+
+export type RideDetail = Ride & {
+  negotiation_rounds: NegotiationRound[];
+  events: RideEvent[];
 };
 
 export type RidesResponse = {
   rides: Ride[];
   total: number;
+};
+
+export type LiveRidesStats = {
+  total: number;
+  searching: number;
+  negotiating: number;
+  driver_en_route: number;
+  on_trip: number;
 };
 
 export const getRides = (params: Record<string, string> = {}) => {
@@ -496,7 +606,12 @@ export const getLiveRides = (params: Record<string, string> = {}) => {
   return request<RidesResponse>(`/admin/rides/live${qs ? `?${qs}` : ""}`);
 };
 
-export const getRide = (id: string) => request<Ride>(`/admin/rides/${id}`);
+export const getLiveRidesStats = () =>
+  request<LiveRidesStats>("/admin/rides/live/stats");
+
+export const getRide = (id: string) => request<RideDetail>(`/admin/rides/${id}`);
+
+export const getLiveRide = (id: string) => request<RideDetail>(`/admin/rides/live/${id}`);
 
 export const interveneRide = (id: string, action: string, reason: string) =>
   request<void>(`/admin/rides/live/${id}/intervene`, {
@@ -508,12 +623,17 @@ export const interveneRide = (id: string, action: string, reason: string) =>
 
 export type Negotiation = {
   id: string;
+  ride_id: string;
   status: string;
-  customer_name: string;
-  driver_name?: string;
-  initial_offer: number;
-  final_price?: number;
-  pickup_location: string;
+  transport_type: string;
+  pickup_address: string;
+  destination_address: string;
+  customer: { phone: string; name: string | null };
+  driver: { phone: string | null; name: string | null; vehicle_type: string | null; plate: string | null };
+  initial_fare: number | null;
+  agreed_fare: number | null;
+  uplift: number;
+  rounds: number;
   created_at: string;
 };
 
@@ -522,12 +642,22 @@ export type NegotiationsResponse = {
   total: number;
 };
 
+export type NegotiationsStats = {
+  total_today: number;
+  agreed_today: number;
+  failed_today: number;
+  avg_rounds: number;
+};
+
 export const getNegotiations = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
   return request<NegotiationsResponse>(`/admin/negotiations${qs ? `?${qs}` : ""}`);
 };
 
-export const getNegotiation = (id: string) => request<Negotiation>(`/admin/negotiations/${id}`);
+export const getNegotiationsStats = () =>
+  request<NegotiationsStats>("/admin/negotiations/stats");
+
+export const getNegotiation = (id: string) => request<RideDetail>(`/admin/negotiations/${id}`);
 
 // ── Revenue ───────────────────────────────────────────────────────────────
 
@@ -541,14 +671,16 @@ export type RevenueOverview = {
 
 export type Transaction = {
   id: string;
-  ride_id: string;
-  customer_name: string;
-  driver_name: string;
-  amount: number;
-  platform_fee: number;
-  driver_payout: number;
+  transport_type: string;
+  fare: number | null;
+  commission: number;
+  payout: number;
   status: string;
-  created_at: string;
+  pickup_address: string;
+  destination_address: string;
+  customer: { phone: string; name: string | null };
+  driver: { phone: string | null; name: string | null; plate: string | null; vehicle_type: string };
+  completed_at: string | null;
 };
 
 export type TransactionsResponse = {
@@ -693,24 +825,55 @@ export const deleteMessage = (id: string) =>
 
 // ── Reports ───────────────────────────────────────────────────────────────
 
-export type Report = {
+export type BackendReport = {
   id: string;
-  title: string;
-  type: string;
+  template: string;
   status: string;
+  format: string;
+  date_range: string;
+  file_size: string | null;
+  file_path: string | null;
+  generated_at: string | null;
+  created_by: string | null;
   created_at: string;
-  download_url?: string;
 };
 
-export type ReportsResponse = {
-  reports: Report[];
-  total: number;
+export type BackendScheduled = {
+  id: string;
+  template: string;
+  format: string;
+  frequency: string;
+  recipients: string[];
+  is_active: boolean;
+  next_run: string | null;
+  created_at: string;
 };
 
-export const getReports = () => request<ReportsResponse>("/admin/reports");
+export type ReportsStats = {
+  total_this_month: number;
+  ready_this_week: number;
+  scheduled: number;
+  pending: number;
+};
 
-export const generateReport = (data: Record<string, unknown>) =>
-  request<Report>("/admin/reports", { method: "POST", body: data });
+export const getReportsStats = () => request<ReportsStats>("/admin/reports/stats");
+
+export const getReports = (params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ reports: BackendReport[]; total: number }>(`/admin/reports${qs ? `?${qs}` : ""}`);
+};
+
+export const getScheduledReports = () =>
+  request<{ scheduled: BackendScheduled[] }>("/admin/reports/scheduled");
+
+export const generateReport = (data: { template: string; format: string; date_range: string; created_by?: string }) =>
+  request<BackendReport>("/admin/reports", { method: "POST", body: data });
+
+export const createScheduledReport = (data: { template: string; format: string; frequency: string; recipients: string[] }) =>
+  request<BackendScheduled>("/admin/reports/scheduled", { method: "POST", body: data });
+
+export const toggleScheduledReport = (id: string) =>
+  request<void>(`/admin/reports/scheduled/${id}/toggle`, { method: "POST" });
 
 export const deleteReport = (id: string) =>
   request<void>(`/admin/reports/${id}`, { method: "DELETE" });

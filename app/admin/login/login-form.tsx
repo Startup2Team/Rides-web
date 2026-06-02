@@ -135,7 +135,12 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [rescanKey, setRescanKey] = useState(0);
   const provisioningFired = useRef(false);
+
+  // Re-enroll states for totp_verify step
+  const [rescanBusy, setRescanBusy] = useState(false);
+  const [rescanQrData, setRescanQrData] = useState<{ secret: string; qr_code_url: string } | null>(null);
 
   useEffect(() => {
     if (defaultEmail) setEmail(defaultEmail);
@@ -185,7 +190,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [step, challengeToken]);
+  }, [step, challengeToken, rescanKey]);
 
   const fullCode = code.join("");
   const codeReady = fullCode.length === 6;
@@ -290,6 +295,44 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
     setLoadProvisioningFailed(null);
     setProvisioningLoading(false);
     provisioningFired.current = false;
+    setRescanKey(0);
+    setRescanQrData(null);
+  }
+
+  function handleRescan() {
+    provisioningFired.current = false;
+    setOtpauthUrl("");
+    setSetupSecret("");
+    setLoadProvisioningFailed(null);
+    setCode(["", "", "", "", "", ""]);
+    setRescanKey((k) => k + 1);
+  }
+
+  async function handleRescanVerify() {
+    if (!challengeToken) return;
+    setError(null);
+    setRescanBusy(true);
+    try {
+      const r = await fetch("/api/admin/auth/reset-totp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge_token: challengeToken, totp_code: "" }),
+      });
+      const j = (await r.json()) as {
+        data?: { secret?: string; qr_code_url?: string };
+        error?: { message?: string };
+      };
+      if (!r.ok) {
+        setError(j.error?.message ?? "Could not reset authenticator.");
+        return;
+      }
+      setRescanQrData({ secret: j.data?.secret ?? "", qr_code_url: j.data?.qr_code_url ?? "" });
+      setCode(["", "", "", "", "", ""]);
+    } catch {
+      setError("Network error during authenticator reset.");
+    } finally {
+      setRescanBusy(false);
+    }
   }
 
   function copySecret() {
@@ -393,14 +436,25 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         ) : null}
 
         <div className="grid gap-4 rounded-2xl border border-border bg-surface/40 p-4 sm:grid-cols-[auto,1fr]">
-          <div className="flex h-[180px] w-[180px] items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border">
-            {provisioningLoading && !otpauthUrl ? (
-              <span className="text-xs text-muted-foreground">Loading…</span>
-            ) : showQr ? (
-              <OtpQrCode value={otpauthUrl} />
-            ) : (
-              <span className="text-xs text-muted-foreground">Waiting for provisioning…</span>
-            )}
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex h-[180px] w-[180px] items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border">
+              {provisioningLoading && !otpauthUrl ? (
+                <span className="text-xs text-muted-foreground">Loading…</span>
+              ) : showQr ? (
+                <OtpQrCode value={otpauthUrl} />
+              ) : (
+                <span className="text-xs text-muted-foreground">Waiting for provisioning…</span>
+              )}
+            </div>
+            {!provisioningLoading ? (
+              <button
+                type="button"
+                onClick={handleRescan}
+                className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-primary"
+              >
+                Get a new QR code
+              </button>
+            ) : null}
           </div>
 
           <div className="min-w-0 space-y-2">
@@ -491,6 +545,41 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
           {error}
         </p>
       ) : null}
+
+      {rescanQrData ? (
+        <div className="space-y-3 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">
+            New QR code — scan now, then enter the code above
+          </p>
+          <div className="flex gap-4">
+            <div className="flex h-[140px] w-[140px] shrink-0 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border">
+              <OtpQrCode value={rescanQrData.qr_code_url} />
+            </div>
+            <div className="min-w-0 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Scan with Google Authenticator, Authy, or any TOTP app. Then enter the 6-digit code it shows into the box above.
+              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                Can&apos;t scan? Use this key
+              </p>
+              <code className="block break-all font-mono text-[11px] font-semibold text-foreground">
+                {rescanQrData.secret}
+              </code>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => void handleRescanVerify()}
+            disabled={rescanBusy}
+            className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed"
+          >
+            {rescanBusy ? "Generating QR…" : "New device? Scan QR code again"}
+          </button>
+        </div>
+      )}
 
       <button
         type="submit"

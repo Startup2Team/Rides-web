@@ -14,25 +14,37 @@ import {
   type Transaction as ApiTransaction,
 } from "@/lib/api";
 
+const TRANSPORT_DISPLAY: Record<string, string> = {
+  MOTO_BIKE: "Moto Bike", CAB_TAXI: "Cab Taxi",
+  LIGHT_HILUX: "Light Hilux", HEAVY_FUSO: "Heavy Fuso", TUK_TUK: "Tuk Tuk",
+};
+
 function mapApiTransaction(t: ApiTransaction): Transaction {
   const status: TransactionStatus =
     t.status === "PENDING" ? "Pending payout"
     : t.status === "REFUNDED" ? "Refunded"
     : t.status === "DISPUTED" ? "Disputed"
     : "Settled";
+  const custName = t.customer?.name ?? t.customer?.phone ?? "Unknown";
+  const driverName = t.driver?.name ?? t.driver?.phone ?? "Unknown";
   return {
     id: t.id,
-    customer: { name: t.customer_name, phone: "" },
-    driver: { name: t.driver_name, phone: "", vehicleType: "", plate: "—" },
-    pickup: "—",
-    destination: "—",
-    vehicleType: "Cab Taxi",
-    fare: t.amount,
-    commission: t.platform_fee,
-    payout: t.driver_payout,
-    paymentMethod: "MTN MoMo",
+    customer: { name: custName, phone: t.customer?.phone ?? "" },
+    driver: {
+      name: driverName,
+      phone: t.driver?.phone ?? "",
+      vehicleType: TRANSPORT_DISPLAY[t.transport_type] ?? t.transport_type,
+      plate: t.driver?.plate ?? "—",
+    },
+    pickup: t.pickup_address,
+    destination: t.destination_address,
+    vehicleType: (TRANSPORT_DISPLAY[t.transport_type] ?? "Cab Taxi") as Transaction["vehicleType"],
+    fare: t.fare ?? 0,
+    commission: t.commission,
+    payout: t.payout,
+    paymentMethod: "Cash",
     status,
-    completedAt: new Date(t.created_at).toLocaleString(),
+    completedAt: t.completed_at ? new Date(t.completed_at).toLocaleString() : "—",
     duration: "—",
     district: "—",
   };
@@ -95,19 +107,9 @@ const PAGE_SIZE = 6;
 type SortKey = "fare" | "commission" | "completedAt";
 type SortDir = "asc" | "desc";
 
-const completedAgoMinutes: Record<string, number> = {
-  "8 min ago": 8,
-  "12 min ago": 12,
-  "18 min ago": 18,
-  "32 min ago": 32,
-  "1h ago": 60,
-  "2h ago": 120,
-  "3h ago": 180,
-  "4h ago": 240,
-};
-
 function completedRank(t: Transaction) {
-  return completedAgoMinutes[t.completedAt] ?? 9999;
+  if (!t.completedAt || t.completedAt === "—") return 9999999;
+  return new Date(t.completedAt).getTime();
 }
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -331,8 +333,9 @@ function mapRevenueToPeriodData(raw: Record<string, unknown> | null | undefined)
     LIGHT_HILUX: "Light Hilux",
     HEAVY_FUSO: "Heavy Fuso",
   };
-  const byVehicleRaw = (raw.by_vehicle ?? []) as Array<{ vehicle_type?: string; revenue?: number; pct?: number }>;
+  const byVehicleRaw = (raw.by_vehicle ?? []) as Array<{ vehicle?: string; amount?: number; pct?: number }>;
   const deltas = (raw.deltas ?? {}) as Record<string, number>;
+  const trendRaw = (raw.trend ?? []) as Array<{ label: string; value: number }>;
   return {
     gross: (raw.gross as number) ?? 0,
     commission: (raw.commission as number) ?? 0,
@@ -344,12 +347,12 @@ function mapRevenueToPeriodData(raw: Record<string, unknown> | null | undefined)
     commissionDelta: deltas.commission ?? 0,
     payoutsDelta: deltas.payouts ?? 0,
     avgFareDelta: 0,
-    trend: [],
+    trend: trendRaw,
     byVehicle: byVehicleRaw.map((v) => ({
-      vehicle: vehicleLabels[v.vehicle_type ?? ""] ?? (v.vehicle_type ?? "Other"),
-      pct: v.pct ?? 0,
-      amount: v.revenue ?? 0,
-      color: byVehicleColors[v.vehicle_type ?? ""] ?? "bg-muted",
+      vehicle: vehicleLabels[v.vehicle ?? ""] ?? (v.vehicle ?? "Other"),
+      pct: Math.round(v.pct ?? 0),
+      amount: v.amount ?? 0,
+      color: byVehicleColors[v.vehicle ?? ""] ?? "bg-muted",
     })),
     byPayment: [],
     topZones: [],

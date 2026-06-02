@@ -12,6 +12,7 @@ import {
   disable2FA,
   get2FASetup,
   enable2FA,
+  resetTOTP,
 } from "@/lib/api";
 import { getAdminUser, getToken } from "@/lib/auth";
 
@@ -160,6 +161,13 @@ export function AccountConsole() {
   const [confirmingDisable, setConfirmingDisable] = useState(false);
   const [setup2FAData, setSetup2FAData] = useState<{ secret: string; otpauth_url: string } | null>(null);
 
+  // Reset authenticator flow (for already-enabled 2FA)
+  type AuthResetStep = "verify-current" | "show-new-qr" | null;
+  const [authResetStep, setAuthResetStep] = useState<AuthResetStep>(null);
+  const [authResetCurrentCode, setAuthResetCurrentCode] = useState("");
+  const [authResetData, setAuthResetData] = useState<{ secret: string; qr_code_url: string; backup_codes: string[] } | null>(null);
+  const [authResetBusy, setAuthResetBusy] = useState(false);
+
   // Sessions
   const [sessions, setSessions] = useState<Session[]>(initialSessions);
 
@@ -289,8 +297,29 @@ export function AccountConsole() {
   }
 
   function regenerateBackupCodes() {
-    void start2FASetup();
-    setToast("Re-scan the new QR to refresh your backup codes");
+    setAuthResetStep("verify-current");
+  }
+
+  async function handleAuthResetVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (authResetCurrentCode.length !== 6) return;
+    setAuthResetBusy(true);
+    try {
+      const data = await resetTOTP(authResetCurrentCode);
+      setAuthResetData(data);
+      setAuthResetStep("show-new-qr");
+      setAuthResetCurrentCode("");
+    } catch {
+      setToast("Invalid code. Check your authenticator and try again.");
+    } finally {
+      setAuthResetBusy(false);
+    }
+  }
+
+  function closeAuthReset() {
+    setAuthResetStep(null);
+    setAuthResetCurrentCode("");
+    setAuthResetData(null);
   }
 
   return (
@@ -484,7 +513,7 @@ export function AccountConsole() {
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <button
                     type="button"
-                    onClick={() => void start2FASetup()}
+                    onClick={() => setAuthResetStep("verify-current")}
                     className="flex items-start gap-3 rounded-xl border border-border bg-surface/40 p-4 text-left transition-colors hover:border-primary/30"
                   >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -582,6 +611,94 @@ export function AccountConsole() {
                     </button>
                   </div>
                 </form>
+              ) : null}
+
+              {authResetStep === "verify-current" ? (
+                <form onSubmit={handleAuthResetVerify} className="mt-5 space-y-4 rounded-xl border border-border bg-surface/40 p-4">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                      Verify identity
+                    </p>
+                    <p className="mt-1 text-xs text-foreground">
+                      Enter your current 6-digit authenticator code to confirm before generating a new QR.
+                    </p>
+                  </div>
+                  <label className="block">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                      Current authenticator code
+                    </span>
+                    <input
+                      value={authResetCurrentCode}
+                      onChange={(e) => setAuthResetCurrentCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      inputMode="numeric"
+                      placeholder="123456"
+                      autoFocus
+                      className="mt-2 block h-10 w-32 rounded-lg border border-border bg-card px-3 text-center font-mono text-base font-semibold tracking-wider text-foreground outline-none focus:border-primary"
+                    />
+                  </label>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={closeAuthReset}
+                      className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-foreground transition-colors hover:bg-surface"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={authResetCurrentCode.length !== 6 || authResetBusy}
+                      className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {authResetBusy ? "Verifying…" : "Verify & generate new QR"}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+
+              {authResetStep === "show-new-qr" && authResetData ? (
+                <div className="mt-5 space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">
+                    New authenticator QR — scan now
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-[auto,1fr]">
+                    <div className="flex h-40 w-40 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border">
+                      <QRCode seed={authResetData.qr_code_url} />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs text-foreground">
+                        Scan with Google Authenticator, Authy, 1Password, or any TOTP-compatible app. Your new code is already active.
+                      </p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Setup key (if you can&apos;t scan)</p>
+                      <code className="block break-all rounded-md bg-card p-2 font-mono text-[11px] font-semibold text-foreground ring-1 ring-border">
+                        {authResetData.secret}
+                      </code>
+                    </div>
+                  </div>
+                  {authResetData.backup_codes.length > 0 ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-700">
+                        New backup codes — save these now
+                      </p>
+                      <p className="mt-1 text-[11px] text-amber-700">
+                        Your old backup codes are now invalid. Each new code works once.
+                      </p>
+                      <div className="mt-2 grid grid-cols-2 gap-1.5 font-mono text-[11px] text-foreground">
+                        {authResetData.backup_codes.map((c) => (
+                          <code key={c} className="rounded-md bg-card px-2 py-1 ring-1 ring-border">{c}</code>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={closeAuthReset}
+                      className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      Done — I&apos;ve scanned it
+                    </button>
+                  </div>
+                </div>
               ) : null}
 
               {showBackup ? (

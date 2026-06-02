@@ -33,12 +33,12 @@ export type RideDetail = {
   } | null;
   pickup: string;
   destination: string;
-  vehicleType: "Moto Bike" | "Cab Taxi" | "Light Hilux" | "Heavy Fuso";
+  vehicleType: string;
   status: RideStatus;
   startedAt: string;
   eta: string | null;
   fare: number;
-  paymentMethod: "MTN MoMo" | "Airtel Money" | "Cash";
+  paymentMethod: string;
   district: string;
   timeline: TimelineEvent[];
   negotiation: NegotiationOffer[];

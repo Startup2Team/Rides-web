@@ -7,34 +7,73 @@ import {
   type NegotiationDetail,
   type NegotiationStatus,
 } from "./negotiation-modal";
-import { getNegotiations, type Negotiation as ApiNegotiation } from "@/lib/api";
+import {
+  getNegotiations,
+  getNegotiation,
+  type Negotiation as ApiNegotiation,
+  type RideDetail as ApiRideDetail,
+} from "@/lib/api";
+
+const TRANSPORT_DISPLAY: Record<string, string> = {
+  MOTO_BIKE: "Moto Bike", CAB_TAXI: "Cab Taxi",
+  LIGHT_HILUX: "Light Hilux", HEAVY_FUSO: "Heavy Fuso", TUK_TUK: "Tuk Tuk",
+};
+function toVehicleLabel(code: string): string {
+  return TRANSPORT_DISPLAY[code] ?? code;
+}
 
 function mapNegStatus(s: string): NegotiationStatus {
-  if (s === "AGREED" || s === "COMPLETED") return "Agreed";
-  if (s === "FAILED" || s === "EXPIRED") return "Failed";
-  if (s === "DISPUTED") return "Disputed";
+  if (s === "Agreed" || s === "COMPLETED") return "Agreed";
+  if (s === "Failed" || s === "CANCELLED") return "Failed";
+  if (s === "Disputed") return "Disputed";
   return "In progress";
 }
 
 function mapApiNegotiation(n: ApiNegotiation): NegotiationDetail {
+  const custName = n.customer?.name ?? n.customer?.phone ?? "Unknown";
+  const driverName = n.driver?.name ?? null;
   return {
     id: n.id,
-    customer: { name: n.customer_name, phone: "", rating: 0 },
-    driver: n.driver_name
-      ? { name: n.driver_name, phone: "", vehicleType: "Cab Taxi", plate: "—", rating: 0 }
+    customer: { name: custName, phone: n.customer?.phone ?? "", rating: 0 },
+    driver: driverName
+      ? {
+          name: driverName,
+          phone: n.driver?.phone ?? "",
+          vehicleType: toVehicleLabel(n.transport_type),
+          plate: n.driver?.plate ?? "—",
+          rating: 0,
+        }
       : null,
-    pickup: n.pickup_location,
-    destination: "—",
-    vehicleType: "Cab Taxi",
-    initial: n.initial_offer,
-    final: n.final_price ?? null,
-    rounds: 0,
+    pickup: n.pickup_address,
+    destination: n.destination_address,
+    vehicleType: toVehicleLabel(n.transport_type),
+    initial: n.initial_fare ?? 0,
+    final: n.agreed_fare ?? null,
+    rounds: n.rounds,
     status: mapNegStatus(n.status),
-    startedAt: new Date(n.created_at).toLocaleString(),
+    startedAt: new Date(n.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     duration: "—",
-    paymentMethod: "MTN MoMo",
+    paymentMethod: "Cash",
     offers: [],
   };
+}
+
+function mergeDetail(base: NegotiationDetail, detail: ApiRideDetail): NegotiationDetail {
+  const offers = (detail.negotiation_rounds ?? []).map((r, i) => ({
+    round: r.round ?? i + 1,
+    from: (r.proposed_by === "DRIVER" ? "driver" : "customer") as "customer" | "driver",
+    amount: r.amount,
+    time: new Date(r.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  }));
+
+  let duration = "—";
+  if (detail.completed_at) {
+    const ms = new Date(detail.completed_at).getTime() - new Date(detail.created_at).getTime();
+    const mins = Math.round(ms / 60000);
+    duration = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  }
+
+  return { ...base, offers, rounds: offers.length, duration };
 }
 
 type Negotiation = NegotiationDetail;
@@ -393,12 +432,6 @@ function MiniBarChart({ data }: { data: { label: string; value: number }[] }) {
 
 export function NegotiationsConsole() {
   const [negotiations, setNegotiations] = useState<Negotiation[]>([]);
-
-  useEffect(() => {
-    getNegotiations({ limit: "100", offset: "0" })
-      .then((res) => setNegotiations((res.negotiations ?? []).map(mapApiNegotiation)))
-      .catch(() => null);
-  }, []);
   const [tab, setTab] = useState<Tab["id"]>("all");
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("id");
@@ -407,6 +440,23 @@ export function NegotiationsConsole() {
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  useEffect(() => {
+    getNegotiations({ limit: "100", offset: "0" })
+      .then((res) => setNegotiations((res.negotiations ?? []).map(mapApiNegotiation)))
+      .catch(() => null);
+  }, []);
+
+  const openNegotiation = (id: string) => {
+    setViewingId(id);
+    getNegotiation(id)
+      .then((detail) => {
+        setNegotiations((prev) =>
+          prev.map((n) => (n.id === id ? mergeDetail(n, detail) : n))
+        );
+      })
+      .catch(() => null);
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -498,12 +548,13 @@ export function NegotiationsConsole() {
 
   const byVehicle = useMemo(() => {
     const groups: Record<string, number> = {
-      "Moto Bike": 0,
-      "Cab Taxi": 0,
-      "Light Hilux": 0,
-      "Heavy Fuso": 0,
+      "Moto Bike": 0, "Cab Taxi": 0, "Light Hilux": 0, "Heavy Fuso": 0, "Tuk Tuk": 0,
     };
-    for (const n of negotiations) groups[n.vehicleType]++;
+    for (const n of negotiations) {
+      const label = n.vehicleType;
+      if (label in groups) groups[label]++;
+      else groups["Cab Taxi"]++;
+    }
     return [
       { label: "Moto", value: groups["Moto Bike"] },
       { label: "Cab", value: groups["Cab Taxi"] },
@@ -645,7 +696,7 @@ export function NegotiationsConsole() {
                   <NegotiationCard
                     key={n.id}
                     negotiation={n}
-                    onOpen={() => setViewingId(n.id)}
+                    onOpen={() => openNegotiation(n.id)}
                   />
                 ))}
               </div>
@@ -721,7 +772,7 @@ export function NegotiationsConsole() {
                     <tr
                       key={n.id}
                       className="cursor-pointer hover:bg-surface/50"
-                      onClick={() => setViewingId(n.id)}
+                      onClick={() => openNegotiation(n.id)}
                     >
                       <td className="px-4 py-3 font-mono text-xs font-semibold text-foreground">
                         {n.id}
@@ -813,7 +864,7 @@ export function NegotiationsConsole() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setViewingId(n.id);
+                            openNegotiation(n.id);
                           }}
                           className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                         >

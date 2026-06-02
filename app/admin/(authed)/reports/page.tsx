@@ -1,17 +1,11 @@
-import { AdminPageHeader, StatCard } from "../_components";
+import { AdminPageHeader } from "../_components";
+import { ReportsStatsCards } from "./reports-stats";
 import { ReportsConsole } from "./reports-console";
 
 export const metadata = {
   title: "Admin · Reports",
   robots: { index: false, follow: false },
 };
-
-const stats = [
-  { label: "Generated This Month", value: "284", hint: "+18 vs last month" },
-  { label: "Scheduled", value: "4", hint: "running automatically" },
-  { label: "Exported (7d)", value: "47", hint: "PDF · CSV · Excel" },
-  { label: "Avg Generation Time", value: "8s", hint: "across templates" },
-];
 
 export default function AdminReportsPage() {
   return (
@@ -22,11 +16,7 @@ export default function AdminReportsPage() {
         subtitle="Generate, schedule, and download operational reports across every part of the platform."
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {stats.map((s) => (
-          <StatCard key={s.label} {...s} />
-        ))}
-      </div>
+      <ReportsStatsCards />
 
       <ReportsConsole />
     </div>
