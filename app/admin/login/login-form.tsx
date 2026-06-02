@@ -305,10 +305,15 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         body: JSON.stringify({ challenge_token: challengeToken, totp_code: totpDigits }),
       });
 
-      const j = (await r.json()) as { error?: { message?: string } };
+      const j = (await r.json()) as { error?: { code?: string; message?: string } };
 
       if (!r.ok) {
-        setError(j.error?.message ?? "Verification failed.");
+        const msg = j.error?.message ?? "Verification failed.";
+        if (isSessionExpiredError(msg, j.error?.code)) {
+          setError("Your sign-in session expired. Go back and sign in again.");
+        } else {
+          setError(msg);
+        }
         return;
       }
 
@@ -344,8 +349,21 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
     setRescanKey((k) => k + 1);
   }
 
+  function isSessionExpiredError(message: string, code?: string) {
+    const lower = message.toLowerCase();
+    return (
+      code === "TOKEN_EXPIRED" ||
+      code === "INVALID_PRE_AUTH_TOKEN" ||
+      lower.includes("expired") ||
+      lower.includes("pre-auth")
+    );
+  }
+
   async function handleRescanVerify() {
-    if (!challengeToken) return;
+    if (!challengeToken) {
+      setError("Session expired — go back and sign in again.");
+      return;
+    }
     setError(null);
     setRescanBusy(true);
     try {
@@ -356,13 +374,22 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
       });
       const j = (await r.json()) as {
         data?: { secret?: string; qr_code_url?: string };
-        error?: { message?: string };
+        error?: { code?: string; message?: string };
       };
       if (!r.ok) {
-        setError(j.error?.message ?? "Could not reset authenticator.");
+        const msg = j.error?.message ?? "Could not reset authenticator.";
+        if (isSessionExpiredError(msg, j.error?.code)) {
+          setError("Your sign-in session expired. Click “Back to sign in”, log in again, then use “Scan QR code again”.");
+        } else {
+          setError(msg);
+        }
         return;
       }
-      setRescanQrData({ secret: j.data?.secret ?? "", qr_code_url: j.data?.qr_code_url ?? "" });
+      if (!j.data?.qr_code_url) {
+        setError("Server did not return a QR code. Try again or sign in again.");
+        return;
+      }
+      setRescanQrData({ secret: j.data?.secret ?? "", qr_code_url: j.data.qr_code_url });
       setCode(["", "", "", "", "", ""]);
     } catch {
       setError("Network error during authenticator reset.");
@@ -605,15 +632,24 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
           </div>
         </div>
       ) : (
-        <div className="text-center">
+        <div className="space-y-2 text-center">
           <button
             type="button"
             onClick={() => void handleRescanVerify()}
-            disabled={rescanBusy}
-            className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed"
+            disabled={rescanBusy || isSessionExpiredError(error ?? "", undefined)}
+            className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
             {rescanBusy ? "Generating QR…" : "New device? Scan QR code again"}
           </button>
+          {error && isSessionExpiredError(error) ? (
+            <p className="text-[10px] text-muted-foreground">
+              Session expired — use{" "}
+              <button type="button" onClick={() => resetToCredentials()} className="font-semibold text-primary hover:underline">
+                Back to sign in
+              </button>{" "}
+              first.
+            </p>
+          ) : null}
         </div>
       )}
 

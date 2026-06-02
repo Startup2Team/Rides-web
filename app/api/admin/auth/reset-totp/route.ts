@@ -3,8 +3,7 @@ import { getBackendOrigin } from "@/lib/admin-backend-url";
 
 // POST /api/admin/auth/reset-totp
 // Used during the login flow (totp_verify step) to re-enroll an authenticator.
-// challenge_token IS the pre-auth access_token (Bearer) for this admin.
-// Calls POST /api/v1/admin/auth/totp/reset on the backend.
+// challenge_token IS the pre_auth_token from login — sent in the body, not as a session JWT.
 export async function POST(request: Request) {
   let challenge_token = "";
   let totp_code = "";
@@ -23,13 +22,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const res = await fetch(`${getBackendOrigin()}/api/v1/admin/auth/totp/reset`, {
+  const res = await fetch(`${getBackendOrigin()}/api/v1/admin/auth/totp/reset-login`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${challenge_token}`,
-    },
-    body: JSON.stringify({ code: totp_code }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pre_auth_token: challenge_token, code: totp_code }),
     cache: "no-store",
   });
 
@@ -41,8 +37,12 @@ export async function POST(request: Request) {
   }
 
   if (!res.ok) {
+    const fallback =
+      envelope.error?.code === "TOKEN_EXPIRED" || envelope.error?.code === "INVALID_PRE_AUTH_TOKEN"
+        ? { code: envelope.error.code, message: "Sign-in session expired. Go back and sign in again." }
+        : { code: "UNAUTHORIZED", message: "Invalid TOTP code" };
     return NextResponse.json(
-      { error: envelope.error ?? { code: "UNAUTHORIZED", message: "Invalid TOTP code" } },
+      { error: envelope.error ?? fallback },
       { status: res.status || 400 },
     );
   }
