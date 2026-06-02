@@ -9,16 +9,19 @@ import {
 } from "./customer-modal";
 import {
   getCustomers,
+  getCustomer,
   suspendCustomer,
   reinstateCustomer,
-  banCustomer,
   type Customer as ApiCustomer,
+  type CustomerDetail,
+  type CustomerTrip as ApiTrip,
 } from "@/lib/api";
+import type { CustomerTrip } from "./customer-modal";
 
 function mapApiCustomer(c: ApiCustomer): Customer {
   return {
     id: c.id,
-    name: c.full_name,
+    name: c.full_name ?? c.phone,
     email: c.email ?? "",
     phone: c.phone,
     location: "",
@@ -26,21 +29,44 @@ function mapApiCustomer(c: ApiCustomer): Customer {
     trips: c.total_rides,
     spend: c.total_spend ?? 0,
     avgFare: c.total_rides > 0 ? Math.round((c.total_spend ?? 0) / c.total_rides) : 0,
-    lastTrip: c.last_active_at
-      ? new Date(c.last_active_at).toLocaleDateString()
+    lastTrip: c.last_seen_at
+      ? new Date(c.last_seen_at).toLocaleDateString()
       : "—",
-    rating: 0,
+    rating: c.rating ?? 0,
     preferredVehicle: "",
-    status: mapCustomerStatus(c.role_state, c.is_suspended),
+    status: mapCustomerStatus(c.is_suspended),
     recentTrips: [],
     notes: c.notes,
   };
 }
 
-function mapCustomerStatus(roleState: string, isSuspended: boolean): CustomerStatus {
+function mapApiTrip(t: ApiTrip): CustomerTrip {
+  return {
+    id: t.id,
+    date: new Date(t.created_at).toLocaleDateString(),
+    from: t.pickup_address,
+    to: t.destination_address,
+    vehicle: t.transport_type.replace(/_/g, " "),
+    fare: t.agreed_fare ?? 0,
+    status: t.status === "COMPLETED" ? "Completed" : "Cancelled",
+  };
+}
+
+function mapCustomerStatus(isSuspended: boolean): CustomerStatus {
   if (isSuspended) return "Suspended";
-  if (roleState === "CUSTOMER_ONLY") return "Active";
   return "Active";
+}
+
+function mergeDetail(base: Customer, detail: CustomerDetail): Customer {
+  return {
+    ...base,
+    email: detail.email ?? base.email,
+    rating: detail.rating ?? base.rating,
+    lastTrip: detail.last_seen_at
+      ? new Date(detail.last_seen_at).toLocaleDateString()
+      : base.lastTrip,
+    recentTrips: (detail.recent_trips ?? []).map(mapApiTrip),
+  };
 }
 
 type Customer = CustomerProfile;
@@ -402,6 +428,17 @@ export function CustomersTable() {
       .finally(() => setLoading(false));
   }, []);
 
+  const openProfile = (id: string) => {
+    setViewingId(id);
+    getCustomer(id)
+      .then((detail) => {
+        setCustomers((prev) =>
+          prev.map((c) => (c.id === id ? mergeDetail(c, detail) : c))
+        );
+      })
+      .catch(() => null);
+  };
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 2500);
@@ -485,7 +522,7 @@ export function CustomersTable() {
       open={openMenuId === c.id}
       onToggle={() => setOpenMenuId(openMenuId === c.id ? null : c.id)}
       onClose={() => setOpenMenuId(null)}
-      onView={() => setViewingId(c.id)}
+      onView={() => openProfile(c.id)}
       onMessage={() => setToast(`Message sent to ${c.name}`)}
       onFlag={() => {
         updateStatus(c.id, "Flagged");
@@ -666,7 +703,7 @@ export function CustomersTable() {
                       <div className="inline-flex items-center justify-end gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setViewingId(c.id)}
+                          onClick={() => openProfile(c.id)}
                           className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                         >
                           View
@@ -692,7 +729,7 @@ export function CustomersTable() {
                 <CustomerCard
                   key={c.id}
                   customer={c}
-                  onView={() => setViewingId(c.id)}
+                  onView={() => openProfile(c.id)}
                   menu={renderMenu(c)}
                 />
               ))}

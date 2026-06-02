@@ -434,17 +434,32 @@ export const reinstateDriver = (id: string) =>
 
 export type Customer = {
   id: string;
-  full_name: string;
+  full_name: string | null;
   phone: string;
-  email?: string;
+  email?: string | null;
   role_state: string;
   is_suspended: boolean;
   suspension_until?: string | null;
   total_rides: number;
   total_spend?: number;
   created_at: string;
-  last_active_at?: string;
+  last_seen_at?: string | null;
+  rating?: number;
   notes?: string;
+};
+
+export type CustomerTrip = {
+  id: string;
+  status: string;
+  transport_type: string;
+  agreed_fare: number | null;
+  pickup_address: string;
+  destination_address: string;
+  created_at: string;
+};
+
+export type CustomerDetail = Customer & {
+  recent_trips: CustomerTrip[];
 };
 
 export type CustomersResponse = {
@@ -454,12 +469,22 @@ export type CustomersResponse = {
   offset: number;
 };
 
+export type CustomerOverview = {
+  total: number;
+  active: number;
+  suspended: number;
+  active_this_week: number;
+};
+
 export const getCustomers = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
   return request<CustomersResponse>(`/admin/customers${qs ? `?${qs}` : ""}`);
 };
 
-export const getCustomer = (id: string) => request<Customer>(`/admin/customers/${id}`);
+export const getCustomersOverview = () =>
+  request<CustomerOverview>("/admin/customers/overview");
+
+export const getCustomer = (id: string) => request<CustomerDetail>(`/admin/customers/${id}`);
 
 export const banCustomer = (id: string, reason: string) =>
   request<void>(`/admin/customers/${id}/ban`, { method: "PATCH", body: { reason } });
