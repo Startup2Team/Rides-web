@@ -319,10 +319,13 @@ export const getDriverPerformance = () =>
 export const getNegotiationStats = () =>
   request<Record<string, unknown>>("/admin/analytics/negotiation/stats");
 
-export const getHeatmap = () => request<Record<string, unknown>>("/admin/analytics/heatmap");
+export type HeatPoint = { lat: number; lng: number; count: number };
+export type HeatZone = { lat: number; lng: number; demand: number; trips: number; avg_fare: number };
+export type ActivityCell = { day: number; hour: number; count: number };
 
-export const getHeatmapZones = () =>
-  request<Record<string, unknown>>("/admin/analytics/heatmap/zones");
+export const getHeatmap = () => request<HeatPoint[]>("/admin/analytics/heatmap");
+export const getHeatmapZones = () => request<HeatZone[]>("/admin/analytics/heatmap/zones");
+export const getActivityHeatmap = () => request<ActivityCell[]>("/admin/analytics/activity-heatmap");
 
 export const getCancellations = () =>
   request<Record<string, unknown>>("/admin/analytics/cancellations");
