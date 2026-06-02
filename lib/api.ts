@@ -582,12 +582,17 @@ export const interveneRide = (id: string, action: string, reason: string) =>
 
 export type Negotiation = {
   id: string;
+  ride_id: string;
   status: string;
-  customer_name: string;
-  driver_name?: string;
-  initial_offer: number;
-  final_price?: number;
-  pickup_location: string;
+  transport_type: string;
+  pickup_address: string;
+  destination_address: string;
+  customer: { phone: string; name: string | null };
+  driver: { phone: string | null; name: string | null; vehicle_type: string | null; plate: string | null };
+  initial_fare: number | null;
+  agreed_fare: number | null;
+  uplift: number;
+  rounds: number;
   created_at: string;
 };
 
@@ -596,12 +601,22 @@ export type NegotiationsResponse = {
   total: number;
 };
 
+export type NegotiationsStats = {
+  total_today: number;
+  agreed_today: number;
+  failed_today: number;
+  avg_rounds: number;
+};
+
 export const getNegotiations = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
   return request<NegotiationsResponse>(`/admin/negotiations${qs ? `?${qs}` : ""}`);
 };
 
-export const getNegotiation = (id: string) => request<Negotiation>(`/admin/negotiations/${id}`);
+export const getNegotiationsStats = () =>
+  request<NegotiationsStats>("/admin/negotiations/stats");
+
+export const getNegotiation = (id: string) => request<RideDetail>(`/admin/negotiations/${id}`);
 
 // ── Revenue ───────────────────────────────────────────────────────────────
 
