@@ -717,20 +717,46 @@ export const getDeviceCollisions = () =>
 
 // ── Incidents ─────────────────────────────────────────────────────────────
 
+export type IncidentEvent = {
+  id: string;
+  incident_id: string;
+  event_text: string;
+  kind: string;
+  created_at: string;
+};
+
 export type Incident = {
   id: string;
-  title: string;
-  description: string;
-  status: string;
+  type: string;
   severity: string;
-  created_at: string;
+  status: string;
+  description: string | null;
+  ride_id: string | null;
+  reporter_user_id: string | null;
+  reporter_name: string | null;
+  reporter_phone: string | null;
+  reporter_role: string | null;
+  location_text: string | null;
+  district: string | null;
+  notes: string | null;
+  reported_at: string;
   updated_at: string;
+  timeline?: IncidentEvent[];
 };
 
 export type IncidentsResponse = {
   incidents: Incident[];
   total: number;
 };
+
+export type IncidentsStats = {
+  open: number;
+  acknowledged: number;
+  escalated: number;
+  resolved_7d: number;
+};
+
+export const getIncidentsStats = () => request<IncidentsStats>("/admin/incidents/stats");
 
 export const getIncidents = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
@@ -739,7 +765,7 @@ export const getIncidents = (params: Record<string, string> = {}) => {
 
 export const getIncident = (id: string) => request<Incident>(`/admin/incidents/${id}`);
 
-export const createIncident = (data: { title: string; description: string; severity: string }) =>
+export const createIncident = (data: { type: string; severity: string; description: string; reporter_role?: string; location_text?: string; district?: string }) =>
   request<Incident>("/admin/incidents", { method: "POST", body: data });
 
 export const acknowledgeIncident = (id: string) =>
@@ -756,21 +782,44 @@ export const addIncidentMessage = (id: string, message: string) =>
 
 // ── Support Tickets ───────────────────────────────────────────────────────
 
+export type TicketMessage = {
+  id: string;
+  ticket_id: string;
+  from_role: string;
+  author: string;
+  body: string;
+  created_at: string;
+};
+
 export type Ticket = {
   id: string;
   subject: string;
-  status: string;
+  type: string;
   priority: string;
-  created_by: string;
-  assigned_to?: string;
+  status: string;
+  from_user_id: string | null;
+  from_name: string | null;
+  from_phone: string | null;
+  from_role: string | null;
+  ride_id: string | null;
+  assigned_to: string | null;
   created_at: string;
   updated_at: string;
+  messages?: TicketMessage[];
 };
 
 export type TicketsResponse = {
   tickets: Ticket[];
   total: number;
 };
+
+export type TicketsStats = {
+  open: number;
+  pending: number;
+  resolved_today: number;
+};
+
+export const getTicketsStats = () => request<TicketsStats>("/admin/support/tickets/stats");
 
 export const getTickets = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
@@ -780,7 +829,7 @@ export const getTickets = (params: Record<string, string> = {}) => {
 export const getTicket = (id: string) => request<Ticket>(`/admin/support/tickets/${id}`);
 
 export const replyToTicket = (id: string, message: string) =>
-  request<void>(`/admin/support/tickets/${id}/reply`, { method: "POST", body: { message } });
+  request<void>(`/admin/support/tickets/${id}/reply`, { method: "POST", body: { body: message, from_role: "ADMIN", author: "Admin" } });
 
 export const assignTicket = (id: string, adminId: string) =>
   request<void>(`/admin/support/tickets/${id}/assign`, { method: "POST", body: { admin_id: adminId } });
@@ -792,17 +841,30 @@ export const resolveTicket = (id: string) =>
 
 export type InboxMessage = {
   id: string;
-  subject: string;
-  from: string;
+  from_name: string;
+  from_email: string;
+  category: string;
   status: string;
-  is_spam: boolean;
+  subject: string;
+  body: string;
+  reply_body: string | null;
+  replied_at: string | null;
   created_at: string;
+  updated_at: string;
 };
 
 export type InboxResponse = {
   messages: InboxMessage[];
   total: number;
 };
+
+export type InboxStats = {
+  new: number;
+  replied_7d: number;
+  spam: number;
+};
+
+export const getInboxStats = () => request<InboxStats>("/admin/inbox/stats");
 
 export const getInbox = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
@@ -812,7 +874,7 @@ export const getInbox = (params: Record<string, string> = {}) => {
 export const getMessage = (id: string) => request<InboxMessage>(`/admin/inbox/${id}`);
 
 export const replyToMessage = (id: string, message: string) =>
-  request<void>(`/admin/inbox/${id}/reply`, { method: "POST", body: { message } });
+  request<void>(`/admin/inbox/${id}/reply`, { method: "POST", body: { reply_body: message } });
 
 export const archiveMessage = (id: string) =>
   request<void>(`/admin/inbox/${id}/archive`, { method: "POST" });

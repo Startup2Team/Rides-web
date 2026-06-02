@@ -13,6 +13,7 @@ import {
 } from "./incident-modal";
 import {
   getIncidents,
+  getIncident,
   acknowledgeIncident,
   escalateIncident,
   resolveIncident,
@@ -36,16 +37,25 @@ function mapIncidentStatus(s: string): IncidentStatus {
 function mapApiIncident(i: ApiIncident): Incident {
   return {
     id: i.id,
-    type: "Safety check" as IncidentType,
+    type: (i.type ?? "Safety check") as IncidentType,
     severity: mapIncidentSeverity(i.severity),
     status: mapIncidentStatus(i.status),
-    reportedAt: new Date(i.created_at).toLocaleString(),
-    description: i.description,
-    reporter: { name: "System", phone: "", role: "System" },
+    reportedAt: new Date(i.reported_at).toLocaleString(),
+    description: i.description ?? "—",
+    rideId: i.ride_id ?? undefined,
+    reporter: {
+      name: i.reporter_name ?? "Unknown",
+      phone: i.reporter_phone ?? "",
+      role: i.reporter_role ?? "System",
+    },
     involves: [],
-    location: "—",
-    district: "—",
-    timeline: [],
+    location: i.location_text ?? "—",
+    district: i.district ?? "—",
+    timeline: (i.timeline ?? []).map((e) => ({
+      time: new Date(e.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      event: e.event_text,
+      kind: (e.kind as "system" | "ops" | "alert") ?? "system",
+    })),
   };
 }
 
@@ -83,10 +93,21 @@ export function IncidentsConsole() {
   const [items, setItems] = useState<Incident[]>([]);
 
   useEffect(() => {
-    getIncidents()
-      .then((res) => setItems((res.incidents ?? []).map(mapApiIncident)))
+    getIncidents({ limit: "100", offset: "0" })
+      .then((res) => setItems((Array.isArray(res.incidents) ? res.incidents : []).map(mapApiIncident)))
       .catch(() => null);
   }, []);
+
+  const openIncident = (id: string) => {
+    setViewingId(id);
+    getIncident(id)
+      .then((detail) =>
+        setItems((prev) =>
+          prev.map((i) => (i.id === id ? mapApiIncident(detail) : i))
+        )
+      )
+      .catch(() => null);
+  };
   const [tab, setTab] = useState<"all" | IncidentStatus>("all");
   const [severity, setSeverity] = useState<"all" | IncidentSeverity>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | IncidentType>("all");
@@ -170,7 +191,7 @@ export function IncidentsConsole() {
               <button
                 key={i.id}
                 type="button"
-                onClick={() => setViewingId(i.id)}
+                onClick={() => openIncident(i.id)}
                 className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50/60 p-3 text-left transition-colors hover:bg-red-50"
               >
                 <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700 ring-1 ring-inset ring-red-200">
@@ -329,7 +350,7 @@ export function IncidentsConsole() {
                 paginated.map((i) => (
                   <tr
                     key={i.id}
-                    onClick={() => setViewingId(i.id)}
+                    onClick={() => openIncident(i.id)}
                     className="cursor-pointer hover:bg-surface/50"
                   >
                     <td className="px-4 py-3">
@@ -374,7 +395,7 @@ export function IncidentsConsole() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setViewingId(i.id);
+                          openIncident(i.id);
                         }}
                         className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                       >

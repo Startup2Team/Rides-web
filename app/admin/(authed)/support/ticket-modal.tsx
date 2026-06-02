@@ -29,7 +29,7 @@ export type Ticket = {
   priority: TicketPriority;
   status: TicketStatus;
   fromName: string;
-  fromRole: "Customer" | "Driver";
+  fromRole: string;
   fromEmail: string;
   fromPhone: string;
   rideId?: string;
