@@ -11,11 +11,11 @@ export type Transaction = {
   driver: { name: string; phone: string; vehicleType: string; plate: string };
   pickup: string;
   destination: string;
-  vehicleType: "Moto Bike" | "Cab Taxi" | "Light Hilux" | "Heavy Fuso";
+  vehicleType: string;
   fare: number;
   commission: number;
   payout: number;
-  paymentMethod: "MTN MoMo" | "Airtel Money" | "Cash";
+  paymentMethod: string;
   status: TransactionStatus;
   completedAt: string;
   duration: string;

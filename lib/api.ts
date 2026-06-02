@@ -304,18 +304,59 @@ export const getAnalyticsOverviewData = () => request<AnalyticsOverview>("/admin
 
 // ── Analytics ─────────────────────────────────────────────────────────────
 
-export const getAnalyticsOverview = () => request<Record<string, unknown>>("/admin/analytics/overview");
+export type AnalyticsOverviewFull = {
+  active_drivers: number;
+  active_rides: number;
+  total_rides_today: number;
+  total_revenue_today: number;
+};
 
-export const getRidesDaily = () => request<Record<string, unknown>>("/admin/analytics/rides/daily");
+export type DailyRidePoint = {
+  day: string;
+  total: number;
+  completed: number;
+  cancelled: number;
+};
 
-export const getRidesWeekly = () => request<Record<string, unknown>>("/admin/analytics/rides/weekly");
+export type FunnelData = {
+  booked: number;
+  matched: number;
+  confirmed: number;
+  completed: number;
+  cancelled: number;
+};
 
+export type VehicleMixItem = {
+  transport_type: string;
+  rides: number;
+  revenue: number;
+};
+
+export type DriverPerf = {
+  driver_id: string;
+  phone: string;
+  full_name: string | null;
+  transport_type: string;
+  total_rides: number;
+  acceptance_rate: number;
+  priority_tier: number;
+  earnings_30d: number;
+};
+
+export type SatisfactionData = {
+  completion_rate_pct: number;
+  total_rides_30d: number;
+  completed_rides_30d: number;
+};
+
+export const getAnalyticsOverview = () => request<AnalyticsOverviewFull>("/admin/analytics/overview");
+export const getRidesDaily = (days = 30) =>
+  request<DailyRidePoint[]>(`/admin/analytics/rides/daily?days=${days}`);
+export const getRidesWeekly = () => request<DailyRidePoint[]>("/admin/analytics/rides/weekly");
 export const getRevenueBreakdown = () =>
   request<Record<string, unknown>>("/admin/analytics/revenue/breakdown");
-
 export const getDriverPerformance = () =>
-  request<Record<string, unknown>>("/admin/analytics/drivers/performance");
-
+  request<DriverPerf[]>("/admin/analytics/drivers/performance");
 export const getNegotiationStats = () =>
   request<Record<string, unknown>>("/admin/analytics/negotiation/stats");
 
@@ -326,17 +367,14 @@ export type ActivityCell = { day: number; hour: number; count: number };
 export const getHeatmap = () => request<HeatPoint[]>("/admin/analytics/heatmap");
 export const getHeatmapZones = () => request<HeatZone[]>("/admin/analytics/heatmap/zones");
 export const getActivityHeatmap = () => request<ActivityCell[]>("/admin/analytics/activity-heatmap");
-
 export const getCancellations = () =>
   request<Record<string, unknown>>("/admin/analytics/cancellations");
-
-export const getFunnel = () => request<Record<string, unknown>>("/admin/analytics/funnel");
-
-export const getVehicleMix = () =>
-  request<Record<string, unknown>>("/admin/analytics/vehicle-mix");
-
+export const getFunnel = (days = 30) =>
+  request<FunnelData>(`/admin/analytics/funnel?days=${days}`);
+export const getVehicleMix = (days = 30) =>
+  request<VehicleMixItem[]>(`/admin/analytics/vehicle-mix?days=${days}`);
 export const getSatisfaction = () =>
-  request<Record<string, unknown>>("/admin/analytics/satisfaction");
+  request<SatisfactionData>("/admin/analytics/satisfaction");
 
 // ── Drivers ───────────────────────────────────────────────────────────────
 
@@ -633,14 +671,16 @@ export type RevenueOverview = {
 
 export type Transaction = {
   id: string;
-  ride_id: string;
-  customer_name: string;
-  driver_name: string;
-  amount: number;
-  platform_fee: number;
-  driver_payout: number;
+  transport_type: string;
+  fare: number | null;
+  commission: number;
+  payout: number;
   status: string;
-  created_at: string;
+  pickup_address: string;
+  destination_address: string;
+  customer: { phone: string; name: string | null };
+  driver: { phone: string | null; name: string | null; plate: string | null; vehicle_type: string };
+  completed_at: string | null;
 };
 
 export type TransactionsResponse = {
@@ -785,24 +825,55 @@ export const deleteMessage = (id: string) =>
 
 // ── Reports ───────────────────────────────────────────────────────────────
 
-export type Report = {
+export type BackendReport = {
   id: string;
-  title: string;
-  type: string;
+  template: string;
   status: string;
+  format: string;
+  date_range: string;
+  file_size: string | null;
+  file_path: string | null;
+  generated_at: string | null;
+  created_by: string | null;
   created_at: string;
-  download_url?: string;
 };
 
-export type ReportsResponse = {
-  reports: Report[];
-  total: number;
+export type BackendScheduled = {
+  id: string;
+  template: string;
+  format: string;
+  frequency: string;
+  recipients: string[];
+  is_active: boolean;
+  next_run: string | null;
+  created_at: string;
 };
 
-export const getReports = () => request<ReportsResponse>("/admin/reports");
+export type ReportsStats = {
+  total_this_month: number;
+  ready_this_week: number;
+  scheduled: number;
+  pending: number;
+};
 
-export const generateReport = (data: Record<string, unknown>) =>
-  request<Report>("/admin/reports", { method: "POST", body: data });
+export const getReportsStats = () => request<ReportsStats>("/admin/reports/stats");
+
+export const getReports = (params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ reports: BackendReport[]; total: number }>(`/admin/reports${qs ? `?${qs}` : ""}`);
+};
+
+export const getScheduledReports = () =>
+  request<{ scheduled: BackendScheduled[] }>("/admin/reports/scheduled");
+
+export const generateReport = (data: { template: string; format: string; date_range: string; created_by?: string }) =>
+  request<BackendReport>("/admin/reports", { method: "POST", body: data });
+
+export const createScheduledReport = (data: { template: string; format: string; frequency: string; recipients: string[] }) =>
+  request<BackendScheduled>("/admin/reports/scheduled", { method: "POST", body: data });
+
+export const toggleScheduledReport = (id: string) =>
+  request<void>(`/admin/reports/scheduled/${id}/toggle`, { method: "POST" });
 
 export const deleteReport = (id: string) =>
   request<void>(`/admin/reports/${id}`, { method: "DELETE" });
