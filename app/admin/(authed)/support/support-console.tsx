@@ -4,8 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Avatar, Card } from "../_components";
 import {
   getTickets,
+  getTicket,
+  replyToTicket,
   resolveTicket,
   type Ticket as ApiTicket,
+  type TicketMessage as ApiMsg,
 } from "@/lib/api";
 import {
   priorityStyles,
@@ -21,17 +24,24 @@ function mapApiTicket(t: ApiTicket): Ticket {
   return {
     id: t.id,
     subject: t.subject,
-    type: "Other" as TicketType,
+    type: (t.type as TicketType) ?? "Other",
     priority: (t.priority as TicketPriority) ?? "Medium",
     status: (t.status as TicketStatus) ?? "Open",
-    fromName: t.created_by,
-    fromRole: "Customer",
+    fromName: t.from_name ?? t.from_phone ?? "Unknown",
+    fromRole: (t.from_role as string) ?? "Customer",
     fromEmail: "",
-    fromPhone: "",
-    assignedTo: t.assigned_to,
+    fromPhone: t.from_phone ?? "",
+    rideId: t.ride_id ?? undefined,
+    assignedTo: t.assigned_to ?? undefined,
     createdAt: new Date(t.created_at).toLocaleString(),
     lastActivity: new Date(t.updated_at).toLocaleString(),
-    messages: [],
+    messages: (t.messages ?? []).map((m: ApiMsg) => ({
+      id: m.id,
+      from: m.from_role === "ADMIN" ? "agent" as const : "customer" as const,
+      author: m.author,
+      time: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      body: m.body,
+    })),
   };
 }
 
@@ -63,9 +73,18 @@ export function SupportConsole() {
 
   useEffect(() => {
     getTickets({ limit: "100", offset: "0" })
-      .then((res) => setTickets((res.tickets ?? []).map(mapApiTicket)))
+      .then((res) => setTickets((Array.isArray(res.tickets) ? res.tickets : []).map(mapApiTicket)))
       .catch(() => null);
   }, []);
+
+  const openTicket = (id: string) => {
+    setViewingId(id);
+    getTicket(id)
+      .then((detail) =>
+        setTickets((prev) => prev.map((t) => (t.id === id ? mapApiTicket(detail) : t)))
+      )
+      .catch(() => null);
+  };
   const [tab, setTab] = useState<"all" | TicketStatus>("all");
   const [priority, setPriority] = useState<"all" | TicketPriority>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | TicketType>("all");
@@ -219,7 +238,7 @@ export function SupportConsole() {
             paginated.map((t) => (
               <li
                 key={t.id}
-                onClick={() => setViewingId(t.id)}
+                onClick={() => openTicket(t.id)}
                 className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-surface/50"
               >
                 <Avatar name={t.fromName} tone="neutral" />
@@ -256,7 +275,7 @@ export function SupportConsole() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setViewingId(t.id);
+                      openTicket(t.id);
                     }}
                     className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                   >
@@ -315,7 +334,8 @@ export function SupportConsole() {
           setToast(`${id} marked resolved`);
           setViewingId(null);
         }}
-        onReply={(id, body) => {
+        onReply={async (id, body) => {
+          try { await replyToTicket(id, body); } catch { /* ignore */ }
           setTickets((prev) =>
             prev.map((t) =>
               t.id === id
@@ -325,13 +345,7 @@ export function SupportConsole() {
                     status: t.status === "Open" ? "Pending" : t.status,
                     messages: [
                       ...t.messages,
-                      {
-                        id: `m${t.messages.length + 1}`,
-                        from: "agent",
-                        author: "Aiden M.",
-                        time: "Just now",
-                        body,
-                      },
+                      { id: `m${t.messages.length + 1}`, from: "agent" as const, author: "Admin", time: "Just now", body },
                     ],
                   }
                 : t,

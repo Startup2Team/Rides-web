@@ -20,17 +20,21 @@ import {
 } from "@/lib/api";
 
 function mapApiMessage(m: ApiMessage): ContactMessage {
-  const status: MessageStatus = m.is_spam ? "Spam" : m.status === "ARCHIVED" ? "Archived" : m.status === "REPLIED" ? "Replied" : "New";
+  const statusMap: Record<string, MessageStatus> = {
+    NEW: "New", REPLIED: "Replied", ARCHIVED: "Archived", SPAM: "Spam",
+  };
   return {
     id: m.id,
-    name: m.from,
-    email: "",
+    name: m.from_name,
+    email: m.from_email,
     subject: m.subject,
-    category: "General" as MessageCategory,
-    status,
+    category: (m.category as MessageCategory) ?? "General",
+    status: statusMap[m.status] ?? "New",
     receivedAt: new Date(m.created_at).toLocaleString(),
-    body: "",
-    replies: [],
+    body: m.body,
+    replies: m.reply_body
+      ? [{ id: "r1", author: "Admin", time: m.replied_at ? new Date(m.replied_at).toLocaleString() : "—", body: m.reply_body }]
+      : [],
   };
 }
 
@@ -59,7 +63,7 @@ export function InboxConsole() {
 
   useEffect(() => {
     getInbox({ limit: "100", offset: "0" })
-      .then((res) => setMessages((res.messages ?? []).map(mapApiMessage)))
+      .then((res) => setMessages((Array.isArray(res.messages) ? res.messages : []).map(mapApiMessage)))
       .catch(() => null);
   }, []);
   const [tab, setTab] = useState<"all" | MessageStatus>("all");
@@ -75,23 +79,6 @@ export function InboxConsole() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem("rides-contact-submissions");
-      if (!raw) return;
-      const submissions: ContactMessage[] = JSON.parse(raw);
-      if (!Array.isArray(submissions) || submissions.length === 0) return;
-      setMessages((prev) => {
-        const existingIds = new Set(prev.map((m) => m.id));
-        const fresh = submissions.filter((s) => !existingIds.has(s.id));
-        if (fresh.length === 0) return prev;
-        return [...fresh, ...prev];
-      });
-    } catch {
-      // ignore malformed localStorage payloads
-    }
-  }, []);
 
   const counts: Record<"all" | MessageStatus, number> = useMemo(
     () => ({
@@ -309,27 +296,20 @@ export function InboxConsole() {
       <MessageModal
         message={viewing}
         onClose={() => setViewingId(null)}
-        onReply={(id, body) => {
+        onReply={async (id, body) => {
+          try { await replyToMessage(id, body); } catch { /* ignore */ }
           setMessages((prev) =>
             prev.map((m) =>
               m.id === id
                 ? {
                     ...m,
-                    status: "Replied",
-                    replies: [
-                      ...m.replies,
-                      {
-                        id: `r${m.replies.length + 1}`,
-                        author: "Aiden M.",
-                        time: "Just now",
-                        body,
-                      },
-                    ],
+                    status: "Replied" as const,
+                    replies: [...m.replies, { id: `r${m.replies.length + 1}`, author: "Admin", time: "Just now", body }],
                   }
                 : m,
             ),
           );
-          setToast(`Reply sent to ${viewing?.email}`);
+          setToast(`Reply sent to ${viewing?.email || viewing?.name}`);
         }}
         onArchive={async (id) => {
           try { await archiveMessage(id); } catch { /* ignore */ }

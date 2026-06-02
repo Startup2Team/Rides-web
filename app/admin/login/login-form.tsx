@@ -170,11 +170,47 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         );
         const j = (await r.json()) as {
           data?: { otpauth_url?: string; secret?: string };
-          error?: { message?: string };
+          error?: { code?: string; message?: string };
         };
         if (cancelled) return;
         if (!r.ok || !j.data?.otpauth_url) {
-          setLoadProvisioningFailed(j.error?.message ?? "Could not load 2FA setup data.");
+          const alreadyEnabled =
+            j.error?.code === "2FA_ALREADY_ENABLED" ||
+            (j.error?.message ?? "").toLowerCase().includes("already enabled");
+
+          if (alreadyEnabled && challengeToken) {
+            try {
+              const reconcile = await fetch("/api/admin/auth/reconcile-2fa", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ challenge_token: challengeToken }),
+              });
+              const rj = (await reconcile.json()) as {
+                data?: { challenge_token?: string };
+                error?: { message?: string };
+              };
+              if (!cancelled && reconcile.ok && rj.data?.challenge_token) {
+                provisioningFired.current = false;
+                setChallengeToken(rj.data.challenge_token);
+                setOtpauthUrl("");
+                setSetupSecret("");
+                setLoadProvisioningFailed(null);
+                setStep("totp_verify");
+                setError(
+                  "This account already has two-factor authentication. Enter the 6-digit code from your authenticator app.",
+                );
+                return;
+              }
+            } catch {
+              /* fall through to message below */
+            }
+          }
+
+          setLoadProvisioningFailed(
+            alreadyEnabled
+              ? "Two-factor is already enabled. Go back to sign in and enter your authenticator code."
+              : (j.error?.message ?? "Could not load 2FA setup data."),
+          );
           return;
         }
         setOtpauthUrl(j.data.otpauth_url);

@@ -12,10 +12,12 @@ import type { ApiEnvelope } from "@/lib/api-envelope";
 export async function POST(request: Request) {
   let challenge_token = "";
   let totp_code = "";
+  let secret_override = "";
   try {
-    const body = (await request.json()) as { challenge_token?: string; totp_code?: string };
+    const body = (await request.json()) as { challenge_token?: string; totp_code?: string; secret?: string };
     challenge_token = typeof body.challenge_token === "string" ? body.challenge_token.trim() : "";
     totp_code = typeof body.totp_code === "string" ? body.totp_code.replace(/\D/g, "").trim() : "";
+    secret_override = typeof body.secret === "string" ? body.secret.trim() : "";
   } catch {
     return NextResponse.json({ error: { code: "BAD_REQUEST", message: "Invalid JSON body" } }, { status: 400 });
   }
@@ -26,23 +28,28 @@ export async function POST(request: Request) {
 
   const base = getBackendOrigin();
 
-  // Step 1: get the pending TOTP secret for this admin
-  const setupRes = await fetch(`${base}/api/v1/admin/account/2fa/setup`, {
-    headers: { Authorization: `Bearer ${challenge_token}` },
-    cache: "no-store",
-  });
+  // Step 1: get the pending TOTP secret.
+  // If a secret was provided directly (post-reset flow), skip the setup fetch entirely.
+  let secret = secret_override;
 
-  let setupEnvelope: ApiEnvelope<{ secret?: string }> = {};
-  try { setupEnvelope = await setupRes.json(); } catch { setupEnvelope = {}; }
+  if (!secret) {
+    const setupRes = await fetch(`${base}/api/v1/admin/account/2fa/setup`, {
+      headers: { Authorization: `Bearer ${challenge_token}` },
+      cache: "no-store",
+    });
 
-  if (!setupRes.ok || !setupEnvelope.data?.secret) {
-    return NextResponse.json(
-      { error: setupEnvelope.error ?? { code: "SERVER_ERROR", message: "Could not load 2FA setup" } },
-      { status: setupRes.status || 500 },
-    );
+    let setupEnvelope: ApiEnvelope<{ secret?: string }> = {};
+    try { setupEnvelope = await setupRes.json(); } catch { setupEnvelope = {}; }
+
+    if (!setupRes.ok || !setupEnvelope.data?.secret) {
+      return NextResponse.json(
+        { error: setupEnvelope.error ?? { code: "SERVER_ERROR", message: "Could not load 2FA setup" } },
+        { status: setupRes.status || 500 },
+      );
+    }
+
+    secret = setupEnvelope.data.secret;
   }
-
-  const secret = setupEnvelope.data.secret;
 
   // Step 2: enable 2FA with the user-entered TOTP code
   const enableRes = await fetch(`${base}/api/v1/admin/account/2fa/enable`, {
