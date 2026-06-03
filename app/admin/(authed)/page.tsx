@@ -7,6 +7,7 @@ import { RevenueWidget } from "./revenue-widget";
 import { RideTrendWidget, DriverStatusWidget, TopDriversWidget } from "./dashboard-side-widgets";
 import { ActivityFeed, AlertsPanel } from "./dashboard-feed-widgets";
 import { LiveMapWidget } from "./live-map-widget";
+import { RecentMessagesWidget } from "./recent-messages-widget";
 
 export const metadata = {
   title: "Admin · Dashboard",
@@ -357,6 +358,8 @@ export default function AdminDashboardPage() {
           <AlertsPanel />
         </div>
       </div>
+
+      <RecentMessagesWidget />
     </div>
   );
 }

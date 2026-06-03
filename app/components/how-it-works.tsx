@@ -1,32 +1,23 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { CarIcon, FusoIcon, HiluxIcon, MotoIcon, MotoDetailedIcon } from "./vehicle-icons";
 
-const step01Features = [
-  "Multiple vehicle types",
-  "Real-time availability",
-  "Instant route estimation",
-  "Smart matching system",
-];
-
-function CheckIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-3 w-3"
-      aria-hidden
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
+const STEPS = [
+  { id: "step-1", num: "01" },
+  { id: "step-2", num: "02" },
+  { id: "step-3", num: "03" },
+  { id: "step-4", num: "04" },
+  { id: "step-5", num: "05" },
+] as const;
 
 function Step01() {
   return (
-    <div className="flex flex-col items-center gap-10 lg:flex-row lg:justify-center lg:gap-16 xl:gap-24">
+    <div
+      id="step-1"
+      data-step="0"
+      className="flex scroll-mt-[8rem] flex-col items-center gap-10 lg:flex-row lg:justify-center lg:gap-16 xl:gap-24"
+    >
       <div className="relative">
         <div
           aria-hidden
@@ -270,25 +261,13 @@ function Step01() {
           Step 01
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-          Request Your Ride in <span className="text-primary">Seconds</span>
+          Book in <span className="text-primary">seconds.</span>
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Choose your destination, select your preferred transport type, and
-          instantly connect with nearby drivers.
+          Open the app, pick a moto, cab, hilux, or fuso, tap a destination.
+          Nearby drivers see your request instantly.
         </p>
 
-        <ul className="mt-8 space-y-3">
-          {step01Features.map((f) => (
-            <li key={f} className="flex items-center gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm shadow-primary/30">
-                <CheckIcon />
-              </span>
-              <span className="text-base font-medium text-foreground/80">
-                {f}
-              </span>
-            </li>
-          ))}
-        </ul>
       </div>
     </div>
   );
@@ -296,7 +275,11 @@ function Step01() {
 
 function Step02() {
   return (
-    <div className="flex flex-col items-center gap-10 lg:flex-row-reverse lg:justify-center lg:gap-16 xl:gap-24">
+    <div
+      id="step-2"
+      data-step="1"
+      className="flex scroll-mt-[8rem] flex-col items-center gap-10 lg:flex-row-reverse lg:justify-center lg:gap-16 xl:gap-24"
+    >
       <div className="relative">
         <div
           aria-hidden
@@ -412,65 +395,25 @@ function Step02() {
           Step 02
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-          Smart{" "}
-          <span className="text-primary">Driver Allocation</span>
+          First to accept, <span className="text-primary">yours.</span>
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          The moment you confirm a ride, your request goes out to every nearby
-          driver at once. The first to accept is yours — and you watch them
-          approach in real time, every second of the way.
+          Your request goes out to every nearby driver at once. The first one
+          to accept gets the trip — and you watch them head your way on the
+          map.
         </p>
       </div>
     </div>
   );
 }
 
-const step03Showcase = [
-  {
-    label: "Offer price",
-    description: "Start the negotiation with a fair amount",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
-        <line x1="12" y1="2" x2="12" y2="22" />
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-      </svg>
-    ),
-  },
-  {
-    label: "Counter offer",
-    description: "Reply with your own price suggestion",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
-        <polyline points="17 1 21 5 17 9" />
-        <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-        <polyline points="7 23 3 19 7 15" />
-        <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-      </svg>
-    ),
-  },
-  {
-    label: "Final agreement",
-    description: "Lock in the agreed fare instantly",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-    ),
-  },
-  {
-    label: "Secure masked call",
-    description: "Talk without sharing phone numbers",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
-        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-      </svg>
-    ),
-  },
-];
-
 function Step03() {
   return (
-    <div className="flex flex-col items-center gap-10 lg:flex-row lg:justify-center lg:gap-16 xl:gap-24">
+    <div
+      id="step-3"
+      data-step="2"
+      className="flex scroll-mt-[8rem] flex-col items-center gap-10 lg:flex-row lg:justify-center lg:gap-16 xl:gap-24"
+    >
       <div className="relative">
         <div
           aria-hidden
@@ -623,34 +566,12 @@ function Step03() {
           Step 03
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-          Negotiate Fares{" "}
-          <span className="text-primary">Transparently</span>
+          Agree on the <span className="text-primary">fare.</span>
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Discuss and agree on fair pricing directly within the platform through
-          secure negotiation tools and masked communication.
+          See the suggested price up front. Send a counter-offer if it doesn&apos;t
+          feel right. Lock it in before the ride starts — no surge surprises.
         </p>
-
-        <ul className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {step03Showcase.map((item) => (
-            <li
-              key={item.label}
-              className="group flex items-start gap-3 rounded-xl border border-border bg-card p-3 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-primary/5"
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-inset ring-primary/20 transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                {item.icon}
-              </span>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-foreground">
-                  {item.label}
-                </div>
-                <div className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                  {item.description}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
       </div>
     </div>
   );
@@ -681,7 +602,11 @@ function StarIcon({
 
 function Step04() {
   return (
-    <div className="flex flex-col items-center gap-10 lg:flex-row-reverse lg:justify-center lg:gap-16 xl:gap-24">
+    <div
+      id="step-4"
+      data-step="3"
+      className="flex scroll-mt-[8rem] flex-col items-center gap-10 lg:flex-row-reverse lg:justify-center lg:gap-16 xl:gap-24"
+    >
       <div className="relative">
         <div
           aria-hidden
@@ -854,12 +779,11 @@ function Step04() {
           Step 04
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-          Track Every Movement in{" "}
-          <span className="text-primary">Real Time</span>
+          Track the whole <span className="text-primary">trip.</span>
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Monitor rides and deliveries live with intelligent GPS tracking,
-          arrival updates, and route monitoring.
+          Watch your driver approach in real time. Share the live trip with
+          anyone you trust so they can see you arrive safely.
         </p>
       </div>
     </div>
@@ -868,7 +792,11 @@ function Step04() {
 
 function Step05() {
   return (
-    <div className="flex flex-col items-center gap-10 lg:flex-row lg:justify-center lg:gap-16 xl:gap-24">
+    <div
+      id="step-5"
+      data-step="4"
+      className="flex scroll-mt-[8rem] flex-col items-center gap-10 lg:flex-row lg:justify-center lg:gap-16 xl:gap-24"
+    >
       <div className="relative">
         <div
           aria-hidden
@@ -990,12 +918,11 @@ function Step05() {
           Step 05
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-          Complete Trips{" "}
-          <span className="text-primary">Seamlessly</span>
+          Pay and <span className="text-primary">rate.</span>
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Finalize rides securely, review trip summaries, and help maintain
-          quality through ratings and feedback.
+          Wrap up with MoMo, Airtel, or cash to your driver. Rate the trip to
+          help keep quality high for everyone.
         </p>
       </div>
     </div>
@@ -1003,23 +930,73 @@ function Step05() {
 }
 
 export default function HowItWorks() {
+  const [activeStep, setActiveStep] = useState(0);
+
+  // Track which step is closest to the viewport top while scrolling.
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const idx = Number(entry.target.getAttribute("data-step"));
+            if (!Number.isNaN(idx)) setActiveStep(idx);
+          }
+        });
+      },
+      { rootMargin: "-30% 0px -55% 0px", threshold: 0 },
+    );
+
+    const els = document.querySelectorAll<HTMLElement>("[data-step]");
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section id="how-it-works" className="relative py-20 lg:py-28">
+    <section id="how-it-works" className="relative py-12 lg:py-16">
       <div className="mx-auto max-w-7xl px-6">
+        {/* Intro */}
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             How it works
           </p>
           <h2 className="mt-3 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-            From booking to rating, in{" "}
-            <span className="text-primary">5 simple steps</span>
+            From request to rating,{" "}
+            <span className="text-primary">in 5 steps.</span>
           </h2>
           <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-            A clear flow from request to rating, designed to feel effortless.
+            Book, agree on a fair fare, ride, pay, rate. Every step on your
+            terms.
           </p>
         </div>
 
-        <div className="mt-20 space-y-24 lg:space-y-32">
+        {/* Sticky step navigator — pinned just below the navbar while in section */}
+        <div className="sticky top-20 z-30 mt-8 flex justify-center">
+          <nav
+            aria-label="Steps"
+            className="flex gap-1 rounded-full border border-border bg-card/85 p-1.5 shadow-lg backdrop-blur-xl"
+          >
+            {STEPS.map((s, i) => {
+              const isActive = activeStep === i;
+              return (
+                <a
+                  key={s.id}
+                  href={`#${s.id}`}
+                  aria-label={`Jump to step ${i + 1}`}
+                  aria-current={isActive ? "step" : undefined}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-bold tabular-nums transition-colors sm:h-10 sm:w-10 sm:text-xs ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "text-muted-foreground hover:bg-surface hover:text-foreground"
+                  }`}
+                >
+                  {s.num}
+                </a>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="mt-12 space-y-12 lg:space-y-16">
           <Step01 />
           <Step02 />
           <Step03 />

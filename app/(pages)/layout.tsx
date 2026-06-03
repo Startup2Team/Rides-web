@@ -9,10 +9,14 @@ export default function MarketingLayout({
 }) {
   return (
     <>
-      <Navbar />
+      <div className="print:hidden">
+        <Navbar />
+      </div>
       {children}
-      <Footer />
-      <Chatbot />
+      <div className="print:hidden">
+        <Footer />
+        <Chatbot />
+      </div>
     </>
   );
 }

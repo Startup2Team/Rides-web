@@ -1,25 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-export type ContactCategory =
-  | "General"
-  | "Driver application"
-  | "Partnership"
-  | "Press"
-  | "Complaint"
-  | "Other";
-
-const categories: { value: ContactCategory; label: string; replyHint: string }[] = [
-  { value: "General", label: "General enquiry", replyHint: "Usually within 24 hours" },
-  { value: "Driver application", label: "Driver application", replyHint: "Usually within 48 hours" },
-  { value: "Partnership", label: "Partnership / corporate", replyHint: "Usually within 2 business days" },
-  { value: "Press", label: "Press / media", replyHint: "Same business day" },
-  { value: "Complaint", label: "Complaint", replyHint: "Within 12 hours · priority" },
-  { value: "Other", label: "Other", replyHint: "Usually within 24 hours" },
-];
-
-const SUBMISSIONS_KEY = "rides-contact-submissions";
+import { useState } from "react";
+import { submitContact } from "@/lib/api";
 
 type State = "idle" | "sending" | "success" | "error";
 
@@ -27,36 +9,40 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+// Derive a subject from the first sentence (or first 60 chars) of the message.
+// Backend requires a subject; this keeps the UI clean while satisfying that.
+function deriveSubject(message: string): string {
+  const trimmed = message.trim();
+  if (!trimmed) return "Contact message";
+  const firstSentence = trimmed.split(/[.!?\n]/)[0]?.trim() ?? "";
+  const base = firstSentence || trimmed;
+  return base.length > 60 ? base.slice(0, 60) + "…" : base;
+}
+
 export function ContactForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [category, setCategory] = useState<ContactCategory>("General");
-  const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [state, setState] = useState<State>("idle");
   const [submittedId, setSubmittedId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const errors: Record<string, string | null> = {
+  const errors: Record<"name" | "email" | "message", string | null> = {
     name: !name.trim() ? "Please enter your name." : null,
     email: !email.trim()
       ? "Please enter your email."
       : !isValidEmail(email)
         ? "Enter a valid email address."
         : null,
-    subject: !subject.trim() ? "Please add a subject line." : null,
-    message:
-      !message.trim() ? "Tell us what we can help with." : message.trim().length < 10 ? "Add a bit more detail (at least 10 characters)." : null,
+    message: !message.trim()
+      ? "Tell us what we can help with."
+      : message.trim().length < 10
+        ? "Add a bit more detail (at least 10 characters)."
+        : null,
   };
 
   const hasErrors = Object.values(errors).some(Boolean);
-  const replyHint = categories.find((c) => c.value === category)?.replyHint;
-
-  useEffect(() => {
-    if (state !== "success") return;
-    // Allow user to read the success card; they can dismiss to send another.
-  }, [state]);
 
   function showError(field: keyof typeof errors) {
     return touched[field] && errors[field];
@@ -64,36 +50,23 @@ export function ContactForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setTouched({ name: true, email: true, subject: true, message: true });
+    setTouched({ name: true, email: true, message: true });
     if (hasErrors) return;
 
     setState("sending");
-    const id = `MSG-${Date.now().toString().slice(-7)}`;
-    const submission = {
-      id,
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim() || undefined,
-      subject: subject.trim(),
-      category,
-      status: "New" as const,
-      receivedAt: "Just now",
-      body: message.trim(),
-      replies: [],
-    };
-
+    setErrorMessage(null);
     try {
-      if (typeof window !== "undefined") {
-        const existing = window.localStorage.getItem(SUBMISSIONS_KEY);
-        const list = existing ? JSON.parse(existing) : [];
-        list.unshift(submission);
-        window.localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(list));
-      }
-      // Brief simulated network delay so the "Sending…" state is visible.
-      await new Promise((r) => setTimeout(r, 700));
-      setSubmittedId(id);
+      const receipt = await submitContact({
+        name: name.trim(),
+        email: email.trim(),
+        subject: deriveSubject(message),
+        category: "General",
+        body: message.trim(),
+      });
+      setSubmittedId(receipt.id);
       setState("success");
-    } catch {
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Could not send message.");
       setState("error");
     }
   }
@@ -101,18 +74,16 @@ export function ContactForm() {
   function resetForm() {
     setName("");
     setEmail("");
-    setPhone("");
-    setSubject("");
     setMessage("");
-    setCategory("General");
     setTouched({});
     setSubmittedId(null);
+    setErrorMessage(null);
     setState("idle");
   }
 
   if (state === "success") {
     return (
-      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-8">
+      <div className="rounded-2xl border border-primary/30 bg-primary/[0.04] p-8 backdrop-blur-sm">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/40">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
             <polyline points="20 6 9 17 4 12" />
@@ -122,159 +93,90 @@ export function ContactForm() {
           Message received
         </h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Thanks {name.split(" ")[0]} — we've logged your message as{" "}
-          <span className="font-mono font-semibold text-foreground">
-            {submittedId}
+          Thanks {name.split(" ")[0]} — we&apos;ve logged your message as{" "}
+          <span className="font-mono text-xs font-semibold text-foreground">
+            {submittedId?.slice(0, 8)}
           </span>
-          . The team usually replies {replyHint?.toLowerCase()}.
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          We'll write back to{" "}
+          . We&apos;ll write back to{" "}
           <span className="font-semibold text-foreground">{email}</span>.
         </p>
-        <div className="mt-6 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={resetForm}
-            className="inline-flex h-10 items-center rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface"
-          >
-            Send another message
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={resetForm}
+          className="mt-6 inline-flex h-10 items-center rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-alt"
+        >
+          Send another
+        </button>
       </div>
     );
   }
 
+  // Shared input class — underline-only, transparent bg, focuses by changing
+  // the bottom border to primary. Errors switch to red-400.
+  const inputClass = (hasError: boolean) =>
+    `block w-full bg-transparent border-0 border-b px-0 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus:border-primary ${
+      hasError ? "border-red-300" : "border-border"
+    }`;
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      noValidate
-      className="rounded-2xl border border-border bg-card p-6"
-    >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-            Name *
-          </span>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => setTouched({ ...touched, name: true })}
-            placeholder="Aiden Mugisha"
-            className={`mt-2 block h-11 w-full rounded-xl border bg-surface px-3.5 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 ${
-              showError("name") ? "border-red-300" : "border-border"
-            }`}
-          />
-          {showError("name") ? (
-            <p className="mt-1 text-[11px] font-semibold text-red-600">
-              {errors.name}
-            </p>
-          ) : null}
-        </label>
-
-        <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-            Email *
-          </span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onBlur={() => setTouched({ ...touched, email: true })}
-            placeholder="you@example.com"
-            className={`mt-2 block h-11 w-full rounded-xl border bg-surface px-3.5 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 ${
-              showError("email") ? "border-red-300" : "border-border"
-            }`}
-          />
-          {showError("email") ? (
-            <p className="mt-1 text-[11px] font-semibold text-red-600">
-              {errors.email}
-            </p>
-          ) : null}
-        </label>
-
-        <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-            Phone (optional)
-          </span>
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+250 788 000 000"
-            className="mt-2 block h-11 w-full rounded-xl border border-border bg-surface px-3.5 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-            What's it about?
-          </span>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value as ContactCategory)}
-            className="mt-2 block h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-          >
-            {categories.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <label className="mt-4 block">
-        <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-          Subject *
+    <form onSubmit={handleSubmit} noValidate className="space-y-6">
+      <label className="block">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Your name
         </span>
         <input
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          onBlur={() => setTouched({ ...touched, subject: true })}
-          placeholder="Quick summary of your message"
-          className={`mt-2 block h-11 w-full rounded-xl border bg-surface px-3.5 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 ${
-            showError("subject") ? "border-red-300" : "border-border"
-          }`}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => setTouched({ ...touched, name: true })}
+          placeholder=""
+          autoComplete="name"
+          className={inputClass(Boolean(showError("name")))}
         />
-        {showError("subject") ? (
-          <p className="mt-1 text-[11px] font-semibold text-red-600">
-            {errors.subject}
-          </p>
+        {showError("name") ? (
+          <p className="mt-1 text-[11px] font-medium text-red-600">{errors.name}</p>
         ) : null}
       </label>
 
-      <label className="mt-4 block">
-        <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-          Message *
+      <label className="block">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Your email
+        </span>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => setTouched({ ...touched, email: true })}
+          placeholder=""
+          autoComplete="email"
+          className={inputClass(Boolean(showError("email")))}
+        />
+        {showError("email") ? (
+          <p className="mt-1 text-[11px] font-medium text-red-600">{errors.email}</p>
+        ) : null}
+      </label>
+
+      <label className="block">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Enter your message
         </span>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onBlur={() => setTouched({ ...touched, message: true })}
-          rows={5}
-          placeholder="Tell us a bit about what we can help with…"
-          className={`mt-2 block w-full rounded-xl border bg-surface px-3.5 py-3 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 ${
-            showError("message") ? "border-red-300" : "border-border"
-          }`}
+          rows={3}
+          placeholder=""
+          className={`${inputClass(Boolean(showError("message")))} resize-none`}
         />
         {showError("message") ? (
-          <p className="mt-1 text-[11px] font-semibold text-red-600">
-            {errors.message}
-          </p>
+          <p className="mt-1 text-[11px] font-medium text-red-600">{errors.message}</p>
         ) : null}
       </label>
 
-      <div className="mt-5 flex flex-col-reverse items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[11px] text-muted-foreground">
-          <span className="font-semibold text-foreground">{replyHint}</span> for{" "}
-          {categories.find((c) => c.value === category)?.label.toLowerCase()}.
-        </p>
-
+      <div className="pt-2">
         <button
           type="submit"
           disabled={state === "sending"}
-          className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+          className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-10 text-[11px] font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 sm:w-auto"
         >
           {state === "sending" ? (
             <>
@@ -282,14 +184,14 @@ export function ContactForm() {
               Sending…
             </>
           ) : (
-            "Send message"
+            "Submit now"
           )}
         </button>
       </div>
 
       {state === "error" ? (
-        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
-          Something went wrong saving your message. Please try again.
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
+          {errorMessage ?? "Something went wrong. Please try again."}
         </p>
       ) : null}
     </form>

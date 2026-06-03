@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* ────────────────────────────────────────────────────────────────────────────
+   Default (light) tokens — apply across the whole app and admin.
+──────────────────────────────────────────────────────────────────────────── */
+
 :root {
   --background: #f5f5f5;
   --foreground: #0a0a0a;
@@ -13,6 +17,34 @@
   --primary-foreground: #ffffff;
   --accent: #e5f1ff;
   --accent-foreground: #1a1a1a;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Opt-in dark scope. Any element with data-theme="dark" (and its children)
+   gets the dark palette. Used on /contact only for now.
+──────────────────────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] {
+  --background: #0d0d14;
+  --foreground: #f5f5fa;
+  --card: #161624;
+  --surface: #11111c;
+  --surface-alt: #1f1f2e;
+  --muted: #1a1a26;
+  --muted-foreground: #9a9ab0;
+  --border: #26263a;
+  --primary: #5fa8ff;
+  --primary-foreground: #08081a;
+  --accent: #1d2950;
+  --accent-foreground: #5fa8ff;
+
+  /* Atmospheric wash for the dark section. Lives on the dark-scoped element
+     so it doesn't bleed into light areas. */
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 15% 10%, rgba(95, 110, 170, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 90%, rgba(40, 60, 110, 0.08), transparent 60%);
+  color: var(--foreground);
 }
 
 @theme inline {
@@ -57,4 +89,59 @@ body {
   select {
     cursor: pointer;
   }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Hero entrance animation — staggered via inline animation-delay on each row.
+──────────────────────────────────────────────────────────────────────────── */
+
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Progress underline that fills across the active feature tab. */
+@keyframes feature-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Features bento grid — mobile stacks, tablet is 2-col, desktop is true bento.
+──────────────────────────────────────────────────────────────────────────── */
+
+.features-bento {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .features-bento {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .features-bento {
+    /* Left column wider than right two — gives the large card visual weight. */
+    grid-template-columns: 1.35fr 1fr 1fr;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "large wide wide"
+      "large sq1  sq2";
+  }
+  .features-bento [data-area="large"] { grid-area: large; }
+  .features-bento [data-area="wide"]  { grid-area: wide; }
+  .features-bento [data-area="sq1"]   { grid-area: sq1; }
+  .features-bento [data-area="sq2"]   { grid-area: sq2; }
+}
+
+.hero-rise {
+  animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-rise { animation: none; }
 }
