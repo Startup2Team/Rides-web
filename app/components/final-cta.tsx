@@ -21,7 +21,7 @@ function StarRow() {
 
 export default function FinalCTA() {
   return (
-    <section id="download" className="py-12 lg:py-16">
+    <section id="download" className="py-8 sm:py-10 lg:py-12">
       <div className="mx-auto max-w-7xl px-6">
         <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-[#1F88FF] to-[#0056B3] shadow-2xl shadow-primary/40 ring-1 ring-inset ring-white/10">
           {/* Mesh + glow backdrop */}
@@ -57,26 +57,26 @@ export default function FinalCTA() {
             className="pointer-events-none absolute -inset-x-32 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"
           />
 
-          <div className="relative grid items-center gap-8 px-6 py-10 sm:px-10 sm:py-12 lg:grid-cols-[1.15fr_1fr] lg:gap-10 lg:px-14 lg:py-12">
+          <div className="relative grid items-center gap-6 px-6 py-8 sm:px-10 sm:py-9 lg:grid-cols-[1.15fr_1fr] lg:gap-10 lg:px-14 lg:py-10">
             {/* Left: copy */}
             <div className="text-center text-white lg:text-left">
               <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/85">
                 <span className="h-px w-8 bg-white/50" />
                 Get the app
               </p>
-              <h2 className="mt-4 text-balance text-4xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-5xl lg:text-6xl">
+              <h2 className="mt-3 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-4xl lg:text-5xl">
                 Your ride.{" "}
                 <span className="text-white/90 underline decoration-white/30 decoration-[6px] underline-offset-[10px]">
                   Your price.
                 </span>
               </h2>
-              <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-white/80 sm:text-lg lg:mx-0">
+              <p className="mx-auto mt-4 max-w-xl text-pretty text-sm leading-relaxed text-white/80 sm:text-base lg:mx-0">
                 Across a thousand hills, every ride begins with a fair
                 conversation.
               </p>
 
               {/* CTAs */}
-              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
+              <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
                 <Link
                   href="/download"
                   className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-zinc-950 px-5 py-3.5 text-white shadow-xl shadow-black/30 ring-1 ring-inset ring-white/10 transition-transform hover:-translate-y-0.5 active:translate-y-0 sm:w-auto"
@@ -154,7 +154,7 @@ export default function FinalCTA() {
             </div>
 
             {/* Right: Book a Ride phone mockup — iPhone 16 Pro */}
-            <div className="relative mx-auto hidden w-full max-w-[16rem] lg:block">
+            <div className="relative mx-auto hidden w-full max-w-[13.5rem] lg:block">
               <div
                 aria-hidden
                 className="absolute -inset-x-8 -inset-y-12 rounded-full bg-white/10 blur-2xl"

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, Card } from "../_components";
 import { InviteAdminModal } from "./invite-admin-modal";
+import { AdminActivityModal } from "./admin-activity-modal";
 import { DEFAULT_ROLES, SIDEBAR_ITEMS, type Role } from "./roles";
 import {
   getTeam,
@@ -11,6 +12,10 @@ import {
   suspendMember,
   reinstateMember,
   removeMember,
+  updateMemberRole,
+  resendInvite,
+  resetMember2FA,
+  updateRolePermissions,
   type TeamMember,
 } from "@/lib/api";
 
@@ -87,9 +92,12 @@ const initialAdmins: Admin[] = [
 ];
 
 const statusStyles: Record<AdminStatus, string> = {
-  Active: "bg-primary/15 text-primary",
-  Invited: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100",
-  Suspended: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-100",
+  Active:
+    "bg-primary/15 text-primary ring-1 ring-inset ring-primary/20",
+  Invited:
+    "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200",
+  Suspended:
+    "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200",
 };
 
 type Tab = "team" | "roles" | "matrix";
@@ -166,39 +174,61 @@ function RowMenu({
 export function TeamConsole() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [roles, setRoles] = useState<Role[]>(DEFAULT_ROLES);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadTeam = useMemo(
+    () => () => {
+      setLoading(true);
+      setLoadError(null);
+      return Promise.allSettled([
+        getTeam().then((res) =>
+          setAdmins(
+            (res.admins ?? []).map((m: TeamMember) => ({
+              id: m.id,
+              name: m.name,
+              email: m.email,
+              roleId: m.role_id,
+              status: (m.status === "SUSPENDED"
+                ? "Suspended"
+                : m.status === "ACTIVE"
+                  ? "Active"
+                  : "Invited") as AdminStatus,
+              lastActive: m.last_active_at
+                ? new Date(m.last_active_at).toLocaleDateString()
+                : "—",
+              twoFactor: m.two_factor,
+            })),
+          ),
+        ),
+        getRoles().then((res) => {
+          if (res.roles && res.roles.length > 0) {
+            setRoles(
+              res.roles.map((r) => ({
+                id: r.id,
+                name: r.name,
+                description: r.description,
+                permissions: [],
+                isSystem: r.is_system,
+              })),
+            );
+          }
+        }),
+      ]).then((results) => {
+        const failed = results.filter((r) => r.status === "rejected");
+        if (failed.length === results.length) {
+          setLoadError("Couldn't reach the API. Showing offline view.");
+        }
+        setLoading(false);
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
-    getTeam()
-      .then((res) => {
-        setAdmins(
-          (res.admins ?? []).map((m: TeamMember) => ({
-            id: m.id,
-            name: m.name,
-            email: m.email,
-            roleId: m.role_id,
-            status: (m.status === "SUSPENDED" ? "Suspended" : m.status === "ACTIVE" ? "Active" : "Invited") as AdminStatus,
-            lastActive: m.last_active_at ? new Date(m.last_active_at).toLocaleDateString() : "—",
-            twoFactor: m.two_factor,
-          }))
-        );
-      })
-      .catch(() => null);
-    getRoles()
-      .then((res) => {
-        if (res.roles && res.roles.length > 0) {
-          setRoles(
-            res.roles.map((r) => ({
-              id: r.id,
-              name: r.name,
-              description: r.description,
-              permissions: [],
-              isSystem: r.is_system,
-            }))
-          );
-        }
-      })
-      .catch(() => null);
-  }, []);
+    void loadTeam();
+  }, [loadTeam]);
+
   const [tab, setTab] = useState<Tab>("team");
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | string>("all");
@@ -206,6 +236,8 @@ export function TeamConsole() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
+  const [activityForId, setActivityForId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -291,6 +323,19 @@ export function TeamConsole() {
         </button>
       </div>
 
+      {loadError ? (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700">
+          <span>{loadError}</span>
+          <button
+            type="button"
+            onClick={() => void loadTeam()}
+            className="rounded-md border border-amber-200 bg-white px-2 py-1 text-[11px] font-semibold text-amber-700 transition-colors hover:bg-amber-100"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
       {tab === "team" ? (
         <Card
           title={`Admin team · ${admins.length}`}
@@ -345,7 +390,58 @@ export function TeamConsole() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.length === 0 ? (
+                {loading && admins.length === 0 ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={`skeleton-${i}`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 animate-pulse rounded-full bg-surface" />
+                          <div className="space-y-1.5">
+                            <div className="h-3 w-32 animate-pulse rounded bg-surface" />
+                            <div className="h-2.5 w-44 animate-pulse rounded bg-surface" />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-8 w-32 animate-pulse rounded-lg bg-surface" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-5 w-16 animate-pulse rounded-full bg-surface" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-3 w-14 animate-pulse rounded bg-surface" />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="ml-auto h-3 w-20 animate-pulse rounded bg-surface" />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="ml-auto h-7 w-7 animate-pulse rounded-md bg-surface" />
+                      </td>
+                    </tr>
+                  ))
+                ) : admins.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-12 text-center"
+                    >
+                      <p className="text-sm font-semibold tracking-tight text-foreground">
+                        No admins yet
+                      </p>
+                      <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">
+                        Invite your team to give them scoped access to the
+                        platform.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setInviteOpen(true)}
+                        className="mt-4 inline-flex h-9 items-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30"
+                      >
+                        + Invite first admin
+                      </button>
+                    </td>
+                  </tr>
+                ) : filtered.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -376,11 +472,19 @@ export function TeamConsole() {
                           <select
                             value={a.roleId}
                             disabled={a.status === "Suspended"}
-                            onChange={(e) => {
-                              updateAdmin(a.id, { roleId: e.target.value });
-                              setToast(
-                                `${a.name} role updated to ${rolesById[e.target.value]?.name}`,
-                              );
+                            onChange={async (e) => {
+                              const newRoleId = e.target.value;
+                              const prevRoleId = a.roleId;
+                              updateAdmin(a.id, { roleId: newRoleId });
+                              try {
+                                await updateMemberRole(a.id, newRoleId);
+                                setToast(
+                                  `${a.name} role updated to ${rolesById[newRoleId]?.name}`,
+                                );
+                              } catch {
+                                updateAdmin(a.id, { roleId: prevRoleId });
+                                setToast("Couldn't update role — try again");
+                              }
                             }}
                             className="h-8 rounded-lg border border-border bg-surface px-2 text-xs font-medium text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
                           >
@@ -432,12 +536,40 @@ export function TeamConsole() {
                             }
                             onClose={() => setMenuOpenId(null)}
                             actions={[
+                              {
+                                label: "View activity",
+                                onClick: () => setActivityForId(a.id),
+                              },
                               ...(a.status === "Invited"
                                 ? [
                                     {
                                       label: "Resend invite",
-                                      onClick: () =>
-                                        setToast(`Invite resent to ${a.email}`),
+                                      onClick: async () => {
+                                        try {
+                                          await resendInvite(a.id);
+                                        } catch {
+                                          /* ignore */
+                                        }
+                                        setToast(`Invite resent to ${a.email}`);
+                                      },
+                                    },
+                                  ]
+                                : []),
+                              ...(a.twoFactor
+                                ? [
+                                    {
+                                      label: "Reset 2FA",
+                                      onClick: async () => {
+                                        try {
+                                          await resetMember2FA(a.id);
+                                        } catch {
+                                          /* ignore */
+                                        }
+                                        updateAdmin(a.id, { twoFactor: false });
+                                        setToast(
+                                          `${a.name} 2FA reset — they'll re-scan on next sign-in`,
+                                        );
+                                      },
                                     },
                                   ]
                                 : []),
@@ -446,7 +578,11 @@ export function TeamConsole() {
                                     {
                                       label: "Reinstate",
                                       onClick: async () => {
-                                        try { await reinstateMember(a.id); } catch { /* ignore */ }
+                                        try {
+                                          await reinstateMember(a.id);
+                                        } catch {
+                                          /* ignore */
+                                        }
                                         updateAdmin(a.id, { status: "Active" });
                                         setToast(`${a.name} reinstated`);
                                       },
@@ -457,7 +593,11 @@ export function TeamConsole() {
                                       label: "Suspend",
                                       tone: "danger" as const,
                                       onClick: async () => {
-                                        try { await suspendMember(a.id); } catch { /* ignore */ }
+                                        try {
+                                          await suspendMember(a.id);
+                                        } catch {
+                                          /* ignore */
+                                        }
                                         updateAdmin(a.id, { status: "Suspended" });
                                         setToast(`${a.name} suspended`);
                                       },
@@ -467,8 +607,14 @@ export function TeamConsole() {
                                 label: "Remove admin",
                                 tone: "danger" as const,
                                 onClick: async () => {
-                                  try { await removeMember(a.id); } catch { /* ignore */ }
-                                  setAdmins((prev) => prev.filter((x) => x.id !== a.id));
+                                  try {
+                                    await removeMember(a.id);
+                                  } catch {
+                                    /* ignore */
+                                  }
+                                  setAdmins((prev) =>
+                                    prev.filter((x) => x.id !== a.id),
+                                  );
                                   setToast(`${a.name} removed`);
                                 },
                               },
@@ -545,7 +691,7 @@ export function TeamConsole() {
                     )}
                   </div>
                   {!r.isSystem ? (
-                    <div className="mt-3">
+                    <div className="mt-3 flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() =>
@@ -553,8 +699,34 @@ export function TeamConsole() {
                         }
                         className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                       >
-                        {editingRoleId === r.id ? "Done" : "Edit permissions"}
+                        {editingRoleId === r.id ? "Cancel" : "Edit permissions"}
                       </button>
+                      {editingRoleId === r.id ? (
+                        <button
+                          type="button"
+                          disabled={savingRoleId === r.id}
+                          onClick={async () => {
+                            setSavingRoleId(r.id);
+                            try {
+                              await updateRolePermissions(
+                                r.id,
+                                r.permissions.filter((p) => p !== "*"),
+                              );
+                              setToast(`${r.name} permissions saved`);
+                              setEditingRoleId(null);
+                            } catch {
+                              setToast(
+                                "Couldn't save permissions — try again",
+                              );
+                            } finally {
+                              setSavingRoleId(null);
+                            }
+                          }}
+                          className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {savingRoleId === r.id ? "Saving…" : "Save"}
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                   {editingRoleId === r.id && !r.isSystem ? (
@@ -595,21 +767,34 @@ export function TeamConsole() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
-                  <th className="sticky left-0 z-10 bg-card px-4 py-2.5 text-left font-semibold">
+                <tr className="border-b border-border bg-surface/50 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <th className="sticky left-0 z-10 bg-surface/50 px-4 py-3 text-left font-semibold backdrop-blur">
                     Page
                   </th>
                   {roles.map((r) => (
-                    <th key={r.id} className="px-4 py-2.5 text-center font-semibold">
-                      {r.name}
+                    <th
+                      key={r.id}
+                      className="px-3 py-3 text-center font-semibold"
+                    >
+                      <div className="text-foreground">{r.name}</div>
+                      <div className="mt-0.5 text-[9px] font-normal normal-case tracking-normal text-muted-foreground">
+                        {r.permissions.includes("*")
+                          ? "All pages"
+                          : `${r.permissions.length} pages`}
+                      </div>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {SIDEBAR_ITEMS.map((s) => (
-                  <tr key={s.href}>
-                    <td className="sticky left-0 z-10 bg-card px-4 py-2.5">
+                {SIDEBAR_ITEMS.map((s, i) => (
+                  <tr
+                    key={s.href}
+                    className={`transition-colors hover:bg-surface/40 ${
+                      i % 2 === 1 ? "bg-surface/20" : ""
+                    }`}
+                  >
+                    <td className="sticky left-0 z-10 bg-card px-4 py-3">
                       <div className="text-xs font-semibold text-foreground">
                         {s.label}
                       </div>
@@ -622,14 +807,18 @@ export function TeamConsole() {
                         r.permissions.includes("*") ||
                         r.permissions.includes(s.href);
                       return (
-                        <td key={r.id} className="px-4 py-2.5 text-center">
+                        <td
+                          key={r.id}
+                          className="px-3 py-3 text-center"
+                          title={`${r.name} · ${s.label}: ${allowed ? "Allowed" : "Blocked"}`}
+                        >
                           {allowed ? (
-                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-primary">
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-inset ring-primary/20">
                               <svg
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
-                                strokeWidth="2.5"
+                                strokeWidth="3"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 className="h-3 w-3"
@@ -639,7 +828,7 @@ export function TeamConsole() {
                               </svg>
                             </span>
                           ) : (
-                            <span className="inline-block h-5 w-5 rounded-full bg-muted" />
+                            <span className="inline-block h-5 w-5 rounded-full bg-muted/70 ring-1 ring-inset ring-border" />
                           )}
                         </td>
                       );
@@ -651,6 +840,18 @@ export function TeamConsole() {
           </div>
         </Card>
       ) : null}
+
+      <AdminActivityModal
+        admin={
+          activityForId
+            ? (() => {
+                const a = admins.find((x) => x.id === activityForId);
+                return a ? { id: a.id, name: a.name, email: a.email } : null;
+              })()
+            : null
+        }
+        onClose={() => setActivityForId(null)}
+      />
 
       <InviteAdminModal
         open={inviteOpen}

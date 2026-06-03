@@ -43,6 +43,32 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (json?.data !== undefined ? json.data : json) as T;
 }
 
+// ── Public (no auth) ──────────────────────────────────────────────────────
+
+export type ContactSubmission = {
+  name: string;
+  email: string;
+  subject: string;
+  category?: string;
+  body: string;
+};
+
+export type ContactReceipt = { id: string; status: string; created_at: string };
+
+export async function submitContact(input: ContactSubmission): Promise<ContactReceipt> {
+  const res = await fetch(`${BASE_URL}/contact`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = json?.error?.message ?? "Could not send message. Please try again.";
+    throw new Error(msg);
+  }
+  return (json?.data ?? json) as ContactReceipt;
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────
 
 export type LoginResult =
@@ -1008,3 +1034,26 @@ export const reinstateMember = (id: string) =>
 
 export const removeMember = (id: string) =>
   request<void>(`/admin/team/members/${id}/remove`, { method: "POST" });
+
+export const resendInvite = (id: string) =>
+  request<void>(`/admin/team/members/${id}/resend-invite`, { method: "POST" });
+
+export const resetMember2FA = (id: string) =>
+  request<void>(`/admin/team/members/${id}/reset-2fa`, { method: "POST" });
+
+export type AdminActivity = {
+  id: string;
+  action: string;
+  detail: string;
+  ip: string | null;
+  created_at: string;
+};
+
+export const getMemberActivity = (id: string) =>
+  request<{ activity: AdminActivity[] }>(`/admin/team/members/${id}/activity`);
+
+export const updateRolePermissions = (roleId: string, permissions: string[]) =>
+  request<void>(`/admin/team/roles/${roleId}/permissions`, {
+    method: "POST",
+    body: { permissions },
+  });

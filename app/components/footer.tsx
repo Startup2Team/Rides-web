@@ -5,19 +5,15 @@ const productLinks = [
   { label: "Features", href: "/#features" },
   { label: "How It Works", href: "/#how-it-works" },
   { label: "Drivers", href: "/drivers" },
-  { label: "Safety", href: "/safety" },
 ];
 
 const companyLinks = [
-  { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
-  { label: "Careers", href: "/careers" },
 ];
 
 const legalLinks = [
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
-  { label: "Cookies", href: "/cookies" },
 ];
 
 export default function Footer() {
