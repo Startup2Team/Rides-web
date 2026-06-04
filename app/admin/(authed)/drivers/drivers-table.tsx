@@ -43,7 +43,7 @@ const tabs: Tab[] = [
   { id: "Suspended", label: "Suspended" },
 ];
 
-type SortKey = "name" | "acceptance" | "rating" | "lastActive";
+type SortKey = "name" | "acceptance" | "rating" | "lastActive" | "applied";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 8;
@@ -336,7 +336,7 @@ export function DriversTable() {
   const vehicleType = vehicleTypeFromSlug(vehicleSlug);
 
   const [tab, setTab] = useState<Tab["id"]>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortKey, setSortKey] = useState<SortKey>("applied");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -464,21 +464,30 @@ export function DriversTable() {
     return true;
   });
 
+  const statusOrder: Record<string, number> = {
+    Pending: 0, Online: 1, "On trip": 2, Offline: 3, Suspended: 4,
+  };
+
   const sorted = [...filtered].sort((a, b) => {
+    // Always surface Pending first when sorting by applied date.
+    if (sortKey === "applied") {
+      const statusDiff = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
+      if (statusDiff !== 0) return statusDiff;
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return sortDir === "asc" ? ta - tb : tb - ta;
+    }
+
     let va: string | number;
     let vb: string | number;
     if (sortKey === "name") {
-      va = a.name;
-      vb = b.name;
+      va = a.name; vb = b.name;
     } else if (sortKey === "acceptance") {
-      va = a.acceptance ?? -1;
-      vb = b.acceptance ?? -1;
+      va = a.acceptance ?? -1; vb = b.acceptance ?? -1;
     } else if (sortKey === "rating") {
-      va = a.rating ?? -1;
-      vb = b.rating ?? -1;
+      va = a.rating ?? -1; vb = b.rating ?? -1;
     } else {
-      va = a.lastActive;
-      vb = b.lastActive;
+      va = a.lastActive; vb = b.lastActive;
     }
     if (typeof va === "number" && typeof vb === "number") {
       return sortDir === "asc" ? va - vb : vb - va;
@@ -504,20 +513,9 @@ export function DriversTable() {
   }
 
   const renderPrimaryAction = (d: Driver) => {
-    if (d.status === "Pending") {
-      return (
-        <button
-          type="button"
-          onClick={() => setVerifyingId(d.id)}
-          className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98]"
-        >
-          Verify
-        </button>
-      );
-    }
     if (d.status === "Suspended") {
       return (
-        <>
+        <div className="flex w-full items-center gap-1.5">
           <button
             type="button"
             onClick={() => setVerifyingId(d.id)}
@@ -536,7 +534,7 @@ export function DriversTable() {
           >
             Reinstate
           </button>
-        </>
+        </div>
       );
     }
     return (
@@ -713,12 +711,12 @@ export function DriversTable() {
                 onClick={() => toggleSort("rating")}
               />
               <SortHeader
-                label="Last active"
-                sortKey="lastActive"
+                label="Applied"
+                sortKey="applied"
                 currentKey={sortKey}
                 dir={sortDir}
                 align="right"
-                onClick={() => toggleSort("lastActive")}
+                onClick={() => toggleSort("applied")}
               />
               <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Actions
