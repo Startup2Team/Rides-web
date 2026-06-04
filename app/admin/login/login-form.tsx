@@ -4,6 +4,7 @@ import Link from "next/link";
 import { OtpQrCode } from "@/lib/otp-qr-code";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { resolvePostLoginRedirect } from "@/lib/post-login-redirect";
 
 type CredentialsStep = "credentials";
 type TotpStep = "totp_setup" | "totp_verify";
@@ -250,7 +251,15 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
       const j = (await r.json()) as { data?: LoginPayload; error?: { message?: string } };
 
       if (!r.ok) {
-        setError(j.error?.message ?? "Could not sign in.");
+        const code = j.error?.code;
+        const msg = j.error?.message ?? "Could not sign in.";
+        if (code === "PASSWORD_NOT_SET") {
+          setError(
+            "No password is set for this account yet. Ask a Super Admin to open Admins & Roles → your user → Set password, then try again.",
+          );
+        } else {
+          setError(msg);
+        }
         return;
       }
 
@@ -317,7 +326,8 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         return;
       }
 
-      router.replace(nextPath);
+      const dest = await resolvePostLoginRedirect(nextPath);
+      router.replace(dest);
       router.refresh();
     } catch {
       setError("Network error while verifying.");

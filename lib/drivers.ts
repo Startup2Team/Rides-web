@@ -53,6 +53,7 @@ export type DriverRow = {
   acceptance: number | null;
   rating: number | null;
   lastActive: string;
+  createdAt: string; // ISO — used for "applied" sort
   phone?: string;
 };
 
@@ -71,8 +72,15 @@ export function mapApprovalStatus(
 }
 
 export function mapApiDriver(d: ApiDriver): DriverRow {
+  // acceptance_rate is stored as 0–100 in the DB (not 0–1), so just round it.
+  // Pending drivers have no rides yet — the DB default of 100 is meaningless.
+  const isPending =
+    d.approval_status?.toUpperCase() === "PENDING_REVIEW" ||
+    d.approval_status?.toUpperCase() === "PENDING";
   const pct =
-    d.acceptance_rate != null ? Math.round(d.acceptance_rate * 100) : null;
+    !isPending && d.acceptance_rate != null
+      ? Math.round(d.acceptance_rate)
+      : null;
   const name =
     d.full_name?.trim() ||
     (d.phone ? d.phone : "Unknown driver");
@@ -84,10 +92,11 @@ export function mapApiDriver(d: ApiDriver): DriverRow {
     plate: d.vehicle_plate ?? "—",
     status: mapApprovalStatus(d.approval_status, Boolean(d.is_online), onTrip),
     acceptance: pct,
-    rating: null,
+    rating: (d as { rating?: number }).rating ?? null,
     lastActive: d.created_at
       ? new Date(d.created_at).toLocaleDateString()
       : "—",
+    createdAt: d.created_at ?? "",
     phone: d.phone,
   };
 }

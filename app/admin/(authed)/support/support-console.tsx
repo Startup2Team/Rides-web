@@ -5,11 +5,13 @@ import { Avatar, Card } from "../_components";
 import {
   getTickets,
   getTicket,
+  assignTicket,
   replyToTicket,
   resolveTicket,
   type Ticket as ApiTicket,
   type TicketMessage as ApiMsg,
 } from "@/lib/api";
+import { useAuth } from "@/context/auth-context";
 import {
   priorityStyles,
   statusStyles,
@@ -69,6 +71,7 @@ const typeFilters: ("all" | TicketType)[] = [
 const priorityFilters: ("all" | TicketPriority)[] = ["all", "High", "Medium", "Low"];
 
 export function SupportConsole() {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
 
   useEffect(() => {
@@ -324,9 +327,10 @@ export function SupportConsole() {
       <TicketModal
         ticket={viewing}
         onClose={() => setViewingId(null)}
-        onAssign={(id) => {
-          updateTicket(id, { assignedTo: "Aiden Mugisha", status: "Pending" });
-          setToast(`${id} assigned to you`);
+        onAssign={async (id) => {
+          try { await assignTicket(id, user?.id ?? ""); } catch { /* ignore */ }
+          updateTicket(id, { assignedTo: user?.name ?? "Admin", status: "Pending" });
+          setToast(`${id} assigned to ${user?.name ?? "you"}`);
         }}
         onResolve={async (id) => {
           try { await resolveTicket(id); } catch { /* ignore */ }

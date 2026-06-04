@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
+import { getDrivers, getCustomers, getRides } from "@/lib/api";
 
 function initialsFrom(name: string | undefined, email: string | undefined): string {
   const source = (name?.trim() || email?.split("@")[0] || "").replace(/[._-]+/g, " ");
@@ -11,6 +13,62 @@ function initialsFrom(name: string | undefined, email: string | undefined): stri
   if (parts.length === 0) return "··";
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
+
+type SearchResult = {
+  id: string;
+  label: string;
+  sub: string;
+  href: string;
+  group: "Drivers" | "Customers" | "Rides";
+};
+
+async function runSearch(q: string): Promise<SearchResult[]> {
+  if (!q.trim()) return [];
+  const p = { search: q, limit: "4" };
+  const [driversRes, customersRes, ridesRes] = await Promise.allSettled([
+    getDrivers(p),
+    getCustomers(p),
+    getRides(p),
+  ]);
+
+  const results: SearchResult[] = [];
+
+  if (driversRes.status === "fulfilled") {
+    for (const d of driversRes.value.drivers ?? []) {
+      results.push({
+        id: d.id,
+        label: d.full_name ?? d.phone ?? "Driver",
+        sub: `${d.transport_type.replace("_", " ")} · ${d.vehicle_plate ?? ""}`,
+        href: `/admin/drivers`,
+        group: "Drivers",
+      });
+    }
+  }
+  if (customersRes.status === "fulfilled") {
+    for (const c of customersRes.value.customers ?? []) {
+      results.push({
+        id: c.id,
+        label: c.full_name ?? c.phone,
+        sub: `Customer · ${c.phone}`,
+        href: `/admin/customers`,
+        group: "Customers",
+      });
+    }
+  }
+  if (ridesRes.status === "fulfilled") {
+    for (const r of ridesRes.value.rides ?? []) {
+      results.push({
+        id: r.id,
+        label: r.pickup_address,
+        sub: `→ ${r.destination_address} · ${r.status}`,
+        href: `/admin/live-rides`,
+        group: "Rides",
+      });
+    }
+  }
+
+  return results;
 }
 
 function Icon({ children }: { children: ReactNode }) {
@@ -89,7 +147,9 @@ const notifications: Notification[] = [
 ];
 
 export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}) {
+  const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
+  const searchDropRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
@@ -101,6 +161,33 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
   const displayName = user?.name?.trim() || user?.email?.split("@")[0] || "Account";
   const displayEmail = user?.email ?? "";
   const initials = useMemo(() => initialsFrom(user?.name, user?.email), [user?.name, user?.email]);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Debounced global search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await runSearch(searchQuery.trim());
+        setSearchResults(res);
+        setSearchOpen(true);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -116,6 +203,8 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
       if (e.key === "Escape") {
         setOpenNotif(false);
         setOpenUser(false);
+        setSearchOpen(false);
+        setSearchQuery("");
         if (document.activeElement === searchRef.current) {
           searchRef.current?.blur();
         }
@@ -130,6 +219,12 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
       const t = e.target as Node;
       if (notifRef.current && !notifRef.current.contains(t)) setOpenNotif(false);
       if (userRef.current && !userRef.current.contains(t)) setOpenUser(false);
+      if (
+        searchDropRef.current && !searchDropRef.current.contains(t) &&
+        searchRef.current && !searchRef.current.contains(t)
+      ) {
+        setSearchOpen(false);
+      }
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -143,17 +238,88 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
 
       <div className="relative">
         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-          <Icon>
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </Icon>
+          {searchLoading ? (
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
+          ) : (
+            <Icon>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </Icon>
+          )}
         </span>
         <input
           ref={searchRef}
-          type="search"
+          type="text"
+          value={searchQuery ?? ""}
+          onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search drivers, customers, rides…"
           className="block h-10 w-full rounded-xl border border-border bg-surface pl-10 pr-3.5 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
+
+        {searchOpen && (searchResults.length > 0 || searchLoading) ? (
+          <div
+            ref={searchDropRef}
+            className="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+          >
+            {(["Drivers", "Customers", "Rides"] as const).map((group) => {
+              const items = searchResults.filter((r) => r.group === group);
+              if (items.length === 0) return null;
+              return (
+                <div key={group}>
+                  <div className="border-b border-border bg-surface/60 px-3 py-1.5">
+                    <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                      {group}
+                    </span>
+                  </div>
+                  <ul>
+                    {items.map((r) => (
+                      <li key={r.id}>
+                        <Link
+                          href={r.href}
+                          onClick={() => {
+                            setSearchOpen(false);
+                            setSearchQuery("");
+                          }}
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface"
+                        >
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                            {r.label.charAt(0).toUpperCase()}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-foreground">{r.label}</p>
+                            <p className="truncate text-[10px] text-muted-foreground">{r.sub}</p>
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+            <div className="border-t border-border bg-surface/40 px-4 py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  router.push(`/admin/drivers?search=${encodeURIComponent(searchQuery)}`);
+                  setSearchOpen(false);
+                  setSearchQuery("");
+                }}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                See all results for &ldquo;{searchQuery}&rdquo; →
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {searchOpen && searchResults.length === 0 && !searchLoading ? (
+          <div
+            ref={searchDropRef}
+            className="absolute left-0 top-full z-50 mt-2 w-full rounded-xl border border-border bg-card px-4 py-6 text-center shadow-2xl"
+          >
+            <p className="text-sm text-muted-foreground">No results for &ldquo;{searchQuery}&rdquo;</p>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex items-center justify-end gap-2">

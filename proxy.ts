@@ -19,16 +19,20 @@ export function proxy(request: NextRequest) {
         ? next
         : "/admin";
     const url = request.nextUrl.clone();
-    url.pathname = safe;
-    url.search = "";
+    // safe may contain a query string (e.g. /admin/drivers?vehicle=moto)
+    const [safePath, safeSearch] = safe.split("?");
+    url.pathname = safePath;
+    url.search = safeSearch ? `?${safeSearch}` : "";
     return NextResponse.redirect(url);
   }
 
   // Redirect unauthenticated users to login
   if (isAdminRoute && !isLoginPage && !hasSession) {
     const url = request.nextUrl.clone();
+    const fullPath = pathname + (request.nextUrl.search ?? "");
     url.pathname = "/admin/login";
-    url.searchParams.set("next", pathname);
+    url.search = "";
+    url.searchParams.set("next", fullPath);
     return NextResponse.redirect(url);
   }
 
