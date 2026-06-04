@@ -5,9 +5,10 @@ import { SuperAdminDashboard } from "./dashboards/super-admin-dashboard";
 import { AnalyticsDashboard } from "./dashboards/analytics-dashboard";
 import { FinanceDashboard } from "./dashboards/finance-dashboard";
 import { OperationsDashboard } from "./dashboards/operations-dashboard";
+import { SupportDashboard } from "./dashboards/support-dashboard";
 
 /**
- * Picks the home dashboard by role. More role-specific homes are added here one by one.
+ * Picks the home dashboard by role.
  */
 export function DashboardHome() {
   const { roleName, ready } = useAuth();
@@ -27,6 +28,8 @@ export function DashboardHome() {
       return <FinanceDashboard />;
     case "Operations Manager":
       return <OperationsDashboard />;
+    case "Support Staff":
+      return <SupportDashboard />;
     default:
       return <SuperAdminDashboard />;
   }
