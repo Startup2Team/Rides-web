@@ -3,6 +3,7 @@
 import { useAuth } from "@/context/auth-context";
 import { SuperAdminDashboard } from "./dashboards/super-admin-dashboard";
 import { AnalyticsDashboard } from "./dashboards/analytics-dashboard";
+import { FinanceDashboard } from "./dashboards/finance-dashboard";
 
 /**
  * Picks the home dashboard by role. More role-specific homes are added here one by one.
@@ -21,6 +22,8 @@ export function DashboardHome() {
   switch (roleName) {
     case "Analytics Staff":
       return <AnalyticsDashboard />;
+    case "Finance Manager":
+      return <FinanceDashboard />;
     default:
       return <SuperAdminDashboard />;
   }

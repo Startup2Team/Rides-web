@@ -80,8 +80,8 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
   {
     id: "finance",
     name: "Finance Manager",
-    description: "Revenue, commission, payouts, and financial reports.",
-    permissions: ["/admin", "/admin/revenue", "/admin/reports"],
+    description: "Revenue, commission, payouts, analytics, and financial reports.",
+    permissions: ["/admin", "/admin/revenue", "/admin/analytics", "/admin/reports"],
     homePath: "/admin",
   },
   {
