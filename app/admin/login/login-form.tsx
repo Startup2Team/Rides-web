@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ApiEnvelope } from "@/lib/api-envelope";
 import { OtpQrCode } from "@/lib/otp-qr-code";
+import { resolvePostLoginRedirect } from "@/lib/post-login-redirect";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -255,7 +256,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         if (code === "PASSWORD_NOT_SET") {
           setError(
             msg ||
-              "Your account does not have a password yet. Use the link in your invite email to set one first.",
+              "No password is set for this account yet. Ask a Super Admin to open Admins & Roles → your user → Set password, then try again.",
           );
           return;
         }
@@ -326,7 +327,8 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         return;
       }
 
-      router.replace(nextPath);
+      const dest = await resolvePostLoginRedirect(nextPath);
+      router.replace(dest);
       router.refresh();
     } catch {
       setError("Network error while verifying.");
