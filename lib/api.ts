@@ -1012,6 +1012,7 @@ export type Role = {
   name: string;
   description: string;
   is_system: boolean;
+  permissions?: string[] | unknown;
 };
 
 export const getTeam = () =>
