@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ApiEnvelope } from "@/lib/api-envelope";
 import { OtpQrCode } from "@/lib/otp-qr-code";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -168,10 +169,10 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
           `/api/admin/auth/provisioning/${encodeURIComponent(challengeToken)}`,
           { method: "GET", cache: "no-store" },
         );
-        const j = (await r.json()) as {
-          data?: { otpauth_url?: string; secret?: string };
-          error?: { code?: string; message?: string };
-        };
+        const j = (await r.json()) as ApiEnvelope<{
+          otpauth_url?: string;
+          secret?: string;
+        }>;
         if (cancelled) return;
         if (!r.ok || !j.data?.otpauth_url) {
           const alreadyEnabled =
@@ -185,10 +186,9 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ challenge_token: challengeToken }),
               });
-              const rj = (await reconcile.json()) as {
-                data?: { challenge_token?: string };
-                error?: { message?: string };
-              };
+              const rj = (await reconcile.json()) as ApiEnvelope<{
+                challenge_token?: string;
+              }>;
               if (!cancelled && reconcile.ok && rj.data?.challenge_token) {
                 provisioningFired.current = false;
                 setChallengeToken(rj.data.challenge_token);
@@ -247,10 +247,19 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         body: JSON.stringify({ email: em, password }),
       });
 
-      const j = (await r.json()) as { data?: LoginPayload; error?: { message?: string } };
+      const j = (await r.json()) as ApiEnvelope<LoginPayload>;
 
       if (!r.ok) {
-        setError(j.error?.message ?? "Could not sign in.");
+        const code = j.error?.code;
+        const msg = j.error?.message ?? "Could not sign in.";
+        if (code === "PASSWORD_NOT_SET") {
+          setError(
+            msg ||
+              "Your account does not have a password yet. Use the link in your invite email to set one first.",
+          );
+          return;
+        }
+        setError(msg);
         return;
       }
 
@@ -305,7 +314,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         body: JSON.stringify({ challenge_token: challengeToken, totp_code: totpDigits }),
       });
 
-      const j = (await r.json()) as { error?: { code?: string; message?: string } };
+      const j = (await r.json()) as ApiEnvelope<unknown>;
 
       if (!r.ok) {
         const msg = j.error?.message ?? "Verification failed.";
@@ -372,10 +381,10 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ challenge_token: challengeToken, totp_code: "" }),
       });
-      const j = (await r.json()) as {
-        data?: { secret?: string; qr_code_url?: string };
-        error?: { code?: string; message?: string };
-      };
+      const j = (await r.json()) as ApiEnvelope<{
+        secret?: string;
+        qr_code_url?: string;
+      }>;
       if (!r.ok) {
         const msg = j.error?.message ?? "Could not reset authenticator.";
         if (isSessionExpiredError(msg, j.error?.code)) {
