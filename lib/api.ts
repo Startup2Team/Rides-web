@@ -25,7 +25,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (res.status === 401) {
     clearToken();
-    if (typeof window !== "undefined") window.location.href = "/admin/login";
+    if (typeof window !== "undefined") {
+      // Clear the HttpOnly admin_access_token cookie via the server logout route
+      // so proxy.ts does not redirect back to /admin and loop.
+      await fetch("/api/admin/auth/logout", { method: "POST" }).catch(() => {});
+      window.location.href = "/admin/login";
+    }
     throw new Error("Unauthorized");
   }
 
@@ -1021,8 +1026,18 @@ export const getTeam = () =>
 export const getRoles = () =>
   request<{ roles: Role[] }>("/admin/team/roles");
 
-export const inviteAdmin = (name: string, email: string, roleId: string) =>
-  request<TeamMember>("/admin/team/invite", { method: "POST", body: { name, email, role_id: roleId } });
+export const inviteAdmin = (name: string, email: string, roleId: string, password?: string) =>
+  request<TeamMember>("/admin/team/invite", {
+    method: "POST",
+    body: { name, email, role_id: roleId, ...(password ? { password } : {}) },
+  });
+
+/** Sets initial password for an invited admin (required before they can sign in). */
+export const setMemberPassword = (memberId: string, password: string) =>
+  request<void>(`/admin/team/members/${memberId}/set-password`, {
+    method: "POST",
+    body: { password },
+  });
 
 export const updateMemberRole = (id: string, roleId: string) =>
   request<void>(`/admin/team/members/${id}/role`, { method: "POST", body: { role_id: roleId } });

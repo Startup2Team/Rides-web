@@ -5,15 +5,17 @@ const productLinks = [
   { label: "Features", href: "/#features" },
   { label: "How It Works", href: "/#how-it-works" },
   { label: "Drivers", href: "/drivers" },
+  { label: "Download App", href: "/#download" },
 ];
 
 const companyLinks = [
+  { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
 ];
 
 const legalLinks = [
-  { label: "Privacy", href: "/privacy" },
-  { label: "Terms", href: "/terms" },
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms of Service", href: "/terms" },
 ];
 
 export default function Footer() {
@@ -31,8 +33,11 @@ export default function Footer() {
               </span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Real-time smart mobility platform connecting riders and drivers
-              across Africa.
+              People-powered mobility and logistics — connecting riders,
+              drivers, and communities across Africa and beyond.
+            </p>
+            <p className="mt-2 text-xs italic text-muted-foreground/60">
+              &ldquo;Driven by People, Powered by Choice.&rdquo;
             </p>
 
             <div className="mt-6 flex items-center gap-2">
@@ -129,9 +134,19 @@ export default function Footer() {
           <p className="text-xs text-muted-foreground">
             © {year} Rides. All rights reserved.
           </p>
-          <p className="text-xs text-muted-foreground">
-            Built for the future of mobility in Africa.
-          </p>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
+              Privacy
+            </Link>
+            <span className="h-3 w-px bg-border" />
+            <Link href="/terms" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
+              Terms
+            </Link>
+            <span className="h-3 w-px bg-border" />
+            <Link href="/about" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
+              About
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

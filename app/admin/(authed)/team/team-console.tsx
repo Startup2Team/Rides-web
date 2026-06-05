@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, Card } from "../_components";
 import { InviteAdminModal } from "./invite-admin-modal";
+import { SetPasswordModal } from "./set-password-modal";
 import { AdminActivityModal } from "./admin-activity-modal";
 import { DEFAULT_ROLES, SIDEBAR_ITEMS, type Role } from "./roles";
 import {
   getTeam,
   getRoles,
   inviteAdmin,
+  setMemberPassword,
   suspendMember,
   reinstateMember,
   removeMember,
@@ -32,64 +34,6 @@ type Admin = {
   notes?: string;
   invitedAt?: string;
 };
-
-const initialAdmins: Admin[] = [
-  {
-    id: "a1",
-    name: "Aiden Mugisha",
-    email: "aiden@rides.com",
-    roleId: "super",
-    status: "Active",
-    lastActive: "Just now",
-    twoFactor: true,
-  },
-  {
-    id: "a2",
-    name: "Beatrice Iradukunda",
-    email: "beatrice@rides.com",
-    roleId: "ops",
-    status: "Active",
-    lastActive: "12m ago",
-    twoFactor: true,
-  },
-  {
-    id: "a3",
-    name: "Cyril Habineza",
-    email: "cyril@rides.com",
-    roleId: "finance",
-    status: "Active",
-    lastActive: "1h ago",
-    twoFactor: true,
-  },
-  {
-    id: "a4",
-    name: "Diana Ntirenganya",
-    email: "diana@rides.com",
-    roleId: "support",
-    status: "Active",
-    lastActive: "3h ago",
-    twoFactor: false,
-  },
-  {
-    id: "a5",
-    name: "Eric Bizimana",
-    email: "eric@rides.com",
-    roleId: "analytics",
-    status: "Active",
-    lastActive: "Yesterday",
-    twoFactor: true,
-  },
-  {
-    id: "a6",
-    name: "Florence Mukasine",
-    email: "florence@rides.com",
-    roleId: "support",
-    status: "Invited",
-    lastActive: "Pending",
-    twoFactor: false,
-    invitedAt: "Today 09:20",
-  },
-];
 
 const statusStyles: Record<AdminStatus, string> = {
   Active:
@@ -234,6 +178,7 @@ export function TeamConsole() {
   const [roleFilter, setRoleFilter] = useState<"all" | string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | AdminStatus>("all");
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [passwordFor, setPasswordFor] = useState<Admin | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
@@ -543,6 +488,10 @@ export function TeamConsole() {
                               ...(a.status === "Invited"
                                 ? [
                                     {
+                                      label: "Set password",
+                                      onClick: () => setPasswordFor(a),
+                                    },
+                                    {
                                       label: "Resend invite",
                                       onClick: async () => {
                                         try {
@@ -554,7 +503,14 @@ export function TeamConsole() {
                                       },
                                     },
                                   ]
-                                : []),
+                                : a.status === "Active"
+                                  ? [
+                                      {
+                                        label: "Reset password",
+                                        onClick: () => setPasswordFor(a),
+                                      },
+                                    ]
+                                  : []),
                               ...(a.twoFactor
                                 ? [
                                     {
@@ -853,36 +809,52 @@ export function TeamConsole() {
         onClose={() => setActivityForId(null)}
       />
 
+      <SetPasswordModal
+        open={passwordFor !== null}
+        adminName={passwordFor?.name ?? ""}
+        adminEmail={passwordFor?.email ?? ""}
+        onClose={() => setPasswordFor(null)}
+        onSave={async (password) => {
+          if (!passwordFor) return;
+          await setMemberPassword(passwordFor.id, password);
+          updateAdmin(passwordFor.id, { status: "Active", lastActive: "Just now" });
+          setToast(`${passwordFor.name} can sign in — share the password securely`);
+          setPasswordFor(null);
+        }}
+      />
+
       <InviteAdminModal
         open={inviteOpen}
         roles={roles}
         onClose={() => setInviteOpen(false)}
-        onInvite={async ({ name, email, roleId, notes }) => {
+        onInvite={async ({ name, email, roleId, notes, tempPassword }) => {
           try {
-            const member = await inviteAdmin(name, email, roleId);
+            const member = await inviteAdmin(name, email, roleId, tempPassword);
+            const status: AdminStatus =
+              member.status === "ACTIVE" ? "Active" : "Invited";
             setAdmins((prev) => [
               {
                 id: member.id,
                 name: member.name,
                 email: member.email,
                 roleId: member.role_id,
-                status: "Invited" as AdminStatus,
-                lastActive: "Pending",
+                status,
+                lastActive: status === "Active" ? "Just now" : "Pending",
                 twoFactor: false,
                 invitedAt: "Just now",
                 notes,
               },
               ...prev,
             ]);
+            setToast(
+              status === "Active"
+                ? `${name} can sign in — share the temporary password you set`
+                : `${name} invited — set a password before they can sign in`,
+            );
           } catch {
-            const id = `tmp-${Date.now()}`;
-            setAdmins((prev) => [
-              { id, name, email, roleId, status: "Invited" as AdminStatus, lastActive: "Pending", twoFactor: false, invitedAt: "Just now", notes },
-              ...prev,
-            ]);
+            setToast("Invite failed — check email is unique and try again");
           }
           setInviteOpen(false);
-          setToast(`${name} added · share the temp password with them`);
         }}
       />
 

@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { RidesLogo } from "../../components/rides-logo";
 import { useAuth } from "@/context/auth-context";
+import { hasPermission } from "@/lib/admin-permissions";
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -206,7 +207,7 @@ export function AdminSidebar({
 } = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, permissions, ready } = useAuth();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   // Avoid SSR/CSR mismatch: user comes from localStorage on the client only,
@@ -283,13 +284,18 @@ export function AdminSidebar({
         </div>
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
-        {groups.map((group) => (
+        {groups.map((group) => {
+          const items = ready
+            ? group.items.filter((item) => hasPermission(permissions, item.href))
+            : group.items;
+          if (items.length === 0) return null;
+          return (
           <div key={group.label}>
             <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
               {group.label}
             </p>
             <ul className="mt-2 space-y-0.5">
-              {group.items.map((item) => {
+              {items.map((item) => {
                 const parentMatch =
                   item.href === "/admin"
                     ? pathname === "/admin"
@@ -298,8 +304,7 @@ export function AdminSidebar({
 
                 if (item.children) {
                   const isOpen = expanded.has(item.href);
-                  const parentExactActive =
-                    parentMatch && !searchParams.get("vehicle");
+                  const parentExactActive = parentMatch;
                   return (
                     <li key={item.href}>
                       <div
@@ -309,13 +314,14 @@ export function AdminSidebar({
                             : "text-muted-foreground hover:bg-surface hover:text-foreground"
                         }`}
                       >
-                        <Link
-                          href={item.href}
+                        <button
+                          type="button"
+                          onClick={() => toggle(item.href)}
                           className="flex flex-1 items-center gap-3 px-3 py-2 text-sm"
                         >
                           {item.icon}
                           <span>{item.label}</span>
-                        </Link>
+                        </button>
                         <button
                           type="button"
                           onClick={() => toggle(item.href)}
@@ -404,7 +410,8 @@ export function AdminSidebar({
               })}
             </ul>
           </div>
-        ))}
+          );
+        })}
       </nav>
     </aside>
     </>
