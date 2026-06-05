@@ -25,6 +25,7 @@ const navLinks = [
   { label: "Features", href: "/#features" },
   { label: "How It Works", href: "/#how-it-works" },
   { label: "Drivers", href: "/drivers" },
+  { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
 ];
 
