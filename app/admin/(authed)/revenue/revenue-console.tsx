@@ -7,6 +7,48 @@ import {
   type Transaction,
   type TransactionStatus,
 } from "./transaction-modal";
+import {
+  getTransactions,
+  getRevenue,
+  disbursePayouts,
+  type Transaction as ApiTransaction,
+} from "@/lib/api";
+
+const TRANSPORT_DISPLAY: Record<string, string> = {
+  MOTO_BIKE: "Moto Bike", CAB_TAXI: "Cab Taxi",
+  LIGHT_HILUX: "Light Hilux", HEAVY_FUSO: "Heavy Fuso", TUK_TUK: "Tuk Tuk",
+};
+
+function mapApiTransaction(t: ApiTransaction): Transaction {
+  const status: TransactionStatus =
+    t.status === "PENDING" ? "Pending payout"
+    : t.status === "REFUNDED" ? "Refunded"
+    : t.status === "DISPUTED" ? "Disputed"
+    : "Settled";
+  const custName = t.customer?.name ?? t.customer?.phone ?? "Unknown";
+  const driverName = t.driver?.name ?? t.driver?.phone ?? "Unknown";
+  return {
+    id: t.id,
+    customer: { name: custName, phone: t.customer?.phone ?? "" },
+    driver: {
+      name: driverName,
+      phone: t.driver?.phone ?? "",
+      vehicleType: TRANSPORT_DISPLAY[t.transport_type] ?? t.transport_type,
+      plate: t.driver?.plate ?? "—",
+    },
+    pickup: t.pickup_address,
+    destination: t.destination_address,
+    vehicleType: (TRANSPORT_DISPLAY[t.transport_type] ?? "Cab Taxi") as Transaction["vehicleType"],
+    fare: t.fare ?? 0,
+    commission: t.commission,
+    payout: t.payout,
+    paymentMethod: "Cash",
+    status,
+    completedAt: t.completed_at ? new Date(t.completed_at).toLocaleString() : "—",
+    duration: "—",
+    district: "—",
+  };
+}
 
 type Period = "today" | "week" | "month" | "quarter" | "year";
 
@@ -43,393 +85,7 @@ type PeriodData = {
   topZones: { name: string; revenue: number; trend: number }[];
 };
 
-const data: Record<Period, PeriodData> = {
-  today: {
-    gross: 4_200_000,
-    commission: 504_000,
-    payouts: 3_696_000,
-    trips: 1_247,
-    pendingPayouts: 412_000,
-    pendingCount: 84,
-    grossDelta: 18,
-    commissionDelta: 22,
-    payoutsDelta: 17,
-    avgFareDelta: 6,
-    trend: [
-      { label: "00", value: 38 },
-      { label: "03", value: 22 },
-      { label: "06", value: 84 },
-      { label: "09", value: 142 },
-      { label: "12", value: 168 },
-      { label: "15", value: 224 },
-      { label: "18", value: 312 },
-      { label: "21", value: 188 },
-    ],
-    byVehicle: [
-      { vehicle: "Cab Taxi", pct: 58, amount: 2_436_000, color: "bg-primary" },
-      { vehicle: "Moto Bike", pct: 24, amount: 1_008_000, color: "bg-sky-500" },
-      { vehicle: "Light Hilux", pct: 12, amount: 504_000, color: "bg-amber-400" },
-      { vehicle: "Heavy Fuso", pct: 6, amount: 252_000, color: "bg-foreground" },
-    ],
-    byPayment: [
-      { method: "MTN MoMo", pct: 62, amount: 2_604_000, color: "bg-amber-400" },
-      { method: "Airtel Money", pct: 28, amount: 1_176_000, color: "bg-red-400" },
-      { method: "Cash", pct: 10, amount: 420_000, color: "bg-muted-foreground/70" },
-    ],
-    topZones: [
-      { name: "Kigali Heights", revenue: 612_000, trend: 22 },
-      { name: "Kimironko Market", revenue: 487_000, trend: 18 },
-      { name: "Convention Centre", revenue: 384_000, trend: 14 },
-      { name: "Nyabugogo Station", revenue: 312_000, trend: 8 },
-      { name: "Remera", revenue: 218_000, trend: 4 },
-    ],
-  },
-  week: {
-    gross: 24_800_000,
-    commission: 2_976_000,
-    payouts: 21_824_000,
-    trips: 8_412,
-    pendingPayouts: 1_240_000,
-    pendingCount: 247,
-    grossDelta: 12,
-    commissionDelta: 14,
-    payoutsDelta: 11,
-    avgFareDelta: 3,
-    trend: [
-      { label: "Mon", value: 312 },
-      { label: "Tue", value: 348 },
-      { label: "Wed", value: 366 },
-      { label: "Thu", value: 412 },
-      { label: "Fri", value: 478 },
-      { label: "Sat", value: 524 },
-      { label: "Sun", value: 320 },
-    ],
-    byVehicle: [
-      { vehicle: "Cab Taxi", pct: 60, amount: 14_880_000, color: "bg-primary" },
-      { vehicle: "Moto Bike", pct: 22, amount: 5_456_000, color: "bg-sky-500" },
-      { vehicle: "Light Hilux", pct: 12, amount: 2_976_000, color: "bg-amber-400" },
-      { vehicle: "Heavy Fuso", pct: 6, amount: 1_488_000, color: "bg-foreground" },
-    ],
-    byPayment: [
-      { method: "MTN MoMo", pct: 60, amount: 14_880_000, color: "bg-amber-400" },
-      { method: "Airtel Money", pct: 29, amount: 7_192_000, color: "bg-red-400" },
-      { method: "Cash", pct: 11, amount: 2_728_000, color: "bg-muted-foreground/70" },
-    ],
-    topZones: [
-      { name: "Kigali Heights", revenue: 3_420_000, trend: 21 },
-      { name: "Kimironko Market", revenue: 2_840_000, trend: 17 },
-      { name: "Convention Centre", revenue: 2_410_000, trend: 12 },
-      { name: "Nyabugogo Station", revenue: 1_980_000, trend: 7 },
-      { name: "Remera", revenue: 1_240_000, trend: 4 },
-    ],
-  },
-  month: {
-    gross: 94_600_000,
-    commission: 11_352_000,
-    payouts: 83_248_000,
-    trips: 32_184,
-    pendingPayouts: 2_640_000,
-    pendingCount: 412,
-    grossDelta: 9,
-    commissionDelta: 11,
-    payoutsDelta: 8,
-    avgFareDelta: 2,
-    trend: [
-      { label: "W1", value: 21_400 },
-      { label: "W2", value: 23_100 },
-      { label: "W3", value: 24_800 },
-      { label: "W4", value: 25_300 },
-    ],
-    byVehicle: [
-      { vehicle: "Cab Taxi", pct: 62, amount: 58_652_000, color: "bg-primary" },
-      { vehicle: "Moto Bike", pct: 21, amount: 19_866_000, color: "bg-sky-500" },
-      { vehicle: "Light Hilux", pct: 11, amount: 10_406_000, color: "bg-amber-400" },
-      { vehicle: "Heavy Fuso", pct: 6, amount: 5_676_000, color: "bg-foreground" },
-    ],
-    byPayment: [
-      { method: "MTN MoMo", pct: 58, amount: 54_868_000, color: "bg-amber-400" },
-      { method: "Airtel Money", pct: 30, amount: 28_380_000, color: "bg-red-400" },
-      { method: "Cash", pct: 12, amount: 11_352_000, color: "bg-muted-foreground/70" },
-    ],
-    topZones: [
-      { name: "Kigali Heights", revenue: 13_400_000, trend: 18 },
-      { name: "Kimironko Market", revenue: 10_800_000, trend: 15 },
-      { name: "Convention Centre", revenue: 9_200_000, trend: 11 },
-      { name: "Nyabugogo Station", revenue: 7_400_000, trend: 6 },
-      { name: "Remera", revenue: 4_800_000, trend: 3 },
-    ],
-  },
-  quarter: {
-    gross: 268_400_000,
-    commission: 32_208_000,
-    payouts: 236_192_000,
-    trips: 91_244,
-    pendingPayouts: 4_120_000,
-    pendingCount: 624,
-    grossDelta: 14,
-    commissionDelta: 16,
-    payoutsDelta: 13,
-    avgFareDelta: 4,
-    trend: [
-      { label: "M1", value: 76_400 },
-      { label: "M2", value: 88_400 },
-      { label: "M3", value: 94_600 },
-    ],
-    byVehicle: [
-      { vehicle: "Cab Taxi", pct: 61, amount: 163_724_000, color: "bg-primary" },
-      { vehicle: "Moto Bike", pct: 22, amount: 59_048_000, color: "bg-sky-500" },
-      { vehicle: "Light Hilux", pct: 11, amount: 29_524_000, color: "bg-amber-400" },
-      { vehicle: "Heavy Fuso", pct: 6, amount: 16_104_000, color: "bg-foreground" },
-    ],
-    byPayment: [
-      { method: "MTN MoMo", pct: 59, amount: 158_356_000, color: "bg-amber-400" },
-      { method: "Airtel Money", pct: 29, amount: 77_836_000, color: "bg-red-400" },
-      { method: "Cash", pct: 12, amount: 32_208_000, color: "bg-muted-foreground/70" },
-    ],
-    topZones: [
-      { name: "Kigali Heights", revenue: 38_200_000, trend: 16 },
-      { name: "Kimironko Market", revenue: 30_400_000, trend: 13 },
-      { name: "Convention Centre", revenue: 26_800_000, trend: 9 },
-      { name: "Nyabugogo Station", revenue: 21_400_000, trend: 5 },
-      { name: "Remera", revenue: 13_900_000, trend: 2 },
-    ],
-  },
-  year: {
-    gross: 982_400_000,
-    commission: 117_888_000,
-    payouts: 864_512_000,
-    trips: 334_812,
-    pendingPayouts: 5_240_000,
-    pendingCount: 812,
-    grossDelta: 38,
-    commissionDelta: 41,
-    payoutsDelta: 37,
-    avgFareDelta: 7,
-    trend: [
-      { label: "Q1", value: 218_400 },
-      { label: "Q2", value: 242_600 },
-      { label: "Q3", value: 253_000 },
-      { label: "Q4", value: 268_400 },
-    ],
-    byVehicle: [
-      { vehicle: "Cab Taxi", pct: 60, amount: 589_440_000, color: "bg-primary" },
-      { vehicle: "Moto Bike", pct: 22, amount: 216_128_000, color: "bg-sky-500" },
-      { vehicle: "Light Hilux", pct: 12, amount: 117_888_000, color: "bg-amber-400" },
-      { vehicle: "Heavy Fuso", pct: 6, amount: 58_944_000, color: "bg-foreground" },
-    ],
-    byPayment: [
-      { method: "MTN MoMo", pct: 57, amount: 559_968_000, color: "bg-amber-400" },
-      { method: "Airtel Money", pct: 30, amount: 294_720_000, color: "bg-red-400" },
-      { method: "Cash", pct: 13, amount: 127_712_000, color: "bg-muted-foreground/70" },
-    ],
-    topZones: [
-      { name: "Kigali Heights", revenue: 142_400_000, trend: 32 },
-      { name: "Kimironko Market", revenue: 116_200_000, trend: 28 },
-      { name: "Convention Centre", revenue: 98_400_000, trend: 22 },
-      { name: "Nyabugogo Station", revenue: 78_400_000, trend: 14 },
-      { name: "Remera", revenue: 52_400_000, trend: 8 },
-    ],
-  },
-};
 
-const transactions: Transaction[] = [
-  {
-    id: "TXN-58471",
-    customer: { name: "Alice Mukamana", phone: "+250 788 213 005" },
-    driver: { name: "Aiden Mugisha", phone: "+250 788 213 401", vehicleType: "Cab Taxi", plate: "RAB 123 D" },
-    pickup: "Kimironko Market",
-    destination: "Kigali Heights",
-    vehicleType: "Cab Taxi",
-    fare: 3800,
-    commission: 456,
-    payout: 3344,
-    paymentMethod: "MTN MoMo",
-    status: "Settled",
-    completedAt: "8 min ago",
-    duration: "14 min",
-    district: "Gasabo",
-  },
-  {
-    id: "TXN-58470",
-    customer: { name: "Boris Habineza", phone: "+250 788 552 198" },
-    driver: { name: "Beni Karenzi", phone: "+250 788 552 110", vehicleType: "Moto Bike", plate: "RAA 887 K" },
-    pickup: "Remera",
-    destination: "Town",
-    vehicleType: "Moto Bike",
-    fare: 2200,
-    commission: 264,
-    payout: 1936,
-    paymentMethod: "MTN MoMo",
-    status: "Settled",
-    completedAt: "12 min ago",
-    duration: "8 min",
-    district: "Gasabo",
-  },
-  {
-    id: "TXN-58469",
-    customer: { name: "Christine Niyibizi", phone: "+250 788 614 770" },
-    driver: { name: "Claude Rwema", phone: "+250 788 102 887", vehicleType: "Light Hilux", plate: "RAC 552 R" },
-    pickup: "Kacyiru",
-    destination: "Nyabugogo Station",
-    vehicleType: "Light Hilux",
-    fare: 5500,
-    commission: 660,
-    payout: 4840,
-    paymentMethod: "MTN MoMo",
-    status: "Pending payout",
-    completedAt: "18 min ago",
-    duration: "22 min",
-    district: "Gasabo",
-  },
-  {
-    id: "TXN-58468",
-    customer: { name: "Daniel Iradukunda", phone: "+250 788 102 441" },
-    driver: { name: "Diane Uwase", phone: "+250 788 339 220", vehicleType: "Cab Taxi", plate: "RAB 410 U" },
-    pickup: "Gikondo",
-    destination: "Town",
-    vehicleType: "Cab Taxi",
-    fare: 2200,
-    commission: 264,
-    payout: 1936,
-    paymentMethod: "Airtel Money",
-    status: "Settled",
-    completedAt: "32 min ago",
-    duration: "11 min",
-    district: "Kicukiro",
-  },
-  {
-    id: "TXN-58467",
-    customer: { name: "Fabrice Bizimana", phone: "+250 788 477 113" },
-    driver: { name: "Eric Nshuti", phone: "+250 788 477 661", vehicleType: "Heavy Fuso", plate: "RAD 094 N" },
-    pickup: "Gikondo Industrial",
-    destination: "Nyabugogo",
-    vehicleType: "Heavy Fuso",
-    fare: 18500,
-    commission: 2220,
-    payout: 16280,
-    paymentMethod: "Cash",
-    status: "Disputed",
-    completedAt: "1h ago",
-    duration: "47 min",
-    district: "Kicukiro",
-    notes:
-      "Customer disputed fare mid-trip and refused to pay agreed amount. Held pending dispute resolution.",
-  },
-  {
-    id: "TXN-58466",
-    customer: { name: "Grace Uwineza", phone: "+250 788 823 005" },
-    driver: { name: "Helen Niyibizi", phone: "+250 788 614 005", vehicleType: "Cab Taxi", plate: "RAB 318 H" },
-    pickup: "Kacyiru",
-    destination: "Airport",
-    vehicleType: "Cab Taxi",
-    fare: 8500,
-    commission: 1020,
-    payout: 7480,
-    paymentMethod: "MTN MoMo",
-    status: "Settled",
-    completedAt: "1h ago",
-    duration: "28 min",
-    district: "Gasabo",
-  },
-  {
-    id: "TXN-58465",
-    customer: { name: "Henri Mugisha", phone: "+250 788 156 992" },
-    driver: { name: "Joyce Habineza", phone: "+250 788 705 332", vehicleType: "Moto Bike", plate: "RAA 502 J" },
-    pickup: "Kimironko",
-    destination: "Town",
-    vehicleType: "Moto Bike",
-    fare: 2400,
-    commission: 288,
-    payout: 2112,
-    paymentMethod: "MTN MoMo",
-    status: "Settled",
-    completedAt: "2h ago",
-    duration: "12 min",
-    district: "Gasabo",
-  },
-  {
-    id: "TXN-58464",
-    customer: { name: "Irene Mukasa", phone: "+250 788 290 552" },
-    driver: { name: "Roland Karangwa", phone: "+250 788 670 219", vehicleType: "Moto Bike", plate: "RAA 489 R" },
-    pickup: "Remera",
-    destination: "Kacyiru",
-    vehicleType: "Moto Bike",
-    fare: 1800,
-    commission: 216,
-    payout: 1584,
-    paymentMethod: "MTN MoMo",
-    status: "Settled",
-    completedAt: "2h ago",
-    duration: "7 min",
-    district: "Gasabo",
-  },
-  {
-    id: "TXN-58463",
-    customer: { name: "Sandrine Uwimana", phone: "+250 788 091 553" },
-    driver: { name: "Olivier Hakizimana", phone: "+250 788 449 660", vehicleType: "Cab Taxi", plate: "RAB 502 O" },
-    pickup: "Gikondo",
-    destination: "Town",
-    vehicleType: "Cab Taxi",
-    fare: 4200,
-    commission: 504,
-    payout: 3696,
-    paymentMethod: "Airtel Money",
-    status: "Refunded",
-    completedAt: "3h ago",
-    duration: "15 min",
-    district: "Kicukiro",
-    notes:
-      "Refunded after driver could not deliver — vehicle breakdown mid-trip.",
-  },
-  {
-    id: "TXN-58462",
-    customer: { name: "Liliane Uwase", phone: "+250 788 904 660" },
-    driver: { name: "Aiden Mugisha", phone: "+250 788 213 401", vehicleType: "Cab Taxi", plate: "RAB 123 D" },
-    pickup: "Kacyiru",
-    destination: "BPR HQ",
-    vehicleType: "Cab Taxi",
-    fare: 3800,
-    commission: 456,
-    payout: 3344,
-    paymentMethod: "MTN MoMo",
-    status: "Settled",
-    completedAt: "3h ago",
-    duration: "11 min",
-    district: "Gasabo",
-  },
-  {
-    id: "TXN-58461",
-    customer: { name: "Kalisa Eric", phone: "+250 788 412 003" },
-    driver: { name: "Patrick Nshimiyimana", phone: "+250 788 322 178", vehicleType: "Light Hilux", plate: "RAC 712 P" },
-    pickup: "Gahanga",
-    destination: "Town",
-    vehicleType: "Light Hilux",
-    fare: 6200,
-    commission: 744,
-    payout: 5456,
-    paymentMethod: "MTN MoMo",
-    status: "Settled",
-    completedAt: "4h ago",
-    duration: "24 min",
-    district: "Kicukiro",
-  },
-  {
-    id: "TXN-58460",
-    customer: { name: "Olivier Habimana", phone: "+250 788 449 660" },
-    driver: { name: "Nadine Kayitesi", phone: "+250 788 803 117", vehicleType: "Moto Bike", plate: "RAA 638 N" },
-    pickup: "Kanyinya",
-    destination: "Town",
-    vehicleType: "Moto Bike",
-    fare: 2200,
-    commission: 264,
-    payout: 1936,
-    paymentMethod: "MTN MoMo",
-    status: "Pending payout",
-    completedAt: "4h ago",
-    duration: "9 min",
-    district: "Nyarugenge",
-  },
-];
 
 const txStatusStyles: Record<TransactionStatus, string> = {
   Settled: "bg-primary/15 text-primary",
@@ -451,19 +107,9 @@ const PAGE_SIZE = 6;
 type SortKey = "fare" | "commission" | "completedAt";
 type SortDir = "asc" | "desc";
 
-const completedAgoMinutes: Record<string, number> = {
-  "8 min ago": 8,
-  "12 min ago": 12,
-  "18 min ago": 18,
-  "32 min ago": 32,
-  "1h ago": 60,
-  "2h ago": 120,
-  "3h ago": 180,
-  "4h ago": 240,
-};
-
 function completedRank(t: Transaction) {
-  return completedAgoMinutes[t.completedAt] ?? 9999;
+  if (!t.completedAt || t.completedAt === "—") return 9999999;
+  return new Date(t.completedAt).getTime();
 }
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -586,15 +232,15 @@ function TrendChart({ data }: { data: { label: string; value: number }[] }) {
       >
         <defs>
           <linearGradient id="rev-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#00C853" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#00C853" stopOpacity="0" />
+            <stop offset="0%" stopColor="#007AFF" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#007AFF" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={area} fill="url(#rev-grad)" />
         <polyline
           points={points}
           fill="none"
-          stroke="#00C853"
+          stroke="#007AFF"
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -605,7 +251,7 @@ function TrendChart({ data }: { data: { label: string; value: number }[] }) {
             cx={i * stepX}
             cy={h - (d.value / max) * (h - 20) - 10}
             r="3"
-            fill="#00C853"
+            fill="#007AFF"
             stroke="white"
             strokeWidth="1.5"
           />
@@ -673,14 +319,75 @@ function Donut({
   );
 }
 
+function mapRevenueToPeriodData(raw: Record<string, unknown> | null | undefined): PeriodData {
+  if (!raw) return emptyPeriodData;
+  const byVehicleColors: Record<string, string> = {
+    CAB_TAXI: "bg-primary",
+    MOTO_BIKE: "bg-sky-500",
+    LIGHT_HILUX: "bg-amber-400",
+    HEAVY_FUSO: "bg-foreground",
+  };
+  const vehicleLabels: Record<string, string> = {
+    CAB_TAXI: "Cab Taxi",
+    MOTO_BIKE: "Moto Bike",
+    LIGHT_HILUX: "Light Hilux",
+    HEAVY_FUSO: "Heavy Fuso",
+  };
+  const byVehicleRaw = (raw.by_vehicle ?? []) as Array<{ vehicle?: string; amount?: number; pct?: number }>;
+  const deltas = (raw.deltas ?? {}) as Record<string, number>;
+  const trendRaw = (raw.trend ?? []) as Array<{ label: string; value: number }>;
+  return {
+    gross: (raw.gross as number) ?? 0,
+    commission: (raw.commission as number) ?? 0,
+    payouts: (raw.payouts as number) ?? 0,
+    trips: (raw.trips as number) ?? 0,
+    pendingPayouts: 0,
+    pendingCount: 0,
+    grossDelta: deltas.gross ?? 0,
+    commissionDelta: deltas.commission ?? 0,
+    payoutsDelta: deltas.payouts ?? 0,
+    avgFareDelta: 0,
+    trend: trendRaw,
+    byVehicle: byVehicleRaw.map((v) => ({
+      vehicle: vehicleLabels[v.vehicle ?? ""] ?? (v.vehicle ?? "Other"),
+      pct: Math.round(v.pct ?? 0),
+      amount: v.amount ?? 0,
+      color: byVehicleColors[v.vehicle ?? ""] ?? "bg-muted",
+    })),
+    byPayment: [],
+    topZones: [],
+  };
+}
+
+const emptyPeriodData: PeriodData = {
+  gross: 0, commission: 0, payouts: 0, trips: 0,
+  pendingPayouts: 0, pendingCount: 0,
+  grossDelta: 0, commissionDelta: 0, payoutsDelta: 0, avgFareDelta: 0,
+  trend: [], byVehicle: [], byPayment: [], topZones: [],
+};
+
 export function RevenueConsole() {
   const [period, setPeriod] = useState<Period>("month");
+  const [periodData, setPeriodData] = useState<PeriodData>(emptyPeriodData);
   const [txTab, setTxTab] = useState<"all" | TransactionStatus>("all");
   const [txQuery, setTxQuery] = useState("");
   const [txPage, setTxPage] = useState(1);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [txList, setTxList] = useState<Transaction[]>(transactions);
+  const [txList, setTxList] = useState<Transaction[]>([]);
+
+  useEffect(() => {
+    getRevenue(period)
+      .then((res) => setPeriodData(mapRevenueToPeriodData(res as unknown as Record<string, unknown>)))
+      .catch(() => null);
+  }, [period]);
+
+  useEffect(() => {
+    getTransactions({ limit: "100", offset: "0" })
+      .then((res) => setTxList((res.transactions ?? []).map(mapApiTransaction)))
+      .catch(() => null);
+  }, []);
+
   const [sortKey, setSortKey] = useState<SortKey>("completedAt");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
@@ -699,7 +406,7 @@ export function RevenueConsole() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const p = data[period];
+  const p = periodData;
 
   const filteredTx = useMemo(() => {
     return txList.filter((t) => {

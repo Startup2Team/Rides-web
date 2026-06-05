@@ -142,7 +142,7 @@ export function InviteAdminModal({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="aiden@taravelis.com"
+                placeholder="aiden@rides.com"
                 className={`mt-2 block h-10 w-full rounded-lg border bg-surface px-3 text-sm text-foreground outline-none focus:border-primary ${
                   email && !emailValid ? "border-red-300" : "border-border"
                 }`}

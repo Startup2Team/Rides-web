@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { Avatar } from "../_components";
 
+export type DriverDocument = {
+  document_type: string;
+  file_url: string;
+  uploaded_at?: string;
+};
+
 export type VerifyDriver = {
   id: string;
   name: string;
@@ -18,6 +24,7 @@ export type VerifyDriver = {
     momoProvider: "MTN MoMo" | "Airtel Money";
     momoCode: string;
   };
+  documents?: DriverDocument[];
 };
 
 const RWANDA_PLATE = /^R[A-Z]{2}\s\d{3}\s[A-Z]$/;
@@ -132,6 +139,19 @@ function PreviewField({
   );
 }
 
+function docUrlFor(driver: VerifyDriver, kind: DocKey): string | null {
+  const map: Record<DocKey, string[]> = {
+    license: ["license", "drivers_license", "DRIVERS_LICENSE"],
+    insurance: ["insurance", "vehicle_insurance", "INSURANCE"],
+    authorization: ["authorization", "vehicle_authorization", "AUTHORIZATION"],
+  };
+  const keys = map[kind];
+  const doc = driver.documents?.find((d) =>
+    keys.some((k) => d.document_type.toLowerCase().includes(k.toLowerCase())),
+  );
+  return doc?.file_url?.trim() || null;
+}
+
 function DocumentPreview({
   kind,
   driver,
@@ -139,6 +159,40 @@ function DocumentPreview({
   kind: DocKey;
   driver: VerifyDriver;
 }) {
+  const fileUrl = docUrlFor(driver, kind);
+  if (fileUrl) {
+    const label = DOCS.find((d) => d.key === kind)?.label ?? "Document";
+    return (
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+        <div className="flex items-center justify-between border-b border-border px-3 py-2">
+          <span className="text-xs font-semibold text-foreground">{label}</span>
+          <a
+            href={fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] font-semibold text-primary hover:underline"
+          >
+            Open full file ↗
+          </a>
+        </div>
+        <div className="p-3">
+          {/\.(png|jpe?g|webp|gif)(\?|$)/i.test(fileUrl) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={fileUrl}
+              alt={label}
+              className="max-h-48 w-full rounded-md object-contain"
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Preview not available for this file type. Use the link above to open it.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (kind === "license") {
     return (
       <div className="overflow-hidden rounded-lg border border-border bg-gradient-to-br from-surface to-card">
@@ -258,18 +312,22 @@ export function VerifyDriverModal({
   mode?: "verify" | "view";
   onClose: () => void;
   onApprove: (id: string) => void;
-  onReject: (id: string) => void;
+  onReject: (id: string, reason: string) => void;
 }) {
   const open = driver !== null;
   const [reviewed, setReviewed] = useState<Set<string>>(new Set());
   const [manualChecks, setManualChecks] = useState<Set<number>>(new Set());
   const [expandedDoc, setExpandedDoc] = useState<DocKey | null>(null);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
     if (!open) {
       setReviewed(new Set());
       setManualChecks(new Set());
       setExpandedDoc(null);
+      setRejectOpen(false);
+      setRejectReason("");
       return;
     }
     const prev = document.body.style.overflow;
@@ -587,7 +645,7 @@ export function VerifyDriverModal({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => onReject(driver.id)}
+              onClick={() => setRejectOpen(true)}
               className="inline-flex h-10 items-center rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100"
             >
               Reject application
@@ -613,6 +671,48 @@ export function VerifyDriverModal({
           </button>
         </div>
         )}
+
+        {rejectOpen ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-2xl">
+              <h3 className="text-sm font-bold text-foreground">Reject application</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Provide a reason — stored on the driver record.
+              </p>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+                placeholder="e.g. Licence photo unreadable, plate mismatch…"
+                className="mt-3 block w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectOpen(false);
+                    setRejectReason("");
+                  }}
+                  className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-surface"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!rejectReason.trim()}
+                  onClick={() => {
+                    onReject(driver.id, rejectReason.trim());
+                    setRejectOpen(false);
+                    setRejectReason("");
+                  }}
+                  className="inline-flex h-9 items-center rounded-lg bg-red-600 px-3 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  Confirm reject
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

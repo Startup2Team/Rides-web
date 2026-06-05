@@ -5,6 +5,8 @@
 
 export const ADMIN_ACCESS_COOKIE = "admin_access_token";
 export const ADMIN_REFRESH_COOKIE = "admin_refresh_token";
+/** Non-httpOnly version — readable by JS so lib/api.ts can set Authorization headers. */
+export const ADMIN_UI_TOKEN_COOKIE = "admin_ui_token";
 
 /** Max cookie age (falls back match typical backend defaults). */
 export function accessCookieMaxAgeSeconds(): number {

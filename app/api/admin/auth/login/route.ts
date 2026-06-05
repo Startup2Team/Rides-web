@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
-import { backendPostLogin } from "../_shared";
-import type { LoginResult } from "../types";
+import { adminAuthUrl } from "@/lib/admin-backend-url";
+import type { ApiEnvelope } from "@/lib/api-envelope";
+
+type BackendLoginData = {
+  access_token?: string;
+  pre_auth_token?: string;
+  two_factor_required?: boolean;
+};
 
 export async function POST(request: Request) {
   let email = "";
@@ -13,17 +19,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: "BAD_REQUEST", message: "Invalid JSON body" } }, { status: 400 });
   }
 
-  const { res, envelope } = await backendPostLogin("/login", { email, password });
+  const res = await fetch(adminAuthUrl("/login"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+    cache: "no-store",
+  });
 
-  const data = envelope.data;
-
-  const safe: Partial<LoginResult> = {};
-  if (data) {
-    safe.status = data.status;
-    safe.challenge_token = data.challenge_token;
-    safe.email = data.email;
-    safe.full_name = data.full_name;
-    safe.admin_role = data.admin_role;
+  let envelope: ApiEnvelope<BackendLoginData> = {};
+  try {
+    envelope = (await res.json()) as ApiEnvelope<BackendLoginData>;
+  } catch {
+    envelope = {};
   }
 
   if (!res.ok) {
@@ -33,5 +40,25 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ data: safe }, { status: 200 });
+  const data = envelope.data;
+  if (!data) {
+    return NextResponse.json({ error: { code: "SERVER_ERROR", message: "Empty response from server" } }, { status: 502 });
+  }
+
+  // Backend returns either:
+  //   { access_token, two_factor_required: false }  — 2FA not set up yet → force setup
+  //   { pre_auth_token, two_factor_required: true }  — 2FA exists → need verification
+  if (data.two_factor_required === true && data.pre_auth_token) {
+    return NextResponse.json({
+      data: { status: "totp_required", challenge_token: data.pre_auth_token },
+    });
+  }
+
+  if (data.two_factor_required === false && data.access_token) {
+    return NextResponse.json({
+      data: { status: "totp_setup_required", challenge_token: data.access_token },
+    });
+  }
+
+  return NextResponse.json({ error: { code: "SERVER_ERROR", message: "Unexpected login response" } }, { status: 502 });
 }

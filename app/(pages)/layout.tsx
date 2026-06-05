@@ -1,5 +1,6 @@
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
+import { Chatbot } from "../components/chatbot";
 
 export default function MarketingLayout({
   children,
@@ -8,9 +9,14 @@ export default function MarketingLayout({
 }) {
   return (
     <>
-      <Navbar />
+      <div className="print:hidden">
+        <Navbar />
+      </div>
       {children}
-      <Footer />
+      <div className="print:hidden">
+        <Footer />
+        <Chatbot />
+      </div>
     </>
   );
 }

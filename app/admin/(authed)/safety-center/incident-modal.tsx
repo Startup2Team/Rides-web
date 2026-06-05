@@ -31,7 +31,7 @@ export type Incident = {
   reportedAt: string;
   description: string;
   rideId?: string;
-  reporter: { name: string; phone: string; role: "Customer" | "Driver" | "System" };
+  reporter: { name: string; phone: string; role: string };
   involves: IncidentParty[];
   location: string;
   district: string;

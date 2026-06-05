@@ -24,14 +24,14 @@ export type NegotiationDetail = {
   } | null;
   pickup: string;
   destination: string;
-  vehicleType: "Moto Bike" | "Cab Taxi" | "Light Hilux" | "Heavy Fuso";
+  vehicleType: string;
   initial: number;
   final: number | null;
   rounds: number;
   status: NegotiationStatus;
   startedAt: string;
   duration: string;
-  paymentMethod: "MTN MoMo" | "Airtel Money" | "Cash";
+  paymentMethod: string;
   offers: Offer[];
   failureReason?: string;
   notes?: string;

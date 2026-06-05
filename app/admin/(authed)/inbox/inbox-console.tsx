@@ -10,128 +10,33 @@ import {
   type MessageCategory,
   type MessageStatus,
 } from "./message-modal";
+import {
+  getInbox,
+  archiveMessage,
+  markSpam,
+  deleteMessage as deleteMsg,
+  replyToMessage,
+  type InboxMessage as ApiMessage,
+} from "@/lib/api";
 
-const initial: ContactMessage[] = [
-  {
-    id: "MSG-1842",
-    name: "Alphonse Habineza",
-    email: "alphonse.h@gmail.com",
-    phone: "+250 788 412 003",
-    subject: "Interested in becoming a driver",
-    category: "Driver application",
-    status: "New",
-    receivedAt: "12 min ago",
-    body: "Hello,\n\nI'm a Moto driver in Kigali with 8 years experience and a clean record. I'd love to join Taravelis. How do I sign up properly? My bike is registered as RAA 887 K.\n\nThanks,\nAlphonse",
-    replies: [],
-  },
-  {
-    id: "MSG-1841",
-    name: "Bank of Kigali · Partnerships",
-    email: "partnerships@bk.rw",
-    subject: "Corporate Cab agreement — quarterly rate?",
-    category: "Partnership",
-    status: "New",
-    receivedAt: "1h ago",
-    body: "Hi Taravelis team,\n\nWe'd like to discuss a corporate Cab agreement for ~120 staff. Looking for quarterly invoicing, monthly statements, and a single point of contact.\n\nCan we schedule a 30-min call this week?\n\nBest,\nBPR Partnerships",
-    replies: [],
-  },
-  {
-    id: "MSG-1840",
-    name: "Claude Niyitegeka",
-    email: "claude.n@taravelis.io",
-    phone: "+250 788 552 110",
-    subject: "Wrong fare charged twice",
-    category: "Complaint",
-    status: "New",
-    receivedAt: "2h ago",
-    body: "I was charged 4,800 RWF for a ride that was agreed at 3,200 RWF and a second time at 1,600 RWF five minutes later. Please refund the difference and the duplicate. Ride was around Kacyiru to Nyamirambo.",
-    replies: [],
-  },
-  {
-    id: "MSG-1839",
-    name: "The New Times · Yannick Ishimwe",
-    email: "yannick@newtimes.rw",
-    subject: "Interview request — Rwanda mobility startups",
-    category: "Press",
-    status: "Replied",
-    receivedAt: "Yesterday",
-    body: "I'm writing a feature on local mobility startups for the Sunday edition. Could I get 20 minutes with your CEO to discuss the negotiation model? Deadline is Friday.\n\nYannick",
-    replies: [
-      {
-        id: "r1",
-        author: "Aiden Mugisha",
-        time: "Yesterday 16:42",
-        body: "Hi Yannick — Thursday 11:00 works for our CEO. I'll send a calendar invite.",
-      },
-    ],
-  },
-  {
-    id: "MSG-1838",
-    name: "Eve Mukamana",
-    email: "eve.m@outlook.com",
-    subject: "How do I delete my account?",
-    category: "General",
-    status: "Replied",
-    receivedAt: "Yesterday",
-    body: "I want to delete my Taravelis account. Where do I do this in the app?",
-    replies: [
-      {
-        id: "r1",
-        author: "Diana N.",
-        time: "Yesterday 14:18",
-        body: "Hi Eve, you can request deletion in Profile → Settings → Account → Delete account. We'll process within 7 days.",
-      },
-    ],
-  },
-  {
-    id: "MSG-1837",
-    name: "BUY MOTO PARTS",
-    email: "noreply@buymotoparts.cn",
-    subject: "Bulk discount on motorcycle parts!!!",
-    category: "Other",
-    status: "Spam",
-    receivedAt: "2 days ago",
-    body: "Greetings respected sir, we offer bulk discount on motorcycle parts up to 90% off. Click here to view our catalogue.",
-    replies: [],
-  },
-  {
-    id: "MSG-1836",
-    name: "Francois Karemera",
-    email: "francois.k@gmail.com",
-    phone: "+250 788 290 552",
-    subject: "Question about driver insurance",
-    category: "Driver application",
-    status: "Replied",
-    receivedAt: "3 days ago",
-    body: "Does Taravelis provide insurance for drivers during a trip, or do we need our own?",
-    replies: [
-      {
-        id: "r1",
-        author: "Cyril H.",
-        time: "3 days ago",
-        body: "Hi Francois — drivers carry their own SONARWA policy. We add accident coverage during active trips at no cost. Details in the driver KYC docs.",
-      },
-    ],
-  },
-  {
-    id: "MSG-1835",
-    name: "Grace Iradukunda",
-    email: "grace.i@yahoo.com",
-    subject: "Suggestion for Moto helmet program",
-    category: "General",
-    status: "Archived",
-    receivedAt: "1 week ago",
-    body: "Would Taravelis ever subsidize helmets for drivers? My neighbor died because his helmet wasn't proper.",
-    replies: [
-      {
-        id: "r1",
-        author: "Beatrice I.",
-        time: "1 week ago",
-        body: "We're sorry for your loss. We're piloting a helmet co-pay program in Q3 — added to roadmap.",
-      },
-    ],
-  },
-];
+function mapApiMessage(m: ApiMessage): ContactMessage {
+  const statusMap: Record<string, MessageStatus> = {
+    NEW: "New", REPLIED: "Replied", ARCHIVED: "Archived", SPAM: "Spam",
+  };
+  return {
+    id: m.id,
+    name: m.from_name,
+    email: m.from_email,
+    subject: m.subject,
+    category: (m.category as MessageCategory) ?? "General",
+    status: statusMap[m.status] ?? "New",
+    receivedAt: new Date(m.created_at).toLocaleString(),
+    body: m.body,
+    replies: m.reply_body
+      ? [{ id: "r1", author: "Admin", time: m.replied_at ? new Date(m.replied_at).toLocaleString() : "—", body: m.reply_body }]
+      : [],
+  };
+}
 
 const PAGE_SIZE = 6;
 
@@ -154,7 +59,13 @@ const categoryFilters: ("all" | MessageCategory)[] = [
 ];
 
 export function InboxConsole() {
-  const [messages, setMessages] = useState<ContactMessage[]>(initial);
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+
+  useEffect(() => {
+    getInbox({ limit: "100", offset: "0" })
+      .then((res) => setMessages((Array.isArray(res.messages) ? res.messages : []).map(mapApiMessage)))
+      .catch(() => null);
+  }, []);
   const [tab, setTab] = useState<"all" | MessageStatus>("all");
   const [category, setCategory] = useState<"all" | MessageCategory>("all");
   const [query, setQuery] = useState("");
@@ -167,6 +78,7 @@ export function InboxConsole() {
     const t = setTimeout(() => setToast(null), 2500);
     return () => clearTimeout(t);
   }, [toast]);
+
 
   const counts: Record<"all" | MessageStatus, number> = useMemo(
     () => ({
@@ -384,34 +296,29 @@ export function InboxConsole() {
       <MessageModal
         message={viewing}
         onClose={() => setViewingId(null)}
-        onReply={(id, body) => {
+        onReply={async (id, body) => {
+          try { await replyToMessage(id, body); } catch { /* ignore */ }
           setMessages((prev) =>
             prev.map((m) =>
               m.id === id
                 ? {
                     ...m,
-                    status: "Replied",
-                    replies: [
-                      ...m.replies,
-                      {
-                        id: `r${m.replies.length + 1}`,
-                        author: "Aiden M.",
-                        time: "Just now",
-                        body,
-                      },
-                    ],
+                    status: "Replied" as const,
+                    replies: [...m.replies, { id: `r${m.replies.length + 1}`, author: "Admin", time: "Just now", body }],
                   }
                 : m,
             ),
           );
-          setToast(`Reply sent to ${viewing?.email}`);
+          setToast(`Reply sent to ${viewing?.email || viewing?.name}`);
         }}
-        onArchive={(id) => {
+        onArchive={async (id) => {
+          try { await archiveMessage(id); } catch { /* ignore */ }
           update(id, { status: "Archived" });
           setToast(`${id} archived`);
           setViewingId(null);
         }}
-        onSpam={(id) => {
+        onSpam={async (id) => {
+          try { await markSpam(id); } catch { /* ignore */ }
           update(id, { status: "Spam" });
           setToast(`${id} marked as spam`);
           setViewingId(null);

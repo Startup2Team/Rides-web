@@ -8,6 +8,16 @@ import {
   type ReportTemplate,
 } from "./new-report-modal";
 import { downloadReport } from "./download-report";
+import {
+  getReports,
+  getScheduledReports,
+  generateReport,
+  createScheduledReport,
+  toggleScheduledReport,
+  deleteReport as apiDeleteReport,
+  type BackendReport,
+  type BackendScheduled,
+} from "@/lib/api";
 
 type ReportStatus = "Ready" | "Generating" | "Failed" | "Queued";
 
@@ -80,165 +90,40 @@ const templates: ReportTemplate[] = [
   },
 ];
 
-const initialReports: Report[] = [
-  {
-    id: "RPT-58241",
-    name: "Daily Operations Report — 26 May",
-    templateId: "ops-daily",
-    generatedAt: "Today · 06:00",
-    generatedBy: "Schedule",
-    format: "PDF",
-    size: "1.4 MB",
-    status: "Ready",
-    range: "25 May 2026",
-  },
-  {
-    id: "RPT-58240",
-    name: "Driver Performance — Q2 Week 22",
-    templateId: "driver-performance",
-    generatedAt: "Yesterday · 18:30",
-    generatedBy: "Aiden Mugisha",
-    format: "Excel",
-    size: "880 KB",
-    status: "Ready",
-    range: "20 May – 26 May 2026",
-  },
-  {
-    id: "RPT-58239",
-    name: "Revenue Breakdown — May",
-    templateId: "revenue-breakdown",
-    generatedAt: "3 days ago",
-    generatedBy: "Finance",
-    format: "PDF",
-    size: "2.1 MB",
-    status: "Ready",
-    range: "1 May – 31 May 2026",
-  },
-  {
-    id: "RPT-58238",
-    name: "Negotiation Statistics — Week 21",
-    templateId: "negotiation-stats",
-    generatedAt: "5 days ago",
-    generatedBy: "Schedule",
-    format: "CSV",
-    size: "420 KB",
-    status: "Ready",
-    range: "13 May – 19 May 2026",
-  },
-  {
-    id: "RPT-58237",
-    name: "Ride Completion Rate — Q2",
-    templateId: "ride-completion",
-    generatedAt: "1 week ago",
-    generatedBy: "Operations",
-    format: "PDF",
-    size: "1.7 MB",
-    status: "Ready",
-    range: "1 Apr – 30 Apr 2026",
-  },
-  {
-    id: "RPT-58236",
-    name: "Driver Performance — Q2 Week 21",
-    templateId: "driver-performance",
-    generatedAt: "1 week ago",
-    generatedBy: "Schedule",
-    format: "Excel",
-    size: "920 KB",
-    status: "Ready",
-    range: "13 May – 19 May 2026",
-  },
-  {
-    id: "RPT-58235",
-    name: "Customer Cohort Retention — Q1",
-    templateId: "customer-cohort",
-    generatedAt: "2 weeks ago",
-    generatedBy: "Aiden Mugisha",
-    format: "PDF",
-    size: "3.1 MB",
-    status: "Ready",
-    range: "1 Jan – 31 Mar 2026",
-  },
-  {
-    id: "RPT-58234",
-    name: "Revenue Breakdown — Q1",
-    templateId: "revenue-breakdown",
-    generatedAt: "2 weeks ago",
-    generatedBy: "Finance",
-    format: "Excel",
-    size: "2.6 MB",
-    status: "Ready",
-    range: "1 Jan – 31 Mar 2026",
-  },
-  {
-    id: "RPT-58233",
-    name: "Driver Performance — Custom Heavy Fuso Run",
-    templateId: "driver-performance",
-    generatedAt: "2m ago",
-    generatedBy: "You",
-    format: "Excel",
-    size: "—",
-    status: "Generating",
-    range: "1 May – 26 May 2026",
-  },
-  {
-    id: "RPT-58232",
-    name: "Negotiation Statistics — Custom",
-    templateId: "negotiation-stats",
-    generatedAt: "1h ago",
-    generatedBy: "Schedule",
-    format: "CSV",
-    size: "—",
-    status: "Failed",
-    range: "1 May – 26 May 2026",
-  },
-];
+function mapReport(r: BackendReport): Report {
+  const statusMap: Record<string, ReportStatus> = {
+    PENDING: "Generating", READY: "Ready", FAILED: "Failed",
+  };
+  const template = templates.find((t) => t.id === r.template);
+  return {
+    id: r.id,
+    name: template ? `${template.name} — ${r.date_range || "Custom"}` : `${r.template} — ${r.date_range || "Custom"}`,
+    templateId: r.template,
+    generatedAt: r.generated_at
+      ? new Date(r.generated_at).toLocaleString()
+      : new Date(r.created_at).toLocaleString(),
+    generatedBy: r.created_by ?? "System",
+    format: (r.format as ReportFormat) ?? "PDF",
+    size: r.file_size ?? "—",
+    status: statusMap[r.status] ?? "Ready",
+    range: r.date_range ?? "—",
+  };
+}
 
-const initialSchedules: Schedule[] = [
-  {
-    id: "SCH-01",
-    name: "Daily Operations Report",
-    templateId: "ops-daily",
-    frequency: "Daily · 06:00",
-    nextRun: "Tomorrow 06:00",
-    lastRun: "Today 06:00",
-    recipients: ["ops@taravelis.io", "ceo@taravelis.io"],
-    format: "PDF",
-    active: true,
-  },
-  {
-    id: "SCH-02",
-    name: "Driver Performance Weekly",
-    templateId: "driver-performance",
-    frequency: "Weekly · Monday 07:00",
-    nextRun: "Mon 1 Jun 07:00",
-    lastRun: "Mon 25 May 07:00",
-    recipients: ["operations@taravelis.io"],
-    format: "Excel",
-    active: true,
-  },
-  {
-    id: "SCH-03",
-    name: "Monthly Revenue Breakdown",
-    templateId: "revenue-breakdown",
-    frequency: "Monthly · 1st 09:00",
-    nextRun: "1 Jun 09:00",
-    lastRun: "1 May 09:00",
-    recipients: ["finance@taravelis.io", "ceo@taravelis.io"],
-    format: "PDF",
-    active: true,
-  },
-  {
-    id: "SCH-04",
-    name: "Weekly Negotiation Statistics",
-    templateId: "negotiation-stats",
-    frequency: "Weekly · Sunday 22:00",
-    nextRun: "Sun 31 May 22:00",
-    lastRun: "Sun 24 May 22:00",
-    recipients: ["analytics@taravelis.io"],
-    format: "CSV",
-    active: false,
-  },
-];
+function mapSchedule(s: BackendScheduled): Schedule {
+  const template = templates.find((t) => t.id === s.template);
+  return {
+    id: s.id,
+    name: template?.name ?? s.template,
+    templateId: s.template,
+    frequency: s.frequency,
+    nextRun: s.next_run ? new Date(s.next_run).toLocaleString() : "—",
+    lastRun: "—",
+    recipients: Array.isArray(s.recipients) ? s.recipients : [],
+    format: (s.format as ReportFormat) ?? "PDF",
+    active: s.is_active,
+  };
+}
 
 const statusStyles: Record<ReportStatus, string> = {
   Ready: "bg-primary/15 text-primary",
@@ -300,9 +185,18 @@ function categoryIcon(category: ReportTemplate["category"]) {
 }
 
 export function ReportsConsole() {
-  const [reports, setReports] = useState<Report[]>(initialReports);
-  const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [tab, setTab] = useState<Tab>("recent");
+
+  useEffect(() => {
+    getReports({ limit: "50", offset: "0" })
+      .then((res) => setReports((res.reports ?? []).map(mapReport)))
+      .catch(() => null);
+    getScheduledReports()
+      .then((res) => setSchedules((res.scheduled ?? []).map(mapSchedule)))
+      .catch(() => null);
+  }, []);
   const [query, setQuery] = useState("");
   const [formatFilter, setFormatFilter] = useState<FormatFilter>("all");
   const [page, setPage] = useState(1);
@@ -342,7 +236,7 @@ export function ReportsConsole() {
     setModalOpen(true);
   }
 
-  function handleGenerate(payload: {
+  async function handleGenerate(payload: {
     templateId: string;
     range: string;
     format: ReportFormat;
@@ -351,53 +245,35 @@ export function ReportsConsole() {
   }) {
     const template = templates.find((t) => t.id === payload.templateId);
     if (!template) return;
+    setModalOpen(false);
 
     if (payload.frequency === "once") {
-      const id = `RPT-${Math.floor(58200 + Math.random() * 200)}`;
-      const newReport: Report = {
-        id,
-        name: `${template.name} — Custom`,
-        templateId: payload.templateId,
-        generatedAt: "Just now",
-        generatedBy: "You",
-        format: payload.format,
-        size: "—",
-        status: "Generating",
-        range: payload.range,
-      };
-      setReports((prev) => [newReport, ...prev]);
-      setToast(`${template.name} generation started`);
-
-      setTimeout(() => {
-        setReports((prev) =>
-          prev.map((r) =>
-            r.id === id ? { ...r, status: "Ready", size: "1.2 MB" } : r,
-          ),
-        );
-      }, 2500);
+      try {
+        const rep = await generateReport({
+          template: payload.templateId,
+          format: payload.format,
+          date_range: payload.range,
+        });
+        setReports((prev) => [mapReport(rep), ...prev]);
+        setToast(`${template.name} generation started`);
+      } catch {
+        setToast(`Failed to start ${template.name}`);
+      }
     } else {
-      const id = `SCH-${schedules.length + 5}`.padStart(6, "0");
-      const newSchedule: Schedule = {
-        id,
-        name: template.name,
-        templateId: payload.templateId,
-        frequency:
-          payload.frequency === "daily"
-            ? "Daily · 06:00"
-            : payload.frequency === "weekly"
-              ? "Weekly · Monday 07:00"
-              : "Monthly · 1st 09:00",
-        nextRun: "Tomorrow",
-        lastRun: "—",
-        recipients: payload.recipients,
-        format: payload.format,
-        active: true,
-      };
-      setSchedules((prev) => [newSchedule, ...prev]);
-      setToast(`Schedule created for ${template.name}`);
-      setTab("scheduled");
+      try {
+        const sr = await createScheduledReport({
+          template: payload.templateId,
+          format: payload.format,
+          frequency: payload.frequency,
+          recipients: payload.recipients,
+        });
+        setSchedules((prev) => [mapSchedule(sr), ...prev]);
+        setToast(`Schedule created for ${template.name}`);
+        setTab("scheduled");
+      } catch {
+        setToast(`Failed to create schedule for ${template.name}`);
+      }
     }
-    setModalOpen(false);
   }
 
   return (
@@ -617,16 +493,13 @@ export function ReportsConsole() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
+                          <div className="inline-flex items-center gap-1.5">
                           {r.status === "Ready" ? (
                             <button
                               type="button"
                               onClick={() => {
-                                downloadReport({
-                                  templateId: r.templateId,
-                                  format: r.format,
-                                  filename: r.id,
-                                });
-                                setToast(`Downloaded ${r.id}.${r.format.toLowerCase() === "excel" ? "xls" : r.format.toLowerCase()}`);
+                                downloadReport({ templateId: r.templateId, format: r.format, filename: r.id });
+                                setToast(`Downloaded ${r.id}`);
                               }}
                               className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                             >
@@ -635,34 +508,36 @@ export function ReportsConsole() {
                           ) : r.status === "Failed" ? (
                             <button
                               type="button"
-                              onClick={() => {
-                                setReports((prev) =>
-                                  prev.map((x) =>
-                                    x.id === r.id
-                                      ? { ...x, status: "Generating" }
-                                      : x,
-                                  ),
-                                );
+                              onClick={async () => {
+                                setReports((prev) => prev.map((x) => x.id === r.id ? { ...x, status: "Generating" } : x));
                                 setToast(`Retrying ${r.id}`);
-                                setTimeout(() => {
-                                  setReports((prev) =>
-                                    prev.map((x) =>
-                                      x.id === r.id
-                                        ? { ...x, status: "Ready", size: "1.1 MB" }
-                                        : x,
-                                    ),
-                                  );
-                                }, 2000);
+                                try {
+                                  const rep = await generateReport({ template: r.templateId, format: r.format, date_range: r.range });
+                                  setReports((prev) => prev.map((x) => x.id === r.id ? mapReport(rep) : x));
+                                } catch { /* ignore */ }
                               }}
                               className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
                             >
                               Retry
                             </button>
                           ) : (
-                            <span className="text-xs text-muted-foreground">
-                              Working…
-                            </span>
+                            <span className="text-xs text-muted-foreground">Working…</span>
                           )}
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setReports((prev) => prev.filter((x) => x.id !== r.id));
+                              try { await apiDeleteReport(r.id); } catch { /* ignore */ }
+                            }}
+                            className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-2 text-xs text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
+                            aria-label="Delete"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
+                        </div>
                         </td>
                       </tr>
                     ))
@@ -778,17 +653,12 @@ export function ReportsConsole() {
                       <td className="px-4 py-3">
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
                             setSchedules((prev) =>
-                              prev.map((x) =>
-                                x.id === s.id ? { ...x, active: !x.active } : x,
-                              ),
+                              prev.map((x) => x.id === s.id ? { ...x, active: !x.active } : x)
                             );
-                            setToast(
-                              s.active
-                                ? `${s.name} paused`
-                                : `${s.name} resumed`,
-                            );
+                            setToast(s.active ? `${s.name} paused` : `${s.name} resumed`);
+                            try { await toggleScheduledReport(s.id); } catch { /* revert */ }
                           }}
                           role="switch"
                           aria-checked={s.active}
@@ -814,10 +684,8 @@ export function ReportsConsole() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => {
-                              setSchedules((prev) =>
-                                prev.filter((x) => x.id !== s.id),
-                              );
+                            onClick={async () => {
+                              setSchedules((prev) => prev.filter((x) => x.id !== s.id));
                               setToast(`${s.name} schedule removed`);
                             }}
                             className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"

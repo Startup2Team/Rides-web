@@ -3,6 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Avatar, Card } from "../_components";
 import {
+  getTickets,
+  getTicket,
+  replyToTicket,
+  resolveTicket,
+  type Ticket as ApiTicket,
+  type TicketMessage as ApiMsg,
+} from "@/lib/api";
+import {
   priorityStyles,
   statusStyles,
   TicketModal,
@@ -12,151 +20,30 @@ import {
   type TicketType,
 } from "./ticket-modal";
 
-const initial: Ticket[] = [
-  {
-    id: "TKT-2841",
-    subject: "Driver took wrong route to destination",
-    type: "Ride dispute",
-    priority: "High",
-    status: "Open",
-    fromName: "Alice Mukamana",
-    fromRole: "Customer",
-    fromEmail: "alice.m@taravelis.io",
-    fromPhone: "+250 788 213 005",
-    rideId: "RID-4821",
-    createdAt: "8 min ago",
-    lastActivity: "8 min ago",
-    messages: [
-      { id: "m1", from: "customer", author: "Alice Mukamana", time: "8 min ago", body: "Driver insisted on a longer route via Kacyiru even after I requested the direct path. Fare ended up 35% higher." },
-    ],
-  },
-  {
-    id: "TKT-2840",
-    subject: "Refund request — overcharged on negotiation",
-    type: "Refund",
-    priority: "Medium",
-    status: "Open",
-    fromName: "Boris Habineza",
-    fromRole: "Customer",
-    fromEmail: "boris.h@taravelis.io",
-    fromPhone: "+250 788 552 198",
-    rideId: "RID-4732",
-    createdAt: "22 min ago",
-    lastActivity: "22 min ago",
-    messages: [
-      { id: "m1", from: "customer", author: "Boris Habineza", time: "22 min ago", body: "I agreed to 2,200 RWF in chat but the receipt shows 2,800 RWF was deducted. Need a refund of 600 RWF." },
-    ],
-  },
-  {
-    id: "TKT-2839",
-    subject: "Phone left in vehicle (Toyota Hilux RAC-552)",
-    type: "Lost item",
-    priority: "Low",
-    status: "Pending",
-    fromName: "Christine Niyibizi",
-    fromRole: "Customer",
-    fromEmail: "christine.n@taravelis.io",
-    fromPhone: "+250 788 614 770",
-    rideId: "RID-4710",
-    assignedTo: "Diana Ntirenganya",
-    createdAt: "1h ago",
-    lastActivity: "32 min ago",
-    messages: [
-      { id: "m1", from: "customer", author: "Christine Niyibizi", time: "1h ago", body: "Left my phone in Claude Rwema's vehicle after my ride. iPhone 15, black case." },
-      { id: "m2", from: "agent", author: "Diana N.", time: "48 min ago", body: "I've contacted the driver — he's confirmed the phone is in his vehicle. Will arrange pickup." },
-      { id: "m3", from: "driver", author: "Claude Rwema", time: "32 min ago", body: "Phone is safe. Can drop it at the office on my next trip toward town." },
-    ],
-  },
-  {
-    id: "TKT-2838",
-    subject: "Driver verification documents stuck in review",
-    type: "Driver",
-    priority: "Medium",
-    status: "Open",
-    fromName: "Florence Ingabire",
-    fromRole: "Driver",
-    fromEmail: "florence.i@taravelis.io",
-    fromPhone: "+250 788 123 456",
-    createdAt: "2h ago",
-    lastActivity: "2h ago",
-    messages: [
-      { id: "m1", from: "driver", author: "Florence Ingabire", time: "2h ago", body: "I submitted my KYC documents 5 days ago. Status still shows 'Under review'. When will I be approved?" },
-    ],
-  },
-  {
-    id: "TKT-2837",
-    subject: "MoMo payment failed but charged",
-    type: "Payment",
-    priority: "High",
-    status: "Open",
-    fromName: "Elise Twagiramungu",
-    fromRole: "Customer",
-    fromEmail: "elise.t@taravelis.io",
-    fromPhone: "+250 788 339 882",
-    rideId: "RID-4698",
-    createdAt: "3h ago",
-    lastActivity: "3h ago",
-    messages: [
-      { id: "m1", from: "customer", author: "Elise Twagiramungu", time: "3h ago", body: "MoMo notification confirms 3,800 RWF deducted but the app shows payment failed and is asking me to pay again." },
-    ],
-  },
-  {
-    id: "TKT-2836",
-    subject: "App keeps crashing on order screen",
-    type: "Account",
-    priority: "Low",
-    status: "Pending",
-    fromName: "Henri Mugisha",
-    fromRole: "Customer",
-    fromEmail: "henri.m@taravelis.io",
-    fromPhone: "+250 788 156 992",
-    assignedTo: "Diana Ntirenganya",
-    createdAt: "Yesterday",
-    lastActivity: "5h ago",
-    messages: [
-      { id: "m1", from: "customer", author: "Henri Mugisha", time: "Yesterday", body: "App crashes whenever I press 'Book Moto Bike'. Pixel 8, Android 14." },
-      { id: "m2", from: "agent", author: "Diana N.", time: "20h ago", body: "Thanks Henri. Could you confirm the app version (Settings → About)?" },
-      { id: "m3", from: "system", author: "system", time: "5h ago", body: "Reminder sent — awaiting customer reply" },
-    ],
-  },
-  {
-    id: "TKT-2835",
-    subject: "Need clarification on driver payout schedule",
-    type: "Driver",
-    priority: "Low",
-    status: "Resolved",
-    fromName: "Roland Karangwa",
-    fromRole: "Driver",
-    fromEmail: "roland.k@taravelis.io",
-    fromPhone: "+250 788 670 219",
-    assignedTo: "Aiden Mugisha",
-    createdAt: "Yesterday",
-    lastActivity: "Yesterday",
-    messages: [
-      { id: "m1", from: "driver", author: "Roland Karangwa", time: "Yesterday", body: "When exactly does Friday payout run? My MoMo statement shows nothing yet." },
-      { id: "m2", from: "agent", author: "Aiden M.", time: "Yesterday", body: "Payouts run twice daily at 06:00 and 17:00. Friday earnings before 17:00 land same day; after 17:00 land Monday 06:00." },
-      { id: "m3", from: "driver", author: "Roland Karangwa", time: "Yesterday", body: "Clear, thanks!" },
-    ],
-  },
-  {
-    id: "TKT-2834",
-    subject: "Account suspended — reason unclear",
-    type: "Account",
-    priority: "Medium",
-    status: "Closed",
-    fromName: "Jean-Paul Karangwa",
-    fromRole: "Customer",
-    fromEmail: "jp.k@taravelis.io",
-    fromPhone: "+250 788 705 887",
-    assignedTo: "Aiden Mugisha",
-    createdAt: "3 days ago",
-    lastActivity: "3 days ago",
-    messages: [
-      { id: "m1", from: "customer", author: "Jean-Paul Karangwa", time: "3 days ago", body: "Why is my account suspended? I haven't done anything." },
-      { id: "m2", from: "agent", author: "Aiden M.", time: "3 days ago", body: "Your account was suspended on 2026-05-04 after confirmed fraudulent chargeback (TXN-58413). Suspension stands — closing this ticket." },
-    ],
-  },
-];
+function mapApiTicket(t: ApiTicket): Ticket {
+  return {
+    id: t.id,
+    subject: t.subject,
+    type: (t.type as TicketType) ?? "Other",
+    priority: (t.priority as TicketPriority) ?? "Medium",
+    status: (t.status as TicketStatus) ?? "Open",
+    fromName: t.from_name ?? t.from_phone ?? "Unknown",
+    fromRole: (t.from_role as string) ?? "Customer",
+    fromEmail: "",
+    fromPhone: t.from_phone ?? "",
+    rideId: t.ride_id ?? undefined,
+    assignedTo: t.assigned_to ?? undefined,
+    createdAt: new Date(t.created_at).toLocaleString(),
+    lastActivity: new Date(t.updated_at).toLocaleString(),
+    messages: (t.messages ?? []).map((m: ApiMsg) => ({
+      id: m.id,
+      from: m.from_role === "ADMIN" ? "agent" as const : "customer" as const,
+      author: m.author,
+      time: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      body: m.body,
+    })),
+  };
+}
 
 const PAGE_SIZE = 6;
 
@@ -182,7 +69,22 @@ const typeFilters: ("all" | TicketType)[] = [
 const priorityFilters: ("all" | TicketPriority)[] = ["all", "High", "Medium", "Low"];
 
 export function SupportConsole() {
-  const [tickets, setTickets] = useState<Ticket[]>(initial);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+
+  useEffect(() => {
+    getTickets({ limit: "100", offset: "0" })
+      .then((res) => setTickets((Array.isArray(res.tickets) ? res.tickets : []).map(mapApiTicket)))
+      .catch(() => null);
+  }, []);
+
+  const openTicket = (id: string) => {
+    setViewingId(id);
+    getTicket(id)
+      .then((detail) =>
+        setTickets((prev) => prev.map((t) => (t.id === id ? mapApiTicket(detail) : t)))
+      )
+      .catch(() => null);
+  };
   const [tab, setTab] = useState<"all" | TicketStatus>("all");
   const [priority, setPriority] = useState<"all" | TicketPriority>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | TicketType>("all");
@@ -336,7 +238,7 @@ export function SupportConsole() {
             paginated.map((t) => (
               <li
                 key={t.id}
-                onClick={() => setViewingId(t.id)}
+                onClick={() => openTicket(t.id)}
                 className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-surface/50"
               >
                 <Avatar name={t.fromName} tone="neutral" />
@@ -373,7 +275,7 @@ export function SupportConsole() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setViewingId(t.id);
+                      openTicket(t.id);
                     }}
                     className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                   >
@@ -426,12 +328,14 @@ export function SupportConsole() {
           updateTicket(id, { assignedTo: "Aiden Mugisha", status: "Pending" });
           setToast(`${id} assigned to you`);
         }}
-        onResolve={(id) => {
+        onResolve={async (id) => {
+          try { await resolveTicket(id); } catch { /* ignore */ }
           updateTicket(id, { status: "Resolved" });
           setToast(`${id} marked resolved`);
           setViewingId(null);
         }}
-        onReply={(id, body) => {
+        onReply={async (id, body) => {
+          try { await replyToTicket(id, body); } catch { /* ignore */ }
           setTickets((prev) =>
             prev.map((t) =>
               t.id === id
@@ -441,13 +345,7 @@ export function SupportConsole() {
                     status: t.status === "Open" ? "Pending" : t.status,
                     messages: [
                       ...t.messages,
-                      {
-                        id: `m${t.messages.length + 1}`,
-                        from: "agent",
-                        author: "Aiden M.",
-                        time: "Just now",
-                        body,
-                      },
+                      { id: `m${t.messages.length + 1}`, from: "agent" as const, author: "Admin", time: "Just now", body },
                     ],
                   }
                 : t,

@@ -7,356 +7,76 @@ import {
   type NegotiationDetail,
   type NegotiationStatus,
 } from "./negotiation-modal";
+import {
+  getNegotiations,
+  getNegotiation,
+  type Negotiation as ApiNegotiation,
+  type RideDetail as ApiRideDetail,
+} from "@/lib/api";
+
+const TRANSPORT_DISPLAY: Record<string, string> = {
+  MOTO_BIKE: "Moto Bike", CAB_TAXI: "Cab Taxi",
+  LIGHT_HILUX: "Light Hilux", HEAVY_FUSO: "Heavy Fuso", TUK_TUK: "Tuk Tuk",
+};
+function toVehicleLabel(code: string): string {
+  return TRANSPORT_DISPLAY[code] ?? code;
+}
+
+function mapNegStatus(s: string): NegotiationStatus {
+  if (s === "Agreed" || s === "COMPLETED") return "Agreed";
+  if (s === "Failed" || s === "CANCELLED") return "Failed";
+  if (s === "Disputed") return "Disputed";
+  return "In progress";
+}
+
+function mapApiNegotiation(n: ApiNegotiation): NegotiationDetail {
+  const custName = n.customer?.name ?? n.customer?.phone ?? "Unknown";
+  const driverName = n.driver?.name ?? null;
+  return {
+    id: n.id,
+    customer: { name: custName, phone: n.customer?.phone ?? "", rating: 0 },
+    driver: driverName
+      ? {
+          name: driverName,
+          phone: n.driver?.phone ?? "",
+          vehicleType: toVehicleLabel(n.transport_type),
+          plate: n.driver?.plate ?? "—",
+          rating: 0,
+        }
+      : null,
+    pickup: n.pickup_address,
+    destination: n.destination_address,
+    vehicleType: toVehicleLabel(n.transport_type),
+    initial: n.initial_fare ?? 0,
+    final: n.agreed_fare ?? null,
+    rounds: n.rounds,
+    status: mapNegStatus(n.status),
+    startedAt: new Date(n.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    duration: "—",
+    paymentMethod: "Cash",
+    offers: [],
+  };
+}
+
+function mergeDetail(base: NegotiationDetail, detail: ApiRideDetail): NegotiationDetail {
+  const offers = (detail.negotiation_rounds ?? []).map((r, i) => ({
+    round: r.round ?? i + 1,
+    from: (r.proposed_by === "DRIVER" ? "driver" : "customer") as "customer" | "driver",
+    amount: r.amount,
+    time: new Date(r.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  }));
+
+  let duration = "—";
+  if (detail.completed_at) {
+    const ms = new Date(detail.completed_at).getTime() - new Date(detail.created_at).getTime();
+    const mins = Math.round(ms / 60000);
+    duration = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  }
+
+  return { ...base, offers, rounds: offers.length, duration };
+}
 
 type Negotiation = NegotiationDetail;
-
-const initialNegotiations: Negotiation[] = [
-  {
-    id: "NEG-1247",
-    customer: { name: "Alice Mukamana", phone: "+250 788 213 005", rating: 4.8 },
-    driver: {
-      name: "Aiden Mugisha",
-      phone: "+250 788 213 401",
-      vehicleType: "Cab Taxi",
-      plate: "RAB 123 D",
-      rating: 4.9,
-    },
-    pickup: "Kimironko Market",
-    destination: "Kigali Heights",
-    vehicleType: "Cab Taxi",
-    initial: 3000,
-    final: 3800,
-    rounds: 4,
-    status: "Agreed",
-    startedAt: "2m ago",
-    duration: "1m 24s",
-    paymentMethod: "MTN MoMo",
-    offers: [
-      { round: 1, from: "customer", amount: 3000, time: "12:34" },
-      { round: 1, from: "driver", amount: 4500, time: "12:34" },
-      { round: 2, from: "customer", amount: 3500, time: "12:35" },
-      { round: 2, from: "driver", amount: 4000, time: "12:35" },
-      { round: 3, from: "customer", amount: 3800, time: "12:36" },
-    ],
-  },
-  {
-    id: "NEG-1246",
-    customer: { name: "Boris Habineza", phone: "+250 788 552 198", rating: 4.6 },
-    driver: {
-      name: "Beni Karenzi",
-      phone: "+250 788 552 110",
-      vehicleType: "Moto Bike",
-      plate: "RAA 887 K",
-      rating: 4.7,
-    },
-    pickup: "Remera",
-    destination: "Town",
-    vehicleType: "Moto Bike",
-    initial: 2500,
-    final: null,
-    rounds: 5,
-    status: "Failed",
-    startedAt: "8m ago",
-    duration: "3m 12s",
-    paymentMethod: "Cash",
-    offers: [
-      { round: 1, from: "customer", amount: 1800, time: "12:26" },
-      { round: 1, from: "driver", amount: 2800, time: "12:26" },
-      { round: 2, from: "customer", amount: 2000, time: "12:27" },
-      { round: 2, from: "driver", amount: 2700, time: "12:27" },
-      { round: 3, from: "customer", amount: 2200, time: "12:28" },
-      { round: 3, from: "driver", amount: 2500, time: "12:29" },
-    ],
-    failureReason:
-      "Customer requested cash discount; driver insisted on metered rate. Both walked away.",
-  },
-  {
-    id: "NEG-1245",
-    customer: {
-      name: "Christine Niyibizi",
-      phone: "+250 788 614 770",
-      rating: 4.9,
-    },
-    driver: {
-      name: "Claude Rwema",
-      phone: "+250 788 102 887",
-      vehicleType: "Light Hilux",
-      plate: "RAC 552 R",
-      rating: 4.8,
-    },
-    pickup: "Kacyiru",
-    destination: "Nyabugogo Station",
-    vehicleType: "Light Hilux",
-    initial: 5000,
-    final: 5500,
-    rounds: 2,
-    status: "Agreed",
-    startedAt: "14m ago",
-    duration: "42s",
-    paymentMethod: "MTN MoMo",
-    offers: [
-      { round: 1, from: "customer", amount: 5000, time: "12:20" },
-      { round: 1, from: "driver", amount: 6000, time: "12:20" },
-      { round: 2, from: "customer", amount: 5500, time: "12:21" },
-    ],
-  },
-  {
-    id: "NEG-1244",
-    customer: {
-      name: "Daniel Iradukunda",
-      phone: "+250 788 102 441",
-      rating: 4.5,
-    },
-    driver: {
-      name: "Diane Uwase",
-      phone: "+250 788 339 220",
-      vehicleType: "Cab Taxi",
-      plate: "RAB 410 U",
-      rating: 4.6,
-    },
-    pickup: "Gikondo",
-    destination: "Town",
-    vehicleType: "Cab Taxi",
-    initial: 1800,
-    final: 2200,
-    rounds: 3,
-    status: "Agreed",
-    startedAt: "22m ago",
-    duration: "55s",
-    paymentMethod: "Airtel Money",
-    offers: [
-      { round: 1, from: "customer", amount: 1800, time: "12:12" },
-      { round: 1, from: "driver", amount: 2500, time: "12:12" },
-      { round: 2, from: "customer", amount: 2000, time: "12:13" },
-      { round: 2, from: "driver", amount: 2200, time: "12:13" },
-    ],
-  },
-  {
-    id: "NEG-1243",
-    customer: {
-      name: "Elise Twagiramungu",
-      phone: "+250 788 339 882",
-      rating: 4.2,
-    },
-    driver: null,
-    pickup: "Nyamirambo",
-    destination: "Convention Centre",
-    vehicleType: "Moto Bike",
-    initial: 4000,
-    final: null,
-    rounds: 1,
-    status: "In progress",
-    startedAt: "31s ago",
-    duration: "31s",
-    paymentMethod: "MTN MoMo",
-    offers: [{ round: 1, from: "customer", amount: 4000, time: "12:34" }],
-  },
-  {
-    id: "NEG-1242",
-    customer: {
-      name: "Fabrice Bizimana",
-      phone: "+250 788 477 113",
-      rating: 2.1,
-    },
-    driver: {
-      name: "Eric Nshuti",
-      phone: "+250 788 477 661",
-      vehicleType: "Heavy Fuso",
-      plate: "RAD 094 N",
-      rating: 4.5,
-    },
-    pickup: "Gikondo Industrial",
-    destination: "Nyabugogo",
-    vehicleType: "Heavy Fuso",
-    initial: 12000,
-    final: null,
-    rounds: 6,
-    status: "Disputed",
-    startedAt: "1h ago",
-    duration: "8m 47s",
-    paymentMethod: "Cash",
-    offers: [
-      { round: 1, from: "customer", amount: 12000, time: "11:34" },
-      { round: 1, from: "driver", amount: 25000, time: "11:35" },
-      { round: 2, from: "customer", amount: 15000, time: "11:36" },
-      { round: 2, from: "driver", amount: 22000, time: "11:37" },
-      { round: 3, from: "customer", amount: 18000, time: "11:38" },
-      { round: 3, from: "driver", amount: 20000, time: "11:39" },
-    ],
-    failureReason:
-      "Customer accused driver of price gouging mid-trip and refused to pay agreed fare.",
-    notes:
-      "Both parties flagged. Held pending dispute resolution by ops manager.",
-  },
-  {
-    id: "NEG-1241",
-    customer: { name: "Grace Uwineza", phone: "+250 788 823 005", rating: 4.9 },
-    driver: {
-      name: "Helen Niyibizi",
-      phone: "+250 788 614 005",
-      vehicleType: "Cab Taxi",
-      plate: "RAB 318 H",
-      rating: 4.9,
-    },
-    pickup: "Kacyiru",
-    destination: "Airport",
-    vehicleType: "Cab Taxi",
-    initial: 8000,
-    final: 8500,
-    rounds: 2,
-    status: "Agreed",
-    startedAt: "45m ago",
-    duration: "38s",
-    paymentMethod: "MTN MoMo",
-    offers: [
-      { round: 1, from: "customer", amount: 8000, time: "11:49" },
-      { round: 1, from: "driver", amount: 9000, time: "11:49" },
-      { round: 2, from: "customer", amount: 8500, time: "11:49" },
-    ],
-  },
-  {
-    id: "NEG-1240",
-    customer: { name: "Henri Mugisha", phone: "+250 788 156 992", rating: 4.7 },
-    driver: {
-      name: "Joyce Habineza",
-      phone: "+250 788 705 332",
-      vehicleType: "Moto Bike",
-      plate: "RAA 502 J",
-      rating: 4.8,
-    },
-    pickup: "Kimironko",
-    destination: "Town",
-    vehicleType: "Moto Bike",
-    initial: 2000,
-    final: 2400,
-    rounds: 3,
-    status: "Agreed",
-    startedAt: "1h ago",
-    duration: "1m 02s",
-    paymentMethod: "MTN MoMo",
-    offers: [
-      { round: 1, from: "customer", amount: 2000, time: "11:34" },
-      { round: 1, from: "driver", amount: 3000, time: "11:34" },
-      { round: 2, from: "customer", amount: 2200, time: "11:35" },
-      { round: 2, from: "driver", amount: 2500, time: "11:35" },
-      { round: 3, from: "customer", amount: 2400, time: "11:35" },
-    ],
-  },
-  {
-    id: "NEG-1239",
-    customer: { name: "Irene Mukasa", phone: "+250 788 290 552", rating: 4.8 },
-    driver: {
-      name: "Roland Karangwa",
-      phone: "+250 788 670 219",
-      vehicleType: "Moto Bike",
-      plate: "RAA 489 R",
-      rating: 4.8,
-    },
-    pickup: "Remera",
-    destination: "Kacyiru",
-    vehicleType: "Moto Bike",
-    initial: 1500,
-    final: 1800,
-    rounds: 2,
-    status: "Agreed",
-    startedAt: "1h ago",
-    duration: "29s",
-    paymentMethod: "MTN MoMo",
-    offers: [
-      { round: 1, from: "customer", amount: 1500, time: "11:30" },
-      { round: 1, from: "driver", amount: 2000, time: "11:30" },
-      { round: 2, from: "customer", amount: 1800, time: "11:30" },
-    ],
-  },
-  {
-    id: "NEG-1238",
-    customer: {
-      name: "Jean-Paul Karangwa",
-      phone: "+250 788 705 887",
-      rating: 1.8,
-    },
-    driver: {
-      name: "Marc Iradukunda",
-      phone: "+250 788 156 224",
-      vehicleType: "Heavy Fuso",
-      plate: "RAD 286 M",
-      rating: 4.5,
-    },
-    pickup: "Muhima",
-    destination: "Gikondo Industrial",
-    vehicleType: "Heavy Fuso",
-    initial: 18000,
-    final: null,
-    rounds: 7,
-    status: "Failed",
-    startedAt: "2h ago",
-    duration: "11m 23s",
-    paymentMethod: "Cash",
-    offers: [
-      { round: 1, from: "customer", amount: 18000, time: "10:34" },
-      { round: 1, from: "driver", amount: 28000, time: "10:35" },
-      { round: 2, from: "customer", amount: 20000, time: "10:37" },
-      { round: 2, from: "driver", amount: 26000, time: "10:39" },
-      { round: 3, from: "customer", amount: 21000, time: "10:42" },
-      { round: 3, from: "driver", amount: 25000, time: "10:43" },
-    ],
-    failureReason: "Driver wanted return-fare premium; customer abandoned.",
-  },
-  {
-    id: "NEG-1237",
-    customer: { name: "Kalisa Eric", phone: "+250 788 412 003", rating: 4.6 },
-    driver: {
-      name: "Patrick Nshimiyimana",
-      phone: "+250 788 322 178",
-      vehicleType: "Light Hilux",
-      plate: "RAC 712 P",
-      rating: 4.6,
-    },
-    pickup: "Gahanga",
-    destination: "Town",
-    vehicleType: "Light Hilux",
-    initial: 5500,
-    final: 6200,
-    rounds: 3,
-    status: "Agreed",
-    startedAt: "2h ago",
-    duration: "1m 18s",
-    paymentMethod: "MTN MoMo",
-    offers: [
-      { round: 1, from: "customer", amount: 5500, time: "10:30" },
-      { round: 1, from: "driver", amount: 7000, time: "10:31" },
-      { round: 2, from: "customer", amount: 6000, time: "10:31" },
-      { round: 2, from: "driver", amount: 6500, time: "10:31" },
-      { round: 3, from: "customer", amount: 6200, time: "10:32" },
-    ],
-  },
-  {
-    id: "NEG-1236",
-    customer: { name: "Liliane Uwase", phone: "+250 788 904 660", rating: 4.9 },
-    driver: {
-      name: "Olivier Hakizimana",
-      phone: "+250 788 449 660",
-      vehicleType: "Cab Taxi",
-      plate: "RAB 502 O",
-      rating: 4.9,
-    },
-    pickup: "Kacyiru",
-    destination: "BPR HQ",
-    vehicleType: "Cab Taxi",
-    initial: 3500,
-    final: 3800,
-    rounds: 2,
-    status: "Agreed",
-    startedAt: "3h ago",
-    duration: "22s",
-    paymentMethod: "MTN MoMo",
-    offers: [
-      { round: 1, from: "customer", amount: 3500, time: "09:34" },
-      { round: 1, from: "driver", amount: 4000, time: "09:34" },
-      { round: 2, from: "customer", amount: 3800, time: "09:34" },
-    ],
-  },
-];
 
 type Tab = { id: "all" | NegotiationStatus; label: string };
 
@@ -711,7 +431,7 @@ function MiniBarChart({ data }: { data: { label: string; value: number }[] }) {
 }
 
 export function NegotiationsConsole() {
-  const [negotiations, setNegotiations] = useState<Negotiation[]>(initialNegotiations);
+  const [negotiations, setNegotiations] = useState<Negotiation[]>([]);
   const [tab, setTab] = useState<Tab["id"]>("all");
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("id");
@@ -720,6 +440,23 @@ export function NegotiationsConsole() {
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  useEffect(() => {
+    getNegotiations({ limit: "100", offset: "0" })
+      .then((res) => setNegotiations((res.negotiations ?? []).map(mapApiNegotiation)))
+      .catch(() => null);
+  }, []);
+
+  const openNegotiation = (id: string) => {
+    setViewingId(id);
+    getNegotiation(id)
+      .then((detail) => {
+        setNegotiations((prev) =>
+          prev.map((n) => (n.id === id ? mergeDetail(n, detail) : n))
+        );
+      })
+      .catch(() => null);
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -811,12 +548,13 @@ export function NegotiationsConsole() {
 
   const byVehicle = useMemo(() => {
     const groups: Record<string, number> = {
-      "Moto Bike": 0,
-      "Cab Taxi": 0,
-      "Light Hilux": 0,
-      "Heavy Fuso": 0,
+      "Moto Bike": 0, "Cab Taxi": 0, "Light Hilux": 0, "Heavy Fuso": 0, "Tuk Tuk": 0,
     };
-    for (const n of negotiations) groups[n.vehicleType]++;
+    for (const n of negotiations) {
+      const label = n.vehicleType;
+      if (label in groups) groups[label]++;
+      else groups["Cab Taxi"]++;
+    }
     return [
       { label: "Moto", value: groups["Moto Bike"] },
       { label: "Cab", value: groups["Cab Taxi"] },
@@ -958,7 +696,7 @@ export function NegotiationsConsole() {
                   <NegotiationCard
                     key={n.id}
                     negotiation={n}
-                    onOpen={() => setViewingId(n.id)}
+                    onOpen={() => openNegotiation(n.id)}
                   />
                 ))}
               </div>
@@ -1034,7 +772,7 @@ export function NegotiationsConsole() {
                     <tr
                       key={n.id}
                       className="cursor-pointer hover:bg-surface/50"
-                      onClick={() => setViewingId(n.id)}
+                      onClick={() => openNegotiation(n.id)}
                     >
                       <td className="px-4 py-3 font-mono text-xs font-semibold text-foreground">
                         {n.id}
@@ -1126,7 +864,7 @@ export function NegotiationsConsole() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setViewingId(n.id);
+                            openNegotiation(n.id);
                           }}
                           className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                         >

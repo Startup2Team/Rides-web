@@ -1,5 +1,6 @@
-import { AdminSidebar } from "./admin-sidebar";
-import { AdminTopbar } from "./admin-topbar";
+import { Suspense } from "react";
+import { AuthProvider } from "@/context/auth-context";
+import { AdminShell } from "./admin-shell";
 
 export default function AdminAuthedLayout({
   children,
@@ -7,13 +8,14 @@ export default function AdminAuthedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen bg-background">
-      <AdminSidebar />
-
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <AdminTopbar />
-        <main className="flex-1 p-6 lg:p-10">{children}</main>
-      </div>
-    </div>
+    <AuthProvider>
+      <Suspense
+        fallback={
+          <div className="flex h-screen items-center justify-center bg-background" />
+        }
+      >
+        <AdminShell>{children}</AdminShell>
+      </Suspense>
+    </AuthProvider>
   );
 }

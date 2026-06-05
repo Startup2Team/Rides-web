@@ -214,6 +214,6 @@ export function downloadReport({
 
   // PDF
   const bytes = buildPDF(content);
-  const blob = new Blob([bytes], { type: "application/pdf" });
+  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
   triggerDownload(blob, `${filename}.pdf`);
 }

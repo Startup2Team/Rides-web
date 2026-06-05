@@ -1,59 +1,87 @@
 import { NextResponse } from "next/server";
-import { backendPostLogin } from "../_shared";
+import { getBackendOrigin } from "@/lib/admin-backend-url";
 import { applyAdminTokenCookies } from "../set-token-cookies";
+import type { ApiEnvelope } from "@/lib/api-envelope";
 
+// POST /api/admin/auth/enable-totp
+// challenge_token IS the access_token issued on login (when 2FA not yet set up).
+// Flow:
+//   1. Fetch the TOTP secret from backend (GET /account/2fa/setup)
+//   2. Enable 2FA with the verified code   (POST /account/2fa/enable)
+//   3. Set the access_token cookie so the user is logged in
 export async function POST(request: Request) {
   let challenge_token = "";
   let totp_code = "";
+  let secret_override = "";
   try {
-    const body = (await request.json()) as { challenge_token?: string; totp_code?: string };
-    challenge_token =
-      typeof body.challenge_token === "string" ? body.challenge_token.trim() : "";
+    const body = (await request.json()) as { challenge_token?: string; totp_code?: string; secret?: string };
+    challenge_token = typeof body.challenge_token === "string" ? body.challenge_token.trim() : "";
     totp_code = typeof body.totp_code === "string" ? body.totp_code.replace(/\D/g, "").trim() : "";
+    secret_override = typeof body.secret === "string" ? body.secret.trim() : "";
   } catch {
     return NextResponse.json({ error: { code: "BAD_REQUEST", message: "Invalid JSON body" } }, { status: 400 });
   }
 
-  const { res, envelope } = await backendPostLogin("/enable-totp", {
-    challenge_token,
-    totp_code,
+  if (!challenge_token || !totp_code) {
+    return NextResponse.json({ error: { code: "BAD_REQUEST", message: "challenge_token and totp_code are required" } }, { status: 400 });
+  }
+
+  const base = getBackendOrigin();
+
+  // Step 1: get the pending TOTP secret.
+  // If a secret was provided directly (post-reset flow), skip the setup fetch entirely.
+  let secret = secret_override;
+
+  if (!secret) {
+    const setupRes = await fetch(`${base}/api/v1/admin/account/2fa/setup`, {
+      headers: { Authorization: `Bearer ${challenge_token}` },
+      cache: "no-store",
+    });
+
+    let setupEnvelope: ApiEnvelope<{ secret?: string }> = {};
+    try { setupEnvelope = await setupRes.json(); } catch { setupEnvelope = {}; }
+
+    if (!setupRes.ok || !setupEnvelope.data?.secret) {
+      return NextResponse.json(
+        { error: setupEnvelope.error ?? { code: "SERVER_ERROR", message: "Could not load 2FA setup" } },
+        { status: setupRes.status || 500 },
+      );
+    }
+
+    secret = setupEnvelope.data.secret;
+  }
+
+  // Step 2: enable 2FA with the user-entered TOTP code
+  const enableRes = await fetch(`${base}/api/v1/admin/account/2fa/enable`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${challenge_token}`,
+    },
+    body: JSON.stringify({ secret, code: totp_code }),
+    cache: "no-store",
   });
 
-  if (!res.ok || !envelope.data) {
+  let enableEnvelope: ApiEnvelope<{ two_factor_enabled?: boolean; backup_codes?: string[] }> = {};
+  try { enableEnvelope = await enableRes.json(); } catch { enableEnvelope = {}; }
+
+  if (!enableRes.ok) {
     return NextResponse.json(
-      {
-        error: envelope.error ?? { code: "BAD_REQUEST", message: "Could not enable two-factor authentication" },
-      },
-      { status: res.status || 400 },
+      { error: enableEnvelope.error ?? { code: "BAD_REQUEST", message: "Invalid TOTP code" } },
+      { status: enableRes.status || 400 },
     );
   }
 
-  const data = envelope.data;
-  const access = data.access_token;
-  const refresh = data.refresh_token;
+  const backup_codes = enableEnvelope.data?.backup_codes ?? [];
 
-  if (data.status !== "success" || !access || !refresh) {
-    return NextResponse.json(
-      {
-        error: { code: "BAD_REQUEST", message: "Incomplete auth response from server" },
-      },
-      { status: 502 },
-    );
-  }
-
-  const response = NextResponse.json(
-    {
-      data: {
-        status: data.status,
-        email: data.email,
-        full_name: data.full_name,
-        admin_role: data.admin_role,
-        permissions: data.permissions ?? [],
-      },
+  // 2FA enabled — set the access_token cookie and return backup codes
+  const response = NextResponse.json({
+    data: {
+      status: "success",
+      backup_codes,
     },
-    { status: 200 },
-  );
+  });
 
-  applyAdminTokenCookies(response, access, refresh);
+  applyAdminTokenCookies(response, challenge_token);
   return response;
 }

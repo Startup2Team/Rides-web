@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { createDriver } from "@/lib/api";
+import { slugToTransportType } from "@/lib/drivers";
 
 type VehicleType = "moto" | "cab" | "hilux" | "fuso";
 
@@ -134,13 +137,15 @@ const DOCS: { key: DocKey; label: string; hint: string }[] = [
 
 function DocUpload({
   doc,
-  uploaded,
-  onToggle,
+  file,
+  onFile,
 }: {
   doc: { key: DocKey; label: string; hint: string };
-  uploaded: boolean;
-  onToggle: () => void;
+  file: File | null;
+  onFile: (f: File | null) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div>
       <div className="flex items-baseline justify-between">
@@ -150,21 +155,28 @@ function DocUpload({
         </p>
         <p className="text-[10px] text-muted-foreground">{doc.hint}</p>
       </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".jpg,.jpeg,.png,.pdf"
+        className="hidden"
+        onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+      />
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => inputRef.current?.click()}
         className={`mt-1.5 flex h-20 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors ${
-          uploaded
+          file
             ? "border-primary/40 bg-primary/5 text-primary"
             : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:bg-surface"
         }`}
       >
-        {uploaded ? (
+        {file ? (
           <>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
               <polyline points="20 6 9 17 4 12" />
             </svg>
-            <span className="text-sm font-semibold">Uploaded · click to replace</span>
+            <span className="text-sm font-semibold truncate max-w-[200px]">{file.name}</span>
           </>
         ) : (
           <>
@@ -230,22 +242,66 @@ export function AddDriverButton({
     ? { ...INITIAL_FORM, vehicleType: defaultVehicle }
     : INITIAL_FORM;
 
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(initialForm);
-  const [docs, setDocs] = useState<Record<DocKey, boolean>>({
-    license: false,
-    insurance: false,
-    authorization: false,
+  const [docs, setDocs] = useState<Record<DocKey, File | null>>({
+    license: null,
+    insurance: null,
+    authorization: null,
   });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const reset = () => {
     setStep(0);
     setForm(initialForm);
-    setDocs({ license: false, insurance: false, authorization: false });
+    setDocs({ license: null, insurance: null, authorization: null });
     setAcceptedTerms(false);
+    setSubmitError(null);
+    setSubmitting(false);
   };
+
+  async function handleSubmit() {
+    if (!acceptedTerms) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const transportType = slugToTransportType(form.vehicleType);
+      await createDriver({
+        full_name: form.fullName.trim(),
+        phone: form.phone.trim(),
+        transport_type: transportType,
+        vehicle_plate: form.plate.trim().toUpperCase(),
+        license_number: form.license.trim().toUpperCase(),
+        date_of_birth: form.dob || undefined,
+        province: form.province,
+        district: form.district,
+        sector: form.sector,
+        cell: form.cell,
+        village: form.village,
+        city: "Kigali",
+        momo_provider: form.momoProvider,
+        momo_pay_code: form.momoCode.trim(),
+        passenger_seats: form.passengerSeats
+          ? parseInt(form.passengerSeats, 10)
+          : undefined,
+        load_capacity_kg: form.loadCapacityKg
+          ? parseInt(form.loadCapacityKg, 10)
+          : undefined,
+      });
+      close();
+      router.refresh();
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Failed to register driver",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   const close = () => {
     setOpen(false);
@@ -543,10 +599,8 @@ export function AddDriverButton({
                     <DocUpload
                       key={d.key}
                       doc={d}
-                      uploaded={docs[d.key]}
-                      onToggle={() =>
-                        setDocs((prev) => ({ ...prev, [d.key]: !prev[d.key] }))
-                      }
+                      file={docs[d.key]}
+                      onFile={(f) => setDocs((prev) => ({ ...prev, [d.key]: f }))}
                     />
                   ))}
                 </div>
@@ -649,14 +703,19 @@ export function AddDriverButton({
               ) : (
                 <button
                   type="button"
-                  onClick={close}
-                  disabled={!acceptedTerms}
+                  onClick={() => void handleSubmit()}
+                  disabled={!acceptedTerms || submitting}
                   className="inline-flex h-10 items-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Submit registration
+                  {submitting ? "Submitting…" : "Submit registration"}
                 </button>
               )}
             </div>
+            {submitError ? (
+              <p className="border-t border-border px-6 py-2 text-center text-xs font-semibold text-red-600">
+                {submitError}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}

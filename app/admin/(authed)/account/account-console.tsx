@@ -1,8 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, Card } from "../_components";
 import { QRCode } from "./qr-code";
+import {
+  getAccount,
+  updateAccount,
+  changePassword,
+  getSessions,
+  revokeSession,
+  disable2FA,
+  get2FASetup,
+  enable2FA,
+  resetTOTP,
+} from "@/lib/api";
+import { getAdminUser, getToken } from "@/lib/auth";
 
 type Tab = "profile" | "security" | "sessions";
 
@@ -57,32 +69,6 @@ const initialSessions: Session[] = [
     lastActive: "Yesterday",
   },
 ];
-
-function generateSecret(seed: string) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let h = 5381;
-  for (let i = 0; i < seed.length; i++) h = (h * 33) ^ seed.charCodeAt(i);
-  let out = "";
-  for (let i = 0; i < 32; i++) {
-    h = (h * 1103515245 + 12345) & 0x7fffffff;
-    out += alphabet[h % alphabet.length];
-  }
-  return out.match(/.{1,4}/g)?.join(" ") ?? out;
-}
-
-function generateBackupCodes(seed: string) {
-  let h = 1;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  const codes: string[] = [];
-  for (let i = 0; i < 10; i++) {
-    h = (h * 1664525 + 1013904223) >>> 0;
-    const a = (h % 100000).toString().padStart(5, "0");
-    h = (h * 1664525 + 1013904223) >>> 0;
-    const b = (h % 100000).toString().padStart(5, "0");
-    codes.push(`${a}-${b}`);
-  }
-  return codes;
-}
 
 function deviceIcon(device: string) {
   if (device.toLowerCase().includes("iphone") || device.toLowerCase().includes("android"))
@@ -155,31 +141,74 @@ export function AccountConsole() {
   const [tab, setTab] = useState<Tab>("profile");
   const [toast, setToast] = useState<string | null>(null);
 
-  // Profile state
-  const [name, setName] = useState("Aiden Mugisha");
-  const [email, setEmail] = useState("aiden@taravelis.com");
-  const [phone, setPhone] = useState("+250 788 213 005");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
   // Password state
   const [currentPwd, setCurrentPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
   const [pwdError, setPwdError] = useState<string | null>(null);
+  const [pwdSaving, setPwdSaving] = useState(false);
 
   // 2FA state
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [resetMode, setResetMode] = useState(false);
   const [resetVerifyCode, setResetVerifyCode] = useState("");
   const [showBackup, setShowBackup] = useState(false);
   const [disable2faPwd, setDisable2faPwd] = useState("");
   const [confirmingDisable, setConfirmingDisable] = useState(false);
+  const [setup2FAData, setSetup2FAData] = useState<{ secret: string; otpauth_url: string } | null>(null);
+
+  // Reset authenticator flow (for already-enabled 2FA)
+  type AuthResetStep = "verify-current" | "show-new-qr" | null;
+  const [authResetStep, setAuthResetStep] = useState<AuthResetStep>(null);
+  const [authResetCurrentCode, setAuthResetCurrentCode] = useState("");
+  const [authResetData, setAuthResetData] = useState<{ secret: string; qr_code_url: string; backup_codes: string[] } | null>(null);
+  const [authResetBusy, setAuthResetBusy] = useState(false);
 
   // Sessions
   const [sessions, setSessions] = useState<Session[]>(initialSessions);
 
-  const secret = useMemo(() => generateSecret(email), [email]);
-  const otpAuth = `otpauth://totp/Taravelis:${encodeURIComponent(email)}?secret=${secret.replace(/\s/g, "")}&issuer=Taravelis`;
-  const backupCodes = useMemo(() => generateBackupCodes(email), [email]);
+  const secret = setup2FAData?.secret ?? "";
+  const otpAuth = setup2FAData?.otpauth_url ?? "";
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+
+  // Load profile from API (and localStorage fallback before API responds)
+  useEffect(() => {
+    const stored = getAdminUser();
+    if (stored) {
+      setName(stored.name);
+      setEmail(stored.email);
+      setTwoFactorEnabled(stored.twoFactor);
+    }
+
+    getAccount()
+      .then((a) => {
+        setName(a.name);
+        setEmail(a.email);
+        setTwoFactorEnabled(a.two_factor);
+      })
+      .catch(() => null);
+
+    getSessions()
+      .then((res) => {
+        if (!res?.sessions?.length) return;
+        setSessions(
+          res.sessions.map((s) => ({
+            id: s.id,
+            device: "Active session",
+            browser: "",
+            location: "—",
+            ip: "—",
+            lastActive: "Active now",
+            current: s.current,
+          })),
+        );
+      })
+      .catch(() => null);
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -187,38 +216,110 @@ export function AccountConsole() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  function changePassword(e: React.FormEvent) {
+  async function handleSaveProfile() {
+    try {
+      await updateAccount(name);
+      setToast("Profile saved");
+    } catch {
+      setToast("Failed to save profile");
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     setPwdError(null);
     if (!currentPwd) return setPwdError("Enter your current password.");
     if (newPwd.length < 10) return setPwdError("New password must be at least 10 characters.");
     if (newPwd !== confirmPwd) return setPwdError("Passwords don't match.");
-    setCurrentPwd("");
-    setNewPwd("");
-    setConfirmPwd("");
-    setToast("Password updated");
+    setPwdSaving(true);
+    try {
+      await changePassword(currentPwd, newPwd);
+      setCurrentPwd("");
+      setNewPwd("");
+      setConfirmPwd("");
+      setToast("Password updated");
+    } catch (err) {
+      setPwdError(err instanceof Error ? err.message : "Failed to change password.");
+    } finally {
+      setPwdSaving(false);
+    }
   }
 
-  function confirmReset(e: React.FormEvent) {
+  async function handleDisable2FA(e: React.FormEvent) {
+    e.preventDefault();
+    if (!disable2faPwd) return;
+    try {
+      await disable2FA(disable2faPwd);
+      setTwoFactorEnabled(false);
+      setDisable2faPwd("");
+      setConfirmingDisable(false);
+      setToast("Two-factor authentication disabled");
+    } catch {
+      setToast("Failed to disable 2FA. Check your password.");
+    }
+  }
+
+  async function start2FASetup() {
+    const token = getToken();
+    if (!token) {
+      setToast("Sign in again to set up 2FA");
+      return;
+    }
+    try {
+      const data = await get2FASetup(token);
+      setSetup2FAData(data);
+      setResetMode(true);
+    } catch {
+      setToast("Couldn't load 2FA setup. Try again.");
+    }
+  }
+
+  async function confirmReset(e: React.FormEvent) {
     e.preventDefault();
     if (resetVerifyCode.length !== 6) return;
-    setResetMode(false);
-    setResetVerifyCode("");
-    setToast("Authenticator reset · backup codes regenerated");
+    const token = getToken();
+    if (!token || !setup2FAData) {
+      setToast("Setup data missing — restart the flow");
+      return;
+    }
+    try {
+      const res = await enable2FA(setup2FAData.secret, resetVerifyCode, token);
+      setBackupCodes(res.backup_codes);
+      setTwoFactorEnabled(res.two_factor_enabled);
+      setResetMode(false);
+      setResetVerifyCode("");
+      setSetup2FAData(null);
+      setShowBackup(true);
+      setToast("Authenticator enabled · save the backup codes");
+    } catch {
+      setToast("Invalid code. Try again.");
+    }
   }
 
   function regenerateBackupCodes() {
-    setShowBackup(true);
-    setToast("Backup codes regenerated · save the new set");
+    setAuthResetStep("verify-current");
   }
 
-  function disable2FA(e: React.FormEvent) {
+  async function handleAuthResetVerify(e: React.FormEvent) {
     e.preventDefault();
-    if (!disable2faPwd) return;
-    setTwoFactorEnabled(false);
-    setDisable2faPwd("");
-    setConfirmingDisable(false);
-    setToast("Two-factor authentication disabled");
+    if (authResetCurrentCode.length !== 6) return;
+    setAuthResetBusy(true);
+    try {
+      const data = await resetTOTP(authResetCurrentCode);
+      setAuthResetData(data);
+      setAuthResetStep("show-new-qr");
+      setAuthResetCurrentCode("");
+    } catch {
+      setToast("Invalid code. Check your authenticator and try again.");
+    } finally {
+      setAuthResetBusy(false);
+    }
+  }
+
+  function closeAuthReset() {
+    setAuthResetStep(null);
+    setAuthResetCurrentCode("");
+    setAuthResetData(null);
   }
 
   return (
@@ -312,7 +413,7 @@ export function AccountConsole() {
             <div className="mt-5 flex justify-end">
               <button
                 type="button"
-                onClick={() => setToast("Profile saved")}
+                onClick={handleSaveProfile}
                 className="inline-flex h-9 items-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 Save changes
@@ -325,7 +426,7 @@ export function AccountConsole() {
       {tab === "security" ? (
         <div className="space-y-6">
           <Card title="Change password">
-            <form onSubmit={changePassword} className="space-y-4 p-5">
+            <form onSubmit={handleChangePassword} className="space-y-4 p-5">
               <div className="grid gap-4 sm:grid-cols-3">
                 <PasswordField
                   label="Current password"
@@ -400,10 +501,7 @@ export function AccountConsole() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => {
-                      setTwoFactorEnabled(true);
-                      setResetMode(true);
-                    }}
+                    onClick={() => void start2FASetup()}
                     className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-[11px] font-semibold text-primary-foreground shadow-sm shadow-primary/30"
                   >
                     Enable
@@ -415,7 +513,7 @@ export function AccountConsole() {
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <button
                     type="button"
-                    onClick={() => setResetMode(true)}
+                    onClick={() => setAuthResetStep("verify-current")}
                     className="flex items-start gap-3 rounded-xl border border-border bg-surface/40 p-4 text-left transition-colors hover:border-primary/30"
                   >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -515,6 +613,94 @@ export function AccountConsole() {
                 </form>
               ) : null}
 
+              {authResetStep === "verify-current" ? (
+                <form onSubmit={handleAuthResetVerify} className="mt-5 space-y-4 rounded-xl border border-border bg-surface/40 p-4">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                      Verify identity
+                    </p>
+                    <p className="mt-1 text-xs text-foreground">
+                      Enter your current 6-digit authenticator code to confirm before generating a new QR.
+                    </p>
+                  </div>
+                  <label className="block">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                      Current authenticator code
+                    </span>
+                    <input
+                      value={authResetCurrentCode}
+                      onChange={(e) => setAuthResetCurrentCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      inputMode="numeric"
+                      placeholder="123456"
+                      autoFocus
+                      className="mt-2 block h-10 w-32 rounded-lg border border-border bg-card px-3 text-center font-mono text-base font-semibold tracking-wider text-foreground outline-none focus:border-primary"
+                    />
+                  </label>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={closeAuthReset}
+                      className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-foreground transition-colors hover:bg-surface"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={authResetCurrentCode.length !== 6 || authResetBusy}
+                      className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {authResetBusy ? "Verifying…" : "Verify & generate new QR"}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+
+              {authResetStep === "show-new-qr" && authResetData ? (
+                <div className="mt-5 space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">
+                    New authenticator QR — scan now
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-[auto,1fr]">
+                    <div className="flex h-40 w-40 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border">
+                      <QRCode seed={authResetData.qr_code_url} />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs text-foreground">
+                        Scan with Google Authenticator, Authy, 1Password, or any TOTP-compatible app. Your new code is already active.
+                      </p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Setup key (if you can&apos;t scan)</p>
+                      <code className="block break-all rounded-md bg-card p-2 font-mono text-[11px] font-semibold text-foreground ring-1 ring-border">
+                        {authResetData.secret}
+                      </code>
+                    </div>
+                  </div>
+                  {authResetData.backup_codes.length > 0 ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-700">
+                        New backup codes — save these now
+                      </p>
+                      <p className="mt-1 text-[11px] text-amber-700">
+                        Your old backup codes are now invalid. Each new code works once.
+                      </p>
+                      <div className="mt-2 grid grid-cols-2 gap-1.5 font-mono text-[11px] text-foreground">
+                        {authResetData.backup_codes.map((c) => (
+                          <code key={c} className="rounded-md bg-card px-2 py-1 ring-1 ring-border">{c}</code>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={closeAuthReset}
+                      className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      Done — I&apos;ve scanned it
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               {showBackup ? (
                 <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
                   <div className="flex items-baseline justify-between gap-2">
@@ -562,7 +748,7 @@ export function AccountConsole() {
 
               {confirmingDisable ? (
                 <form
-                  onSubmit={disable2FA}
+                  onSubmit={handleDisable2FA}
                   className="mt-5 space-y-3 rounded-xl border border-red-200 bg-red-50 p-4"
                 >
                   <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-red-700">
@@ -653,9 +839,14 @@ export function AccountConsole() {
                 {!s.current ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      setSessions((prev) => prev.filter((x) => x.id !== s.id));
-                      setToast(`Session on ${s.device} signed out`);
+                    onClick={async () => {
+                      try {
+                        await revokeSession(s.id);
+                        setSessions((prev) => prev.filter((x) => x.id !== s.id));
+                        setToast(`Session on ${s.device} signed out`);
+                      } catch {
+                        setToast("Couldn't sign out that session");
+                      }
                     }}
                     className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-[11px] font-medium text-foreground transition-colors hover:bg-surface"
                   >

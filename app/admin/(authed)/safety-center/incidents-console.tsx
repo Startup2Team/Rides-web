@@ -11,217 +11,53 @@ import {
   type IncidentStatus,
   type IncidentType,
 } from "./incident-modal";
+import {
+  getIncidents,
+  getIncident,
+  acknowledgeIncident,
+  escalateIncident,
+  resolveIncident,
+  type Incident as ApiIncident,
+} from "@/lib/api";
 
-const initial: Incident[] = [
-  {
-    id: "INC-2847",
-    type: "SOS Alert",
-    severity: "Critical",
-    status: "Open",
-    reportedAt: "3 min ago",
-    description:
-      "Customer pressed SOS during active ride. Driver continues moving — no audio confirmation yet.",
-    rideId: "RID-4821",
-    reporter: { name: "Aiden Mugisha", phone: "+250 788 213 005", role: "Customer" },
-    involves: [
-      { name: "Aiden Mugisha", phone: "+250 788 213 005", role: "Customer" },
-      {
-        name: "Beni Karenzi",
-        phone: "+250 788 552 110",
-        role: "Driver",
-        vehicleType: "Cab Taxi",
-        plate: "RAB 410 U",
-      },
-    ],
-    location: "Kimironko Market",
-    district: "Gasabo",
-    position: { x: 62, y: 32 },
-    timeline: [
-      { time: "12:48", event: "SOS pressed in customer app", kind: "alert" },
-      { time: "12:48", event: "Live location locked", kind: "system" },
-      { time: "12:49", event: "Ops notified · auto-dispatch to nearest unit", kind: "ops" },
-    ],
-  },
-  {
-    id: "INC-2846",
-    type: "Driver complaint",
-    severity: "High",
-    status: "Acknowledged",
-    reportedAt: "14 min ago",
-    description: "Rider reported aggressive driving and route deviation.",
-    rideId: "RID-4815",
-    reporter: { name: "Patricia Mukamana", phone: "+250 788 322 178", role: "Customer" },
-    involves: [
-      { name: "Patricia Mukamana", phone: "+250 788 322 178", role: "Customer" },
-      {
-        name: "Marc Iradukunda",
-        phone: "+250 788 156 224",
-        role: "Driver",
-        vehicleType: "Heavy Fuso",
-        plate: "RAD 286 M",
-      },
-    ],
-    location: "Nyarugunga",
-    district: "Kicukiro",
-    position: { x: 60, y: 65 },
-    timeline: [
-      { time: "12:34", event: "Complaint filed via app", kind: "system" },
-      { time: "12:38", event: "Acknowledged by Diana N.", kind: "ops" },
-    ],
-    assignedTo: "Diana Ntirenganya",
-  },
-  {
-    id: "INC-2845",
-    type: "Fraud signal",
-    severity: "Medium",
-    status: "Open",
-    reportedAt: "32 min ago",
-    description:
-      "3 customer accounts cancelled 12+ trips in last hour from same IP range. Possible coupon abuse.",
-    reporter: { name: "Fraud detection", phone: "—", role: "System" },
+function mapIncidentSeverity(s: string): IncidentSeverity {
+  if (s === "CRITICAL") return "Critical";
+  if (s === "HIGH") return "High";
+  if (s === "LOW") return "Low";
+  return "Medium";
+}
+
+function mapIncidentStatus(s: string): IncidentStatus {
+  if (s === "ACKNOWLEDGED") return "Acknowledged";
+  if (s === "RESOLVED") return "Resolved";
+  if (s === "ESCALATED") return "Escalated";
+  return "Open";
+}
+
+function mapApiIncident(i: ApiIncident): Incident {
+  return {
+    id: i.id,
+    type: (i.type ?? "Safety check") as IncidentType,
+    severity: mapIncidentSeverity(i.severity),
+    status: mapIncidentStatus(i.status),
+    reportedAt: new Date(i.reported_at).toLocaleString(),
+    description: i.description ?? "—",
+    rideId: i.ride_id ?? undefined,
+    reporter: {
+      name: i.reporter_name ?? "Unknown",
+      phone: i.reporter_phone ?? "",
+      role: i.reporter_role ?? "System",
+    },
     involves: [],
-    location: "Multiple accounts",
-    district: "Kigali City",
-    timeline: [
-      { time: "12:16", event: "Anomaly flagged by detection rule R-014", kind: "system" },
-      { time: "12:18", event: "Pattern confirmed across 3 accounts", kind: "system" },
-    ],
-  },
-  {
-    id: "INC-2844",
-    type: "Fake GPS",
-    severity: "High",
-    status: "Escalated",
-    reportedAt: "1h ago",
-    description:
-      "Driver detected using GPS spoofing app. Phantom routes appearing in trip logs.",
-    reporter: { name: "Fraud detection", phone: "—", role: "System" },
-    involves: [
-      {
-        name: "Eric Nshuti",
-        phone: "+250 788 477 661",
-        role: "Driver",
-        vehicleType: "Heavy Fuso",
-        plate: "RAD 094 N",
-      },
-    ],
-    location: "Gikondo Industrial",
-    district: "Kicukiro",
-    timeline: [
-      { time: "11:48", event: "Position teleport detected (rule G-007)", kind: "system" },
-      { time: "11:52", event: "Driver flagged for investigation", kind: "ops" },
-      { time: "12:18", event: "Escalated to integrity team", kind: "alert" },
-    ],
-    notes: "Driver previously suspended once in March for similar pattern.",
-  },
-  {
-    id: "INC-2843",
-    type: "Lost item",
-    severity: "Low",
-    status: "Open",
-    reportedAt: "3h ago",
-    description: "Customer left phone in vehicle after ride completion.",
-    rideId: "RID-4732",
-    reporter: { name: "Boris Habineza", phone: "+250 788 552 198", role: "Customer" },
-    involves: [
-      { name: "Boris Habineza", phone: "+250 788 552 198", role: "Customer" },
-      {
-        name: "Claude Rwema",
-        phone: "+250 788 102 887",
-        role: "Driver",
-        vehicleType: "Light Hilux",
-        plate: "RAC 552 R",
-      },
-    ],
-    location: "Remera",
-    district: "Gasabo",
-    timeline: [
-      { time: "09:48", event: "Customer reported lost item", kind: "system" },
-      { time: "09:52", event: "Driver notified — confirmed item recovered", kind: "ops" },
-    ],
-  },
-  {
-    id: "INC-2842",
-    type: "Customer complaint",
-    severity: "Medium",
-    status: "Resolved",
-    reportedAt: "Yesterday",
-    description: "Driver overcharged on negotiated fare per customer report.",
-    rideId: "RID-4612",
-    reporter: { name: "Sandrine Uwimana", phone: "+250 788 091 553", role: "Customer" },
-    involves: [
-      { name: "Sandrine Uwimana", phone: "+250 788 091 553", role: "Customer" },
-      {
-        name: "Olivier Hakizimana",
-        phone: "+250 788 449 660",
-        role: "Driver",
-        vehicleType: "Cab Taxi",
-        plate: "RAB 502 O",
-      },
-    ],
-    location: "Gikondo",
-    district: "Kicukiro",
-    timeline: [
-      { time: "yesterday 18:34", event: "Complaint filed", kind: "system" },
-      { time: "yesterday 19:12", event: "Negotiation log audited", kind: "ops" },
-      { time: "yesterday 20:48", event: "Refund issued · INC closed", kind: "ops" },
-    ],
-    assignedTo: "Diana Ntirenganya",
-  },
-  {
-    id: "INC-2841",
-    type: "Accident",
-    severity: "Critical",
-    status: "Resolved",
-    reportedAt: "2d ago",
-    description: "Minor bump at Convention Centre roundabout. No injuries reported.",
-    rideId: "RID-4488",
-    reporter: { name: "Driver", phone: "+250 788 670 219", role: "Driver" },
-    involves: [
-      {
-        name: "Roland Karangwa",
-        phone: "+250 788 670 219",
-        role: "Driver",
-        vehicleType: "Moto Bike",
-        plate: "RAA 489 R",
-      },
-      { name: "Henri Mugisha", phone: "+250 788 156 992", role: "Customer" },
-    ],
-    location: "Convention Centre",
-    district: "Gasabo",
-    position: { x: 50, y: 28 },
-    timeline: [
-      { time: "2d ago 16:18", event: "Driver pressed accident button", kind: "alert" },
-      { time: "2d ago 16:20", event: "Ops contacted both parties", kind: "ops" },
-      { time: "2d ago 17:34", event: "Police statement received", kind: "ops" },
-      { time: "2d ago 19:12", event: "Insurance claim filed · closed", kind: "ops" },
-    ],
-  },
-  {
-    id: "INC-2840",
-    type: "Safety check",
-    severity: "Low",
-    status: "Resolved",
-    reportedAt: "3d ago",
-    description: "Random nightly safety check on Moto driver — all clear.",
-    reporter: { name: "Ops", phone: "—", role: "System" },
-    involves: [
-      {
-        name: "Joyce Habineza",
-        phone: "+250 788 705 332",
-        role: "Driver",
-        vehicleType: "Moto Bike",
-        plate: "RAA 502 J",
-      },
-    ],
-    location: "Kacyiru",
-    district: "Gasabo",
-    timeline: [
-      { time: "3d ago", event: "Safety check initiated", kind: "system" },
-      { time: "3d ago", event: "All checkpoints passed", kind: "ops" },
-    ],
-  },
-];
+    location: i.location_text ?? "—",
+    district: i.district ?? "—",
+    timeline: (i.timeline ?? []).map((e) => ({
+      time: new Date(e.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      event: e.event_text,
+      kind: (e.kind as "system" | "ops" | "alert") ?? "system",
+    })),
+  };
+}
 
 const tabs: { id: "all" | IncidentStatus; label: string }[] = [
   { id: "all", label: "All" },
@@ -254,7 +90,24 @@ const typeFilters: ("all" | IncidentType)[] = [
 const PAGE_SIZE = 6;
 
 export function IncidentsConsole() {
-  const [items, setItems] = useState<Incident[]>(initial);
+  const [items, setItems] = useState<Incident[]>([]);
+
+  useEffect(() => {
+    getIncidents({ limit: "100", offset: "0" })
+      .then((res) => setItems((Array.isArray(res.incidents) ? res.incidents : []).map(mapApiIncident)))
+      .catch(() => null);
+  }, []);
+
+  const openIncident = (id: string) => {
+    setViewingId(id);
+    getIncident(id)
+      .then((detail) =>
+        setItems((prev) =>
+          prev.map((i) => (i.id === id ? mapApiIncident(detail) : i))
+        )
+      )
+      .catch(() => null);
+  };
   const [tab, setTab] = useState<"all" | IncidentStatus>("all");
   const [severity, setSeverity] = useState<"all" | IncidentSeverity>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | IncidentType>("all");
@@ -338,7 +191,7 @@ export function IncidentsConsole() {
               <button
                 key={i.id}
                 type="button"
-                onClick={() => setViewingId(i.id)}
+                onClick={() => openIncident(i.id)}
                 className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50/60 p-3 text-left transition-colors hover:bg-red-50"
               >
                 <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700 ring-1 ring-inset ring-red-200">
@@ -497,7 +350,7 @@ export function IncidentsConsole() {
                 paginated.map((i) => (
                   <tr
                     key={i.id}
-                    onClick={() => setViewingId(i.id)}
+                    onClick={() => openIncident(i.id)}
                     className="cursor-pointer hover:bg-surface/50"
                   >
                     <td className="px-4 py-3">
@@ -542,7 +395,7 @@ export function IncidentsConsole() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setViewingId(i.id);
+                          openIncident(i.id);
                         }}
                         className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                       >
@@ -595,16 +448,19 @@ export function IncidentsConsole() {
       <IncidentModal
         incident={viewing}
         onClose={() => setViewingId(null)}
-        onAcknowledge={(id) => {
-          updateStatus(id, "Acknowledged", "Acknowledged by Aiden M.");
+        onAcknowledge={async (id) => {
+          try { await acknowledgeIncident(id); } catch { /* ignore */ }
+          updateStatus(id, "Acknowledged", "Acknowledged");
           setToast(`${id} acknowledged`);
         }}
-        onEscalate={(id) => {
-          updateStatus(id, "Escalated", "Escalated to integrity team");
+        onEscalate={async (id) => {
+          try { await escalateIncident(id); } catch { /* ignore */ }
+          updateStatus(id, "Escalated", "Escalated");
           setToast(`${id} escalated`);
         }}
-        onResolve={(id) => {
-          updateStatus(id, "Resolved", "Marked resolved");
+        onResolve={async (id) => {
+          try { await resolveIncident(id); } catch { /* ignore */ }
+          updateStatus(id, "Resolved", "Resolved");
           setToast(`${id} resolved`);
           setViewingId(null);
         }}

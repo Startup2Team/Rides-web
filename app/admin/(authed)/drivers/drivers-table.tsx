@@ -1,66 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar, Card } from "../_components";
 import { VerifyDriverModal, type VerifyDriver } from "./verify-driver-modal";
+import {
+  getDrivers,
+  getDriver,
+  approveDriver,
+  rejectDriver,
+  suspendDriver,
+  reinstateDriver,
+  forceDriverOffline,
+} from "@/lib/api";
+import {
+  mapApiDriver,
+  mapDriverDetailToVerify,
+  VEHICLE_SLUG_LABELS,
+  vehicleTypeFromSlug,
+  type DriverRow,
+  type DriverStatus,
+} from "@/lib/drivers";
 
-const vehicleSlugMap: Record<string, string> = {
-  moto: "Moto Bike",
-  cab: "Cab Taxi",
-  hilux: "Light Hilux",
-  fuso: "Heavy Fuso",
-};
+type Driver = DriverRow;
 
-const vehicleSlugLabels: Record<string, string> = {
-  moto: "Moto Bikes",
-  cab: "Cab Taxis",
-  hilux: "Light Hilux",
-  fuso: "Heavy Fuso",
-};
-
-type DriverStatus =
-  | "Online"
-  | "On trip"
-  | "Offline"
-  | "Pending"
-  | "Suspended";
-
-type Driver = {
-  id: string;
-  name: string;
-  vehicle: string;
-  plate: string;
-  status: DriverStatus;
-  acceptance: number | null;
-  rating: number | null;
-  lastActive: string;
-  kyc?: VerifyDriver["kyc"];
-};
-
-const initialDrivers: Driver[] = [
-  { id: "d1", name: "Aiden Mugisha", vehicle: "Cab Taxi", plate: "RAB 123 D", status: "Online", acceptance: 94, rating: 4.9, lastActive: "Just now", kyc: { phone: "+250 788 213 401", dob: "14 Mar 1992", age: 33, location: "Kacyiru, Gasabo, Kigali City", licenseNumber: "DL-0001245", submittedAt: "Approved 8 months ago", momoProvider: "MTN MoMo", momoCode: "250788213401" } },
-  { id: "d2", name: "Beni Karenzi", vehicle: "Moto Bike", plate: "RAA 887 K", status: "On trip", acceptance: 88, rating: 4.7, lastActive: "2m", kyc: { phone: "+250 788 552 110", dob: "22 Jul 1995", age: 30, location: "Remera, Gasabo, Kigali City", licenseNumber: "DL-0009881", submittedAt: "Approved 6 months ago", momoProvider: "MTN MoMo", momoCode: "250788552110" } },
-  { id: "d3", name: "Claude Rwema", vehicle: "Light Hilux", plate: "RAC 552 R", status: "Online", acceptance: 91, rating: 4.8, lastActive: "5m", kyc: { phone: "+250 788 102 887", dob: "9 Nov 1989", age: 36, location: "Gisozi, Gasabo, Kigali City", licenseNumber: "DL-0014562", submittedAt: "Approved 1 year ago", momoProvider: "Airtel Money", momoCode: "250788102887" } },
-  { id: "d4", name: "Diane Uwase", vehicle: "Cab Taxi", plate: "RAB 410 U", status: "Offline", acceptance: 82, rating: 4.6, lastActive: "3h", kyc: { phone: "+250 788 339 220", dob: "5 May 1990", age: 35, location: "Nyamirambo, Nyarugenge, Kigali City", licenseNumber: "DL-0018837", submittedAt: "Approved 9 months ago", momoProvider: "MTN MoMo", momoCode: "250788339220" } },
-  { id: "d5", name: "Eric Nshuti", vehicle: "Heavy Fuso", plate: "RAD 094 N", status: "On trip", acceptance: 76, rating: 4.5, lastActive: "1m", kyc: { phone: "+250 788 477 661", dob: "30 Jan 1987", age: 38, location: "Niboye, Kicukiro, Kigali City", licenseNumber: "DL-0022114", submittedAt: "Approved 1 year ago", momoProvider: "Airtel Money", momoCode: "250788477661" } },
-  { id: "d6", name: "Florence Ingabire", vehicle: "Moto Bike", plate: "RAA 211 I", status: "Pending", acceptance: null, rating: null, lastActive: "Pending", kyc: { phone: "+250 788 123 456", dob: "12 Apr 1998", age: 27, location: "Kacyiru, Gasabo, Kigali City", licenseNumber: "DL-1234567", submittedAt: "2h ago", momoProvider: "MTN MoMo", momoCode: "250788123456" } },
-  { id: "d7", name: "Gerard Bizimana", vehicle: "Cab Taxi", plate: "RAB 763 B", status: "Suspended", acceptance: 61, rating: 3.9, lastActive: "2d", kyc: { phone: "+250 788 821 003", dob: "11 Apr 1985", age: 40, location: "Gikondo, Kicukiro, Kigali City", licenseNumber: "DL-0026891", submittedAt: "Suspended 3 weeks ago", momoProvider: "MTN MoMo", momoCode: "250788821003" } },
-  { id: "d8", name: "Helen Niyibizi", vehicle: "Cab Taxi", plate: "RAB 318 H", status: "Online", acceptance: 96, rating: 4.9, lastActive: "Just now", kyc: { phone: "+250 788 614 005", dob: "27 Sep 1991", age: 34, location: "Kimironko, Gasabo, Kigali City", licenseNumber: "DL-0030124", submittedAt: "Approved 7 months ago", momoProvider: "MTN MoMo", momoCode: "250788614005" } },
-  { id: "d9", name: "Ivan Mukasa", vehicle: "Heavy Fuso", plate: "RAD 421 I", status: "On trip", acceptance: 84, rating: 4.6, lastActive: "3m", kyc: { phone: "+250 788 290 887", dob: "17 Dec 1988", age: 37, location: "Ndera, Gasabo, Kigali City", licenseNumber: "DL-0034772", submittedAt: "Approved 1 year ago", momoProvider: "Airtel Money", momoCode: "250788290887" } },
-  { id: "d10", name: "Joyce Habineza", vehicle: "Moto Bike", plate: "RAA 502 J", status: "Online", acceptance: 92, rating: 4.8, lastActive: "1m", kyc: { phone: "+250 788 705 332", dob: "2 Aug 1994", age: 31, location: "Kacyiru, Gasabo, Kigali City", licenseNumber: "DL-0038905", submittedAt: "Approved 5 months ago", momoProvider: "MTN MoMo", momoCode: "250788705332" } },
-  { id: "d11", name: "Kevin Tuyizere", vehicle: "Light Hilux", plate: "RAC 167 K", status: "Offline", acceptance: 79, rating: 4.4, lastActive: "5h", kyc: { phone: "+250 788 412 998", dob: "19 Jun 1986", age: 39, location: "Gahanga, Kicukiro, Kigali City", licenseNumber: "DL-0042561", submittedAt: "Approved 10 months ago", momoProvider: "Airtel Money", momoCode: "250788412998" } },
-  { id: "d12", name: "Liliane Murasi", vehicle: "Cab Taxi", plate: "RAB 944 L", status: "Pending", acceptance: null, rating: null, lastActive: "Pending", kyc: { phone: "+250 788 904 211", dob: "8 Sep 1995", age: 30, location: "Nyamirambo, Nyarugenge, Kigali City", licenseNumber: "DL-2398574", submittedAt: "5h ago", momoProvider: "Airtel Money", momoCode: "250788904211" } },
-  { id: "d13", name: "Marc Iradukunda", vehicle: "Heavy Fuso", plate: "RAD 286 M", status: "On trip", acceptance: 73, rating: 4.5, lastActive: "8m", kyc: { phone: "+250 788 156 224", dob: "8 Feb 1990", age: 35, location: "Gitega, Nyarugenge, Kigali City", licenseNumber: "DL-0049012", submittedAt: "Approved 11 months ago", momoProvider: "MTN MoMo", momoCode: "250788156224" } },
-  { id: "d14", name: "Nadine Kayitesi", vehicle: "Moto Bike", plate: "RAA 638 N", status: "Online", acceptance: 89, rating: 4.7, lastActive: "Just now", kyc: { phone: "+250 788 803 117", dob: "23 Oct 1996", age: 29, location: "Muhima, Nyarugenge, Kigali City", licenseNumber: "DL-0052338", submittedAt: "Approved 4 months ago", momoProvider: "MTN MoMo", momoCode: "250788803117" } },
-  { id: "d15", name: "Olivier Hakizimana", vehicle: "Cab Taxi", plate: "RAB 502 O", status: "Online", acceptance: 95, rating: 4.9, lastActive: "2m", kyc: { phone: "+250 788 449 660", dob: "15 May 1988", age: 37, location: "Kanyinya, Nyarugenge, Kigali City", licenseNumber: "DL-0056781", submittedAt: "Approved 1 year ago", momoProvider: "Airtel Money", momoCode: "250788449660" } },
-  { id: "d16", name: "Patrick Nshimiyimana", vehicle: "Light Hilux", plate: "RAC 712 P", status: "On trip", acceptance: 81, rating: 4.6, lastActive: "12m", kyc: { phone: "+250 788 322 178", dob: "28 Jan 1993", age: 32, location: "Nyarugunga, Kicukiro, Kigali City", licenseNumber: "DL-0061447", submittedAt: "Approved 8 months ago", momoProvider: "MTN MoMo", momoCode: "250788322178" } },
-  { id: "d17", name: "Queen Mukamana", vehicle: "Cab Taxi", plate: "RAB 138 Q", status: "Suspended", acceptance: 58, rating: 3.7, lastActive: "5d", kyc: { phone: "+250 788 187 504", dob: "4 Aug 1984", age: 41, location: "Kimironko, Gasabo, Kigali City", licenseNumber: "DL-0065223", submittedAt: "Suspended 1 week ago", momoProvider: "Airtel Money", momoCode: "250788187504" } },
-  { id: "d18", name: "Roland Karangwa", vehicle: "Moto Bike", plate: "RAA 489 R", status: "Online", acceptance: 90, rating: 4.8, lastActive: "Just now", kyc: { phone: "+250 788 670 219", dob: "12 Mar 1997", age: 28, location: "Remera, Gasabo, Kigali City", licenseNumber: "DL-0069880", submittedAt: "Approved 3 months ago", momoProvider: "MTN MoMo", momoCode: "250788670219" } },
-  { id: "d19", name: "Sarah Uwimana", vehicle: "Cab Taxi", plate: "RAB 056 S", status: "Offline", acceptance: 85, rating: 4.6, lastActive: "1d", kyc: { phone: "+250 788 091 553", dob: "19 Jun 1991", age: 34, location: "Gikondo, Kicukiro, Kigali City", licenseNumber: "DL-0073104", submittedAt: "Approved 7 months ago", momoProvider: "MTN MoMo", momoCode: "250788091553" } },
-  { id: "d20", name: "Thierry Nkurunziza", vehicle: "Heavy Fuso", plate: "RAD 819 T", status: "On trip", acceptance: 77, rating: 4.5, lastActive: "4m", kyc: { phone: "+250 788 558 002", dob: "1 Sep 1986", age: 39, location: "Ndera, Gasabo, Kigali City", licenseNumber: "DL-0078445", submittedAt: "Approved 1 year ago", momoProvider: "Airtel Money", momoCode: "250788558002" } },
-  { id: "d21", name: "Umuhoza Aline", vehicle: "Moto Bike", plate: "RAA 374 U", status: "Pending", acceptance: null, rating: null, lastActive: "Pending", kyc: { phone: "+250 788 567 102", dob: "23 Feb 2002", age: 23, location: "Remera, Gasabo, Kigali City", licenseNumber: "DL-9182736", submittedAt: "1d ago", momoProvider: "MTN MoMo", momoCode: "250788567102" } },
-];
 
 const statusStyles: Record<DriverStatus, string> = {
   Online: "bg-primary/15 text-primary",
@@ -370,7 +333,7 @@ export function DriversTable() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const vehicleSlug = searchParams.get("vehicle");
-  const vehicleFilter = vehicleSlug ? vehicleSlugMap[vehicleSlug] ?? null : null;
+  const vehicleType = vehicleTypeFromSlug(vehicleSlug);
 
   const [tab, setTab] = useState<Tab["id"]>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -378,14 +341,98 @@ export function DriversTable() {
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
-  const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
+  const [verifyDriver, setVerifyDriver] = useState<VerifyDriver | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [totalFromApi, setTotalFromApi] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  useEffect(() => {
     setPage(1);
-  }, [vehicleSlug]);
+  }, [vehicleSlug, debouncedQuery]);
+
+  const loadDrivers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params: Record<string, string> = {
+        limit: "500",
+        offset: "0",
+      };
+      if (vehicleType) params.vehicle_type = vehicleType;
+      if (debouncedQuery) params.search = debouncedQuery;
+
+      const res = await getDrivers(params);
+      setDrivers((res.drivers ?? []).map(mapApiDriver));
+      setTotalFromApi(res.total ?? res.drivers?.length ?? 0);
+    } catch (err) {
+      setDrivers([]);
+      setTotalFromApi(0);
+      setError(err instanceof Error ? err.message : "Failed to load drivers");
+    } finally {
+      setLoading(false);
+    }
+  }, [vehicleType, debouncedQuery]);
+
+  useEffect(() => {
+    void loadDrivers();
+  }, [loadDrivers]);
+
+  useEffect(() => {
+    if (!verifyingId) {
+      setVerifyDriver(null);
+      return;
+    }
+    const row = drivers.find((d) => d.id === verifyingId);
+    let cancelled = false;
+    setDetailLoading(true);
+    getDriver(verifyingId)
+      .then((detail) => {
+        if (cancelled) return;
+        setVerifyDriver(
+          mapDriverDetailToVerify(detail, row ?? undefined),
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        if (row) {
+          setVerifyDriver({
+            id: row.id,
+            name: row.name,
+            vehicle: row.vehicle,
+            plate: row.plate,
+            kyc: {
+              phone: row.phone ?? "",
+              dob: "—",
+              age: 0,
+              location: "—",
+              licenseNumber: "—",
+              submittedAt: row.lastActive,
+              momoProvider: "MTN MoMo",
+              momoCode: "",
+            },
+          });
+        } else {
+          setVerifyDriver(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [verifyingId, drivers]);
 
   useEffect(() => {
     if (!toast) return;
@@ -403,29 +450,17 @@ export function DriversTable() {
     ? drivers.find((d) => d.id === verifyingId)
     : null;
 
-  const scoped = vehicleFilter
-    ? drivers.filter((d) => d.vehicle === vehicleFilter)
-    : drivers;
-
   const counts: Record<Tab["id"], number> = {
-    all: scoped.length,
-    Online: scoped.filter((d) => d.status === "Online").length,
-    "On trip": scoped.filter((d) => d.status === "On trip").length,
-    Offline: scoped.filter((d) => d.status === "Offline").length,
-    Pending: scoped.filter((d) => d.status === "Pending").length,
-    Suspended: scoped.filter((d) => d.status === "Suspended").length,
+    all: drivers.length,
+    Online: drivers.filter((d) => d.status === "Online").length,
+    "On trip": drivers.filter((d) => d.status === "On trip").length,
+    Offline: drivers.filter((d) => d.status === "Offline").length,
+    Pending: drivers.filter((d) => d.status === "Pending").length,
+    Suspended: drivers.filter((d) => d.status === "Suspended").length,
   };
 
-  const filtered = scoped.filter((d) => {
+  const filtered = drivers.filter((d) => {
     if (tab !== "all" && d.status !== tab) return false;
-    if (query) {
-      const q = query.toLowerCase();
-      return (
-        d.name.toLowerCase().includes(q) ||
-        d.plate.toLowerCase().includes(q) ||
-        d.vehicle.toLowerCase().includes(q)
-      );
-    }
     return true;
   });
 
@@ -469,7 +504,7 @@ export function DriversTable() {
   }
 
   const renderPrimaryAction = (d: Driver) => {
-    if (d.status === "Pending" && d.kyc) {
+    if (d.status === "Pending") {
       return (
         <button
           type="button"
@@ -492,8 +527,9 @@ export function DriversTable() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              updateStatus(d.id, "Online");
+            onClick={async () => {
+              try { await reinstateDriver(d.id); } catch { /* ignore */ }
+              updateStatus(d.id, "Offline");
               setToast(`${d.name} reinstated`);
             }}
             className="inline-flex h-8 flex-1 items-center justify-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
@@ -521,22 +557,29 @@ export function DriversTable() {
       onToggle={() => setOpenMenuId(openMenuId === d.id ? null : d.id)}
       onClose={() => setOpenMenuId(null)}
       onVerify={
-        d.status === "Pending" && d.kyc
-          ? () => setVerifyingId(d.id)
-          : undefined
+        d.status === "Pending" ? () => setVerifyingId(d.id) : undefined
       }
       onView={() => setVerifyingId(d.id)}
       onMessage={() => setToast(`Message sent to ${d.name}`)}
-      onForceOffline={() => {
-        updateStatus(d.id, "Offline");
-        setToast(`${d.name} forced offline`);
+      onForceOffline={async () => {
+        try {
+          await forceDriverOffline(d.id);
+          updateStatus(d.id, "Offline");
+          setToast(`${d.name} forced offline`);
+        } catch (err) {
+          setToast(
+            err instanceof Error ? err.message : "Failed to force offline",
+          );
+        }
       }}
-      onSuspend={() => {
+      onSuspend={async () => {
+        try { await suspendDriver(d.id, 24); } catch { /* ignore */ }
         updateStatus(d.id, "Suspended");
         setToast(`${d.name} suspended`);
       }}
-      onReinstate={() => {
-        updateStatus(d.id, "Online");
+      onReinstate={async () => {
+        try { await reinstateDriver(d.id); } catch { /* ignore */ }
+        updateStatus(d.id, "Offline");
         setToast(`${d.name} reinstated`);
       }}
     />
@@ -545,19 +588,19 @@ export function DriversTable() {
   return (
     <Card
       title={
-        vehicleSlug && vehicleSlugLabels[vehicleSlug]
-          ? vehicleSlugLabels[vehicleSlug]
+        vehicleSlug && VEHICLE_SLUG_LABELS[vehicleSlug]
+          ? VEHICLE_SLUG_LABELS[vehicleSlug]
           : "All drivers"
       }
       action={
         <div className="flex items-center gap-2">
-          {vehicleSlug && vehicleSlugLabels[vehicleSlug] ? (
+          {vehicleSlug && VEHICLE_SLUG_LABELS[vehicleSlug] ? (
             <button
               type="button"
               onClick={() => router.push("/admin/drivers")}
               className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/15"
             >
-              {vehicleSlugLabels[vehicleSlug]}
+              {VEHICLE_SLUG_LABELS[vehicleSlug]}
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -587,6 +630,19 @@ export function DriversTable() {
         </div>
       }
     >
+      {error ? (
+        <div className="border-b border-border px-4 py-3">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            type="button"
+            onClick={() => void loadDrivers()}
+            className="mt-2 text-xs font-semibold text-primary hover:underline"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
       <div className="flex items-center gap-1 border-b border-border px-3 py-2">
         {tabs.map((t) => {
           const active = tab === t.id;
@@ -670,7 +726,13 @@ export function DriversTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {paginated.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  Loading drivers…
+                </td>
+              </tr>
+            ) : paginated.length === 0 ? (
               <tr>
                 <td
                   colSpan={8}
@@ -735,7 +797,9 @@ export function DriversTable() {
       </div>
       ) : (
         <div className="p-4">
-          {paginated.length === 0 ? (
+          {loading ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">Loading drivers…</p>
+          ) : paginated.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
               No drivers match your filters.
             </p>
@@ -765,7 +829,9 @@ export function DriversTable() {
             {sorted.length === 0 ? 0 : start + 1}–{end}
           </span>{" "}
           of{" "}
-          <span className="font-semibold text-foreground">{sorted.length}</span>{" "}
+          <span className="font-semibold text-foreground">
+            {debouncedQuery || tab !== "all" ? sorted.length : totalFromApi}
+          </span>{" "}
           drivers
         </p>
         <div className="flex items-center gap-2">
@@ -794,29 +860,43 @@ export function DriversTable() {
         </div>
       </div>
 
+      {detailLoading && verifyingId ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+          <p className="rounded-xl border border-border bg-card px-6 py-4 text-sm font-medium text-foreground shadow-xl">
+            Loading driver profile…
+          </p>
+        </div>
+      ) : null}
+
       <VerifyDriverModal
-        driver={
-          verifyingDriver && verifyingDriver.kyc
-            ? {
-                id: verifyingDriver.id,
-                name: verifyingDriver.name,
-                vehicle: verifyingDriver.vehicle,
-                plate: verifyingDriver.plate,
-                kyc: verifyingDriver.kyc,
-              }
-            : null
-        }
+        driver={verifyDriver}
         mode={verifyingDriver?.status === "Pending" ? "verify" : "view"}
         onClose={() => setVerifyingId(null)}
-        onApprove={(id) => {
-          updateStatus(id, "Online");
-          setToast(`${verifyingDriver?.name} approved`);
-          setVerifyingId(null);
+        onApprove={async (id) => {
+          try {
+            await approveDriver(id);
+            updateStatus(id, "Offline");
+            setToast(`${verifyingDriver?.name ?? "Driver"} approved`);
+            setVerifyingId(null);
+            void loadDrivers();
+          } catch (err) {
+            setToast(
+              err instanceof Error ? err.message : "Failed to approve driver",
+            );
+          }
         }}
-        onReject={(id) => {
-          updateStatus(id, "Suspended");
-          setToast(`${verifyingDriver?.name} rejected`);
-          setVerifyingId(null);
+        onReject={async (id, reason) => {
+          try {
+            await rejectDriver(id, reason);
+            updateStatus(id, "Suspended");
+            setToast(`${verifyingDriver?.name ?? "Driver"} rejected`);
+            setVerifyingId(null);
+            void loadDrivers();
+          } catch (err) {
+            setToast(
+              err instanceof Error ? err.message : "Failed to reject driver",
+            );
+          }
         }}
       />
 

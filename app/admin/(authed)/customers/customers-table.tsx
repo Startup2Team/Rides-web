@@ -7,449 +7,69 @@ import {
   type CustomerProfile,
   type CustomerStatus,
 } from "./customer-modal";
+import {
+  getCustomers,
+  getCustomer,
+  suspendCustomer,
+  reinstateCustomer,
+  type Customer as ApiCustomer,
+  type CustomerDetail,
+  type CustomerTrip as ApiTrip,
+} from "@/lib/api";
+import type { CustomerTrip } from "./customer-modal";
+
+function mapApiCustomer(c: ApiCustomer): Customer {
+  return {
+    id: c.id,
+    name: c.full_name ?? c.phone,
+    email: c.email ?? "",
+    phone: c.phone,
+    location: "",
+    joined: new Date(c.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+    trips: c.total_rides,
+    spend: c.total_spend ?? 0,
+    avgFare: c.total_rides > 0 ? Math.round((c.total_spend ?? 0) / c.total_rides) : 0,
+    lastTrip: c.last_seen_at
+      ? new Date(c.last_seen_at).toLocaleDateString()
+      : "—",
+    rating: c.rating ?? 0,
+    preferredVehicle: "",
+    status: mapCustomerStatus(c.is_suspended),
+    recentTrips: [],
+    notes: c.notes,
+  };
+}
+
+function mapApiTrip(t: ApiTrip): CustomerTrip {
+  return {
+    id: t.id,
+    date: new Date(t.created_at).toLocaleDateString(),
+    from: t.pickup_address,
+    to: t.destination_address,
+    vehicle: t.transport_type.replace(/_/g, " "),
+    fare: t.agreed_fare ?? 0,
+    status: t.status === "COMPLETED" ? "Completed" : "Cancelled",
+  };
+}
+
+function mapCustomerStatus(isSuspended: boolean): CustomerStatus {
+  if (isSuspended) return "Suspended";
+  return "Active";
+}
+
+function mergeDetail(base: Customer, detail: CustomerDetail): Customer {
+  return {
+    ...base,
+    email: detail.email ?? base.email,
+    rating: detail.rating ?? base.rating,
+    lastTrip: detail.last_seen_at
+      ? new Date(detail.last_seen_at).toLocaleDateString()
+      : base.lastTrip,
+    recentTrips: (detail.recent_trips ?? []).map(mapApiTrip),
+  };
+}
 
 type Customer = CustomerProfile;
-
-const initialCustomers: Customer[] = [
-  {
-    id: "c1",
-    name: "Alice Mukamana",
-    email: "alice.m@taravelis.io",
-    phone: "+250 788 213 005",
-    location: "Kacyiru, Gasabo, Kigali City",
-    joined: "Jan 2026",
-    trips: 24,
-    spend: 82500,
-    avgFare: 3437,
-    lastTrip: "2 days ago",
-    rating: 4.8,
-    preferredVehicle: "Cab Taxi",
-    status: "Active",
-    recentTrips: [
-      { id: "t1", date: "25 May", from: "Kacyiru", to: "Kigali Heights", vehicle: "Cab Taxi", fare: 3500, status: "Completed" },
-      { id: "t2", date: "22 May", from: "Kimironko", to: "Kacyiru", vehicle: "Cab Taxi", fare: 2800, status: "Completed" },
-      { id: "t3", date: "18 May", from: "Kacyiru", to: "Nyarutarama", vehicle: "Moto Bike", fare: 1500, status: "Completed" },
-    ],
-  },
-  {
-    id: "c2",
-    name: "Boris Habineza",
-    email: "boris.h@taravelis.io",
-    phone: "+250 788 552 198",
-    location: "Remera, Gasabo, Kigali City",
-    joined: "Mar 2026",
-    trips: 8,
-    spend: 31200,
-    avgFare: 3900,
-    lastTrip: "5 days ago",
-    rating: 4.6,
-    preferredVehicle: "Moto Bike",
-    status: "Active",
-    recentTrips: [
-      { id: "t1", date: "22 May", from: "Remera", to: "Town", vehicle: "Moto Bike", fare: 2200, status: "Completed" },
-      { id: "t2", date: "16 May", from: "Remera", to: "Kicukiro", vehicle: "Cab Taxi", fare: 4500, status: "Completed" },
-    ],
-  },
-  {
-    id: "c3",
-    name: "Christine Niyibizi",
-    email: "christine.n@taravelis.io",
-    phone: "+250 788 614 770",
-    location: "Nyarutarama, Gasabo, Kigali City",
-    joined: "Jul 2024",
-    trips: 142,
-    spend: 547800,
-    avgFare: 3858,
-    lastTrip: "Just now",
-    rating: 4.9,
-    preferredVehicle: "Cab Taxi",
-    status: "VIP",
-    notes: "Corporate account · Bank of Kigali. Quarterly invoicing on file.",
-    recentTrips: [
-      { id: "t1", date: "27 May", from: "Nyarutarama", to: "Kigali Heights", vehicle: "Cab Taxi", fare: 3200, status: "Completed" },
-      { id: "t2", date: "27 May", from: "Kigali Heights", to: "Nyarutarama", vehicle: "Cab Taxi", fare: 3400, status: "Completed" },
-      { id: "t3", date: "26 May", from: "Nyarutarama", to: "MTN Centre", vehicle: "Cab Taxi", fare: 2800, status: "Completed" },
-      { id: "t4", date: "25 May", from: "Kacyiru", to: "Nyarutarama", vehicle: "Cab Taxi", fare: 3600, status: "Completed" },
-    ],
-  },
-  {
-    id: "c4",
-    name: "Daniel Iradukunda",
-    email: "daniel.i@taravelis.io",
-    phone: "+250 788 102 441",
-    location: "Gikondo, Kicukiro, Kigali City",
-    joined: "Apr 2026",
-    trips: 3,
-    spend: 12400,
-    avgFare: 4133,
-    lastTrip: "1 week ago",
-    rating: 4.5,
-    preferredVehicle: "Cab Taxi",
-    status: "Active",
-    recentTrips: [
-      { id: "t1", date: "20 May", from: "Gikondo", to: "Town", vehicle: "Cab Taxi", fare: 4200, status: "Completed" },
-      { id: "t2", date: "12 May", from: "Town", to: "Gikondo", vehicle: "Cab Taxi", fare: 4400, status: "Completed" },
-    ],
-  },
-  {
-    id: "c5",
-    name: "Elise Twagiramungu",
-    email: "elise.t@taravelis.io",
-    phone: "+250 788 339 882",
-    location: "Nyamirambo, Nyarugenge, Kigali City",
-    joined: "Dec 2025",
-    trips: 0,
-    spend: 0,
-    avgFare: 0,
-    lastTrip: "Never",
-    rating: 0,
-    preferredVehicle: "—",
-    status: "Dormant",
-    notes: "Signed up but never completed onboarding promo trip.",
-    recentTrips: [],
-  },
-  {
-    id: "c6",
-    name: "Fabrice Bizimana",
-    email: "fabrice.b@taravelis.io",
-    phone: "+250 788 477 113",
-    location: "Niboye, Kicukiro, Kigali City",
-    joined: "May 2026",
-    trips: 1,
-    spend: 3800,
-    avgFare: 3800,
-    lastTrip: "3 days ago",
-    rating: 2.1,
-    preferredVehicle: "Moto Bike",
-    status: "Flagged",
-    notes:
-      "Two driver complaints in 48h — aggressive language. Hold any disputes for manual review.",
-    recentTrips: [
-      { id: "t1", date: "24 May", from: "Niboye", to: "Kicukiro Centre", vehicle: "Moto Bike", fare: 1800, status: "Cancelled" },
-      { id: "t2", date: "24 May", from: "Niboye", to: "Town", vehicle: "Moto Bike", fare: 3800, status: "Completed" },
-    ],
-  },
-  {
-    id: "c7",
-    name: "Grace Uwineza",
-    email: "grace.u@taravelis.io",
-    phone: "+250 788 823 005",
-    location: "Kacyiru, Gasabo, Kigali City",
-    joined: "Sep 2024",
-    trips: 98,
-    spend: 423500,
-    avgFare: 4321,
-    lastTrip: "Yesterday",
-    rating: 4.9,
-    preferredVehicle: "Cab Taxi",
-    status: "VIP",
-    notes: "Loyalty tier: Gold. Birthday: 12 Aug.",
-    recentTrips: [
-      { id: "t1", date: "26 May", from: "Kacyiru", to: "Airport", vehicle: "Cab Taxi", fare: 8500, status: "Completed" },
-      { id: "t2", date: "24 May", from: "Kacyiru", to: "Town", vehicle: "Cab Taxi", fare: 3200, status: "Completed" },
-    ],
-  },
-  {
-    id: "c8",
-    name: "Henri Mugisha",
-    email: "henri.m@taravelis.io",
-    phone: "+250 788 156 992",
-    location: "Kimironko, Gasabo, Kigali City",
-    joined: "Feb 2026",
-    trips: 18,
-    spend: 67200,
-    avgFare: 3733,
-    lastTrip: "4 hours ago",
-    rating: 4.7,
-    preferredVehicle: "Moto Bike",
-    status: "Active",
-    recentTrips: [
-      { id: "t1", date: "27 May", from: "Kimironko", to: "Town", vehicle: "Moto Bike", fare: 2400, status: "Completed" },
-    ],
-  },
-  {
-    id: "c9",
-    name: "Irene Mukasa",
-    email: "irene.m@taravelis.io",
-    phone: "+250 788 290 552",
-    location: "Remera, Gasabo, Kigali City",
-    joined: "Nov 2025",
-    trips: 35,
-    spend: 124300,
-    avgFare: 3551,
-    lastTrip: "Today",
-    rating: 4.8,
-    preferredVehicle: "Cab Taxi",
-    status: "Active",
-    recentTrips: [
-      { id: "t1", date: "27 May", from: "Remera", to: "Kigali Heights", vehicle: "Cab Taxi", fare: 3000, status: "Completed" },
-      { id: "t2", date: "26 May", from: "Remera", to: "Kacyiru", vehicle: "Cab Taxi", fare: 2800, status: "Completed" },
-    ],
-  },
-  {
-    id: "c10",
-    name: "Jean-Paul Karangwa",
-    email: "jp.k@taravelis.io",
-    phone: "+250 788 705 887",
-    location: "Muhima, Nyarugenge, Kigali City",
-    joined: "Aug 2025",
-    trips: 2,
-    spend: 7600,
-    avgFare: 3800,
-    lastTrip: "3 weeks ago",
-    rating: 1.8,
-    preferredVehicle: "Cab Taxi",
-    status: "Suspended",
-    notes:
-      "Suspended on 2026-05-04 after confirmed fraudulent chargeback. Do not reactivate without supervisor approval.",
-    recentTrips: [
-      { id: "t1", date: "06 May", from: "Muhima", to: "Town", vehicle: "Cab Taxi", fare: 3800, status: "Completed" },
-      { id: "t2", date: "04 May", from: "Town", to: "Muhima", vehicle: "Cab Taxi", fare: 3800, status: "Completed" },
-    ],
-  },
-  {
-    id: "c11",
-    name: "Kalisa Eric",
-    email: "kalisa.e@taravelis.io",
-    phone: "+250 788 412 003",
-    location: "Gahanga, Kicukiro, Kigali City",
-    joined: "Feb 2026",
-    trips: 12,
-    spend: 45800,
-    avgFare: 3816,
-    lastTrip: "2 hours ago",
-    rating: 4.6,
-    preferredVehicle: "Light Hilux",
-    status: "Active",
-    recentTrips: [
-      { id: "t1", date: "27 May", from: "Gahanga", to: "Town", vehicle: "Light Hilux", fare: 5400, status: "Completed" },
-    ],
-  },
-  {
-    id: "c12",
-    name: "Liliane Uwase",
-    email: "liliane.u@taravelis.io",
-    phone: "+250 788 904 660",
-    location: "Kacyiru, Gasabo, Kigali City",
-    joined: "Jun 2024",
-    trips: 76,
-    spend: 312400,
-    avgFare: 4110,
-    lastTrip: "Today",
-    rating: 4.9,
-    preferredVehicle: "Cab Taxi",
-    status: "VIP",
-    notes: "Pays in advance — corporate prepaid wallet, BPR.",
-    recentTrips: [
-      { id: "t1", date: "27 May", from: "Kacyiru", to: "BPR HQ", vehicle: "Cab Taxi", fare: 3600, status: "Completed" },
-      { id: "t2", date: "27 May", from: "BPR HQ", to: "Kacyiru", vehicle: "Cab Taxi", fare: 3800, status: "Completed" },
-    ],
-  },
-  {
-    id: "c13",
-    name: "Maurice Nshuti",
-    email: "maurice.n@taravelis.io",
-    phone: "+250 788 156 224",
-    location: "Niboye, Kicukiro, Kigali City",
-    joined: "Jan 2026",
-    trips: 14,
-    spend: 52100,
-    avgFare: 3721,
-    lastTrip: "Yesterday",
-    rating: 4.5,
-    preferredVehicle: "Cab Taxi",
-    status: "Active",
-    recentTrips: [
-      { id: "t1", date: "26 May", from: "Niboye", to: "Town", vehicle: "Cab Taxi", fare: 4200, status: "Completed" },
-    ],
-  },
-  {
-    id: "c14",
-    name: "Nadia Kayitesi",
-    email: "nadia.k@taravelis.io",
-    phone: "+250 788 803 117",
-    location: "Muhima, Nyarugenge, Kigali City",
-    joined: "Oct 2025",
-    trips: 1,
-    spend: 4200,
-    avgFare: 4200,
-    lastTrip: "2 months ago",
-    rating: 4.0,
-    preferredVehicle: "Cab Taxi",
-    status: "Dormant",
-    recentTrips: [
-      { id: "t1", date: "20 Mar", from: "Muhima", to: "Town", vehicle: "Cab Taxi", fare: 4200, status: "Completed" },
-    ],
-  },
-  {
-    id: "c15",
-    name: "Olivier Habimana",
-    email: "olivier.h@taravelis.io",
-    phone: "+250 788 449 660",
-    location: "Kanyinya, Nyarugenge, Kigali City",
-    joined: "Dec 2025",
-    trips: 22,
-    spend: 88400,
-    avgFare: 4018,
-    lastTrip: "Today",
-    rating: 4.7,
-    preferredVehicle: "Moto Bike",
-    status: "Active",
-    recentTrips: [
-      { id: "t1", date: "27 May", from: "Kanyinya", to: "Town", vehicle: "Moto Bike", fare: 2200, status: "Completed" },
-    ],
-  },
-  {
-    id: "c16",
-    name: "Patricia Mukamana",
-    email: "patricia.m@taravelis.io",
-    phone: "+250 788 322 178",
-    location: "Nyarugunga, Kicukiro, Kigali City",
-    joined: "Feb 2026",
-    trips: 3,
-    spend: 11200,
-    avgFare: 3733,
-    lastTrip: "6 days ago",
-    rating: 2.4,
-    preferredVehicle: "Moto Bike",
-    status: "Flagged",
-    notes: "Reported by 2 drivers for repeated no-shows.",
-    recentTrips: [
-      { id: "t1", date: "21 May", from: "Nyarugunga", to: "Town", vehicle: "Moto Bike", fare: 2400, status: "Cancelled" },
-      { id: "t2", date: "20 May", from: "Nyarugunga", to: "Kicukiro Centre", vehicle: "Moto Bike", fare: 1800, status: "Completed" },
-    ],
-  },
-  {
-    id: "c17",
-    name: "Queen Niyonsenga",
-    email: "queen.n@taravelis.io",
-    phone: "+250 788 187 504",
-    location: "Kimironko, Gasabo, Kigali City",
-    joined: "Mar 2026",
-    trips: 9,
-    spend: 34600,
-    avgFare: 3844,
-    lastTrip: "Yesterday",
-    rating: 4.5,
-    preferredVehicle: "Cab Taxi",
-    status: "Active",
-    recentTrips: [],
-  },
-  {
-    id: "c18",
-    name: "Robert Tuyizere",
-    email: "robert.t@taravelis.io",
-    phone: "+250 788 670 219",
-    location: "Remera, Gasabo, Kigali City",
-    joined: "Sep 2025",
-    trips: 27,
-    spend: 98700,
-    avgFare: 3655,
-    lastTrip: "Today",
-    rating: 4.8,
-    preferredVehicle: "Cab Taxi",
-    status: "Active",
-    recentTrips: [],
-  },
-  {
-    id: "c19",
-    name: "Sandrine Uwimana",
-    email: "sandrine.u@taravelis.io",
-    phone: "+250 788 091 553",
-    location: "Gikondo, Kicukiro, Kigali City",
-    joined: "Jun 2025",
-    trips: 5,
-    spend: 18400,
-    avgFare: 3680,
-    lastTrip: "1 month ago",
-    rating: 2.2,
-    preferredVehicle: "Cab Taxi",
-    status: "Suspended",
-    notes: "Suspended for confirmed payment fraud — chargebacks on 3 trips.",
-    recentTrips: [],
-  },
-  {
-    id: "c20",
-    name: "Théo Bizimana",
-    email: "theo.b@taravelis.io",
-    phone: "+250 788 558 002",
-    location: "Ndera, Gasabo, Kigali City",
-    joined: "Mar 2024",
-    trips: 64,
-    spend: 268500,
-    avgFare: 4195,
-    lastTrip: "2 hours ago",
-    rating: 4.9,
-    preferredVehicle: "Cab Taxi",
-    status: "VIP",
-    notes: "Frequent airport runs. Always pre-books for early flights.",
-    recentTrips: [],
-  },
-  {
-    id: "c21",
-    name: "Umutoni Aline",
-    email: "aline.u@taravelis.io",
-    phone: "+250 788 567 102",
-    location: "Remera, Gasabo, Kigali City",
-    joined: "Jul 2025",
-    trips: 0,
-    spend: 0,
-    avgFare: 0,
-    lastTrip: "Never",
-    rating: 0,
-    preferredVehicle: "—",
-    status: "Dormant",
-    recentTrips: [],
-  },
-  {
-    id: "c22",
-    name: "Vincent Karangwa",
-    email: "vincent.k@taravelis.io",
-    phone: "+250 788 821 003",
-    location: "Gisozi, Gasabo, Kigali City",
-    joined: "Jan 2026",
-    trips: 16,
-    spend: 61800,
-    avgFare: 3862,
-    lastTrip: "Today",
-    rating: 4.6,
-    preferredVehicle: "Moto Bike",
-    status: "Active",
-    recentTrips: [],
-  },
-  {
-    id: "c23",
-    name: "Winnie Mukamana",
-    email: "winnie.m@taravelis.io",
-    phone: "+250 788 123 456",
-    location: "Kacyiru, Gasabo, Kigali City",
-    joined: "Apr 2026",
-    trips: 11,
-    spend: 42300,
-    avgFare: 3845,
-    lastTrip: "Yesterday",
-    rating: 4.7,
-    preferredVehicle: "Cab Taxi",
-    status: "Active",
-    recentTrips: [],
-  },
-  {
-    id: "c24",
-    name: "Xavier Iradukunda",
-    email: "xavier.i@taravelis.io",
-    phone: "+250 788 614 005",
-    location: "Kimironko, Gasabo, Kigali City",
-    joined: "Feb 2026",
-    trips: 7,
-    spend: 28900,
-    avgFare: 4128,
-    lastTrip: "4 days ago",
-    rating: 4.5,
-    preferredVehicle: "Cab Taxi",
-    status: "Active",
-    recentTrips: [],
-  },
-];
 
 const statusStyles: Record<CustomerStatus, string> = {
   Active: "bg-primary/15 text-primary",
@@ -796,9 +416,28 @@ export function CustomersTable() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [viewingId, setViewingId] = useState<string | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  useEffect(() => {
+    getCustomers({ limit: "100", offset: "0" })
+      .then((res) => setCustomers((res.customers ?? []).map(mapApiCustomer)))
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const openProfile = (id: string) => {
+    setViewingId(id);
+    getCustomer(id)
+      .then((detail) => {
+        setCustomers((prev) =>
+          prev.map((c) => (c.id === id ? mergeDetail(c, detail) : c))
+        );
+      })
+      .catch(() => null);
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -883,7 +522,7 @@ export function CustomersTable() {
       open={openMenuId === c.id}
       onToggle={() => setOpenMenuId(openMenuId === c.id ? null : c.id)}
       onClose={() => setOpenMenuId(null)}
-      onView={() => setViewingId(c.id)}
+      onView={() => openProfile(c.id)}
       onMessage={() => setToast(`Message sent to ${c.name}`)}
       onFlag={() => {
         updateStatus(c.id, "Flagged");
@@ -893,11 +532,13 @@ export function CustomersTable() {
         updateStatus(c.id, "Active");
         setToast(`${c.name} flag removed`);
       }}
-      onSuspend={() => {
+      onSuspend={async () => {
+        try { await suspendCustomer(c.id, 24); } catch { /* ignore */ }
         updateStatus(c.id, "Suspended");
         setToast(`${c.name} suspended`);
       }}
-      onReinstate={() => {
+      onReinstate={async () => {
+        try { await reinstateCustomer(c.id); } catch { /* ignore */ }
         updateStatus(c.id, "Active");
         setToast(`${c.name} reinstated`);
       }}
@@ -1062,7 +703,7 @@ export function CustomersTable() {
                       <div className="inline-flex items-center justify-end gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setViewingId(c.id)}
+                          onClick={() => openProfile(c.id)}
                           className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                         >
                           View
@@ -1088,7 +729,7 @@ export function CustomersTable() {
                 <CustomerCard
                   key={c.id}
                   customer={c}
-                  onView={() => setViewingId(c.id)}
+                  onView={() => openProfile(c.id)}
                   menu={renderMenu(c)}
                 />
               ))}

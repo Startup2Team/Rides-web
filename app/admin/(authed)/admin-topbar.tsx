@@ -1,8 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useAuth } from "@/context/auth-context";
+
+function initialsFrom(name: string | undefined, email: string | undefined): string {
+  const source = (name?.trim() || email?.split("@")[0] || "").replace(/[._-]+/g, " ");
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "··";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -79,7 +88,7 @@ const notifications: Notification[] = [
   },
 ];
 
-export function AdminTopbar() {
+export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}) {
   const searchRef = useRef<HTMLInputElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
@@ -87,6 +96,11 @@ export function AdminTopbar() {
   const [openNotif, setOpenNotif] = useState(false);
   const [openUser, setOpenUser] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+
+  const { user, ready } = useAuth();
+  const displayName = user?.name?.trim() || user?.email?.split("@")[0] || "Account";
+  const displayEmail = user?.email ?? "";
+  const initials = useMemo(() => initialsFrom(user?.name, user?.email), [user?.name, user?.email]);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -247,11 +261,15 @@ export function AdminTopbar() {
             }}
             className="flex h-10 items-center gap-2.5 rounded-full border border-border bg-card pl-1 pr-3 transition-colors hover:bg-surface"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#00A040] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
-              <span className="text-xs font-bold tracking-tight">AM</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
+              {ready ? (
+                <span className="text-xs font-bold tracking-tight">{initials}</span>
+              ) : (
+                <span className="block h-3 w-3 animate-pulse rounded-full bg-white/40" aria-hidden />
+              )}
             </span>
-            <span className="hidden text-sm font-semibold tracking-tight text-foreground sm:inline">
-              Aiden Mugisha
+            <span className="hidden max-w-[160px] truncate text-sm font-semibold tracking-tight text-foreground sm:inline">
+              {ready ? displayName : "Loading…"}
             </span>
             <Icon>
               <polyline points="6 9 12 15 18 9" />
@@ -260,15 +278,15 @@ export function AdminTopbar() {
           {openUser ? (
             <div className="absolute right-0 top-full mt-2 w-64 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
               <div className="flex items-center gap-3 border-b border-border bg-surface/40 px-4 py-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#00A040] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
-                  <span className="text-sm font-bold tracking-tight">AM</span>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
+                  <span className="text-sm font-bold tracking-tight">{initials}</span>
                 </span>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold tracking-tight text-foreground">
-                    Aiden Mugisha
+                    {displayName}
                   </div>
                   <div className="truncate text-[11px] text-muted-foreground">
-                    admin@taravelis.com
+                    {displayEmail || "—"}
                   </div>
                 </div>
               </div>

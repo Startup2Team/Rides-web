@@ -1,409 +1,120 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Avatar, Card } from "../_components";
 import {
   RideDetailModal,
   type RideDetail,
   type RideStatus,
+  type TimelineEvent,
+  type NegotiationOffer,
 } from "./ride-detail-modal";
+import {
+  getLiveRides,
+  getLiveRide,
+  interveneRide,
+  type Ride as ApiRide,
+  type RideDetail as ApiRideDetail,
+} from "@/lib/api";
 
-type VehicleType = "Moto Bike" | "Cab Taxi" | "Light Hilux" | "Heavy Fuso";
+// ── Transport type helpers ────────────────────────────────────────────────
+
+type VehicleType = "Moto Bike" | "Cab Taxi" | "Light Hilux" | "Heavy Fuso" | "Tuk Tuk";
+
+const TRANSPORT_DISPLAY: Record<string, VehicleType> = {
+  MOTO_BIKE:   "Moto Bike",
+  CAB_TAXI:    "Cab Taxi",
+  LIGHT_HILUX: "Light Hilux",
+  HEAVY_FUSO:  "Heavy Fuso",
+  TUK_TUK:     "Tuk Tuk",
+};
+
+function toVehicleType(code: string): VehicleType {
+  return TRANSPORT_DISPLAY[code] ?? ("Cab Taxi" as VehicleType);
+}
+
+// ── Status helpers ────────────────────────────────────────────────────────
+
+function mapRideStatus(s: string): RideStatus {
+  if (s === "NEGOTIATING") return "Negotiating";
+  if (s === "DRIVER_EN_ROUTE" || s === "DRIVER_FOUND") return "Driver arriving";
+  if (s === "DRIVER_ARRIVED") return "Driver arriving";
+  if (s === "ON_TRIP") return "On trip";
+  return "Searching";
+}
+
+// ── Mappers ───────────────────────────────────────────────────────────────
 
 type Ride = RideDetail & {
   position: { x: number; y: number };
+  _transportCode: string;
 };
 
-const baseRides: Ride[] = [
-  {
-    id: "RID-4821",
-    customer: { name: "Aiden Mugisha", phone: "+250 788 213 005", rating: 4.8 },
-    driver: {
-      name: "Beni Karenzi",
-      phone: "+250 788 552 110",
-      vehicleType: "Cab Taxi",
-      plate: "RAB 410 U",
-      rating: 4.7,
-    },
-    pickup: "Kimironko Market",
-    destination: "Kigali Heights",
-    vehicleType: "Cab Taxi",
-    status: "On trip",
-    startedAt: "12 min ago",
-    eta: "8 min",
-    fare: 3500,
-    paymentMethod: "MTN MoMo",
-    district: "Gasabo",
-    position: { x: 62, y: 32 },
-    timeline: [
-      { time: "12:34", event: "Ride requested by Aiden Mugisha", kind: "system" },
-      { time: "12:35", event: "Driver Beni Karenzi accepted", kind: "system" },
-      { time: "12:36", event: "Customer offered 3,000 RWF", kind: "negotiation" },
-      { time: "12:36", event: "Driver offered 3,800 RWF", kind: "negotiation" },
-      { time: "12:37", event: "Agreed on 3,500 RWF", kind: "negotiation" },
-      { time: "12:42", event: "Driver arrived at pickup", kind: "trip" },
-      { time: "12:43", event: "Trip started", kind: "trip" },
-    ],
-    negotiation: [
-      { from: "customer", amount: 3000, time: "12:36" },
-      { from: "driver", amount: 3800, time: "12:36" },
-      { from: "customer", amount: 3500, time: "12:37" },
-    ],
-  },
-  {
-    id: "RID-4820",
-    customer: {
-      name: "Christine Niyibizi",
-      phone: "+250 788 614 770",
-      rating: 4.9,
-    },
-    driver: {
-      name: "Claude Rwema",
-      phone: "+250 788 102 887",
-      vehicleType: "Light Hilux",
-      plate: "RAC 552 R",
-      rating: 4.8,
-    },
-    pickup: "Kacyiru",
-    destination: "Nyabugogo Station",
-    vehicleType: "Light Hilux",
-    status: "Negotiating",
-    startedAt: "2 min ago",
+function mapApiRide(r: ApiRide): Ride {
+  const custName = r.customer?.name ?? r.customer?.phone ?? "Unknown";
+  const driverName = r.driver?.name ?? null;
+  return {
+    id: r.id,
+    customer: { name: custName, phone: r.customer?.phone ?? "", rating: 0 },
+    driver: driverName
+      ? {
+          name: driverName,
+          phone: r.driver?.phone ?? "",
+          vehicleType: toVehicleType(r.transport_type),
+          plate: r.driver?.plate ?? "—",
+          rating: 0,
+        }
+      : null,
+    pickup: r.pickup_address,
+    destination: r.destination_address,
+    vehicleType: toVehicleType(r.transport_type),
+    status: mapRideStatus(r.status),
+    startedAt: new Date(r.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     eta: null,
-    fare: 0,
-    paymentMethod: "MTN MoMo",
-    district: "Gasabo",
-    position: { x: 45, y: 38 },
-    timeline: [
-      { time: "12:46", event: "Ride requested by Christine Niyibizi", kind: "system" },
-      { time: "12:46", event: "Driver Claude Rwema responded", kind: "system" },
-      { time: "12:47", event: "Customer offered 4,500 RWF", kind: "negotiation" },
-      { time: "12:47", event: "Driver counter-offered 6,200 RWF", kind: "negotiation" },
-      { time: "12:48", event: "Customer offered 5,000 RWF", kind: "negotiation" },
-    ],
-    negotiation: [
-      { from: "customer", amount: 4500, time: "12:47" },
-      { from: "driver", amount: 6200, time: "12:47" },
-      { from: "customer", amount: 5000, time: "12:48" },
-    ],
-  },
-  {
-    id: "RID-4819",
-    customer: {
-      name: "Daniel Iradukunda",
-      phone: "+250 788 102 441",
-      rating: 4.5,
-    },
-    driver: {
-      name: "Diane Uwase",
-      phone: "+250 788 339 220",
-      vehicleType: "Cab Taxi",
-      plate: "RAB 410 U",
-      rating: 4.6,
-    },
-    pickup: "Remera",
-    destination: "Kabuga",
-    vehicleType: "Cab Taxi",
-    status: "Driver arriving",
-    startedAt: "4 min ago",
-    eta: "3 min",
-    fare: 4200,
-    paymentMethod: "Airtel Money",
-    district: "Gasabo",
-    position: { x: 70, y: 45 },
-    timeline: [
-      { time: "12:44", event: "Ride requested by Daniel Iradukunda", kind: "system" },
-      { time: "12:45", event: "Driver Diane Uwase accepted", kind: "system" },
-      { time: "12:46", event: "Agreed on 4,200 RWF", kind: "negotiation" },
-      { time: "12:46", event: "Driver en route to pickup", kind: "trip" },
-    ],
-    negotiation: [
-      { from: "customer", amount: 4000, time: "12:45" },
-      { from: "driver", amount: 4200, time: "12:46" },
-    ],
-  },
-  {
-    id: "RID-4818",
-    customer: {
-      name: "Florence Ingabire",
-      phone: "+250 788 123 456",
-      rating: 4.7,
-    },
-    driver: null,
-    pickup: "Nyamirambo",
-    destination: "Convention Centre",
-    vehicleType: "Moto Bike",
-    status: "Searching",
-    startedAt: "Just now",
-    eta: null,
-    fare: 0,
-    paymentMethod: "MTN MoMo",
-    district: "Nyarugenge",
-    position: { x: 32, y: 60 },
-    timeline: [
-      { time: "12:48", event: "Ride requested by Florence Ingabire", kind: "system" },
-      { time: "12:48", event: "Looking for nearby Moto drivers…", kind: "system" },
-    ],
-    negotiation: [],
-  },
-  {
-    id: "RID-4817",
-    customer: {
-      name: "Grace Uwineza",
-      phone: "+250 788 823 005",
-      rating: 4.9,
-    },
-    driver: {
-      name: "Helen Niyibizi",
-      phone: "+250 788 614 005",
-      vehicleType: "Cab Taxi",
-      plate: "RAB 318 H",
-      rating: 4.9,
-    },
-    pickup: "Gisozi",
-    destination: "Kacyiru",
-    vehicleType: "Cab Taxi",
-    status: "On trip",
-    startedAt: "8 min ago",
-    eta: "12 min",
-    fare: 2800,
-    paymentMethod: "MTN MoMo",
-    district: "Gasabo",
-    position: { x: 50, y: 25 },
-    timeline: [
-      { time: "12:40", event: "Ride requested", kind: "system" },
-      { time: "12:41", event: "Driver assigned", kind: "system" },
-      { time: "12:44", event: "Driver arrived", kind: "trip" },
-      { time: "12:45", event: "Trip started", kind: "trip" },
-    ],
-    negotiation: [
-      { from: "customer", amount: 2500, time: "12:41" },
-      { from: "driver", amount: 2800, time: "12:42" },
-    ],
-  },
-  {
-    id: "RID-4816",
-    customer: {
-      name: "Ivan Mukasa",
-      phone: "+250 788 290 887",
-      rating: 4.6,
-    },
-    driver: {
-      name: "Joyce Habineza",
-      phone: "+250 788 705 332",
-      vehicleType: "Moto Bike",
-      plate: "RAA 502 J",
-      rating: 4.8,
-    },
-    pickup: "Kicukiro Centre",
-    destination: "Niboye",
-    vehicleType: "Moto Bike",
-    status: "On trip",
-    startedAt: "5 min ago",
-    eta: "4 min",
-    fare: 1800,
+    fare: r.agreed_fare ?? 0,
     paymentMethod: "Cash",
-    district: "Kicukiro",
-    position: { x: 55, y: 70 },
-    timeline: [
-      { time: "12:43", event: "Ride requested", kind: "system" },
-      { time: "12:44", event: "Driver assigned", kind: "system" },
-      { time: "12:46", event: "Trip started", kind: "trip" },
-    ],
-    negotiation: [
-      { from: "customer", amount: 1500, time: "12:44" },
-      { from: "driver", amount: 1800, time: "12:44" },
-    ],
-  },
-  {
-    id: "RID-4815",
-    customer: {
-      name: "Kevin Tuyizere",
-      phone: "+250 788 412 998",
-      rating: 4.4,
-    },
-    driver: {
-      name: "Eric Nshuti",
-      phone: "+250 788 477 661",
-      vehicleType: "Heavy Fuso",
-      plate: "RAD 094 N",
-      rating: 4.5,
-    },
-    pickup: "Gikondo Industrial",
-    destination: "Nyabugogo",
-    vehicleType: "Heavy Fuso",
-    status: "Driver arriving",
-    startedAt: "6 min ago",
-    eta: "9 min",
-    fare: 18500,
-    paymentMethod: "MTN MoMo",
-    district: "Kicukiro",
-    position: { x: 42, y: 65 },
-    timeline: [
-      { time: "12:42", event: "Cargo request placed", kind: "system" },
-      { time: "12:44", event: "Driver assigned", kind: "system" },
-      { time: "12:45", event: "Agreed on 18,500 RWF", kind: "negotiation" },
-    ],
-    negotiation: [
-      { from: "customer", amount: 15000, time: "12:43" },
-      { from: "driver", amount: 20000, time: "12:44" },
-      { from: "customer", amount: 18500, time: "12:45" },
-    ],
-  },
-  {
-    id: "RID-4814",
-    customer: {
-      name: "Liliane Uwase",
-      phone: "+250 788 904 660",
-      rating: 4.9,
-    },
-    driver: null,
-    pickup: "Kacyiru",
-    destination: "Airport",
-    vehicleType: "Cab Taxi",
-    status: "Searching",
-    startedAt: "30s ago",
-    eta: null,
-    fare: 0,
-    paymentMethod: "MTN MoMo",
-    district: "Gasabo",
-    position: { x: 48, y: 35 },
-    timeline: [
-      { time: "12:48", event: "Ride requested", kind: "system" },
-      { time: "12:48", event: "Notifying 4 Cab drivers nearby", kind: "system" },
-    ],
+    district: "—",
+    timeline: [],
     negotiation: [],
-  },
-  {
-    id: "RID-4813",
-    customer: {
-      name: "Maurice Nshuti",
-      phone: "+250 788 156 224",
-      rating: 4.5,
-    },
-    driver: {
-      name: "Nadine Kayitesi",
-      phone: "+250 788 803 117",
-      vehicleType: "Moto Bike",
-      plate: "RAA 638 N",
-      rating: 4.7,
-    },
-    pickup: "Muhima",
-    destination: "Town",
-    vehicleType: "Moto Bike",
-    status: "On trip",
-    startedAt: "3 min ago",
-    eta: "5 min",
-    fare: 1600,
-    paymentMethod: "MTN MoMo",
-    district: "Nyarugenge",
-    position: { x: 28, y: 50 },
-    timeline: [
-      { time: "12:45", event: "Ride requested", kind: "system" },
-      { time: "12:46", event: "Driver assigned", kind: "system" },
-      { time: "12:48", event: "Trip started", kind: "trip" },
-    ],
-    negotiation: [
-      { from: "customer", amount: 1500, time: "12:46" },
-      { from: "driver", amount: 1600, time: "12:46" },
-    ],
-  },
-  {
-    id: "RID-4812",
-    customer: {
-      name: "Olivier Habimana",
-      phone: "+250 788 449 660",
-      rating: 4.7,
-    },
-    driver: {
-      name: "Patrick Nshimiyimana",
-      phone: "+250 788 322 178",
-      vehicleType: "Light Hilux",
-      plate: "RAC 712 P",
-      rating: 4.6,
-    },
-    pickup: "Nyarugunga",
-    destination: "Kanombe",
-    vehicleType: "Light Hilux",
-    status: "Negotiating",
-    startedAt: "1 min ago",
-    eta: null,
-    fare: 0,
-    paymentMethod: "Airtel Money",
-    district: "Kicukiro",
-    position: { x: 65, y: 60 },
-    timeline: [
-      { time: "12:47", event: "Ride requested", kind: "system" },
-      { time: "12:47", event: "Driver responded", kind: "system" },
-      { time: "12:48", event: "Customer offered 4,000 RWF", kind: "negotiation" },
-      { time: "12:48", event: "Driver counter-offered 5,500 RWF", kind: "negotiation" },
-    ],
-    negotiation: [
-      { from: "customer", amount: 4000, time: "12:48" },
-      { from: "driver", amount: 5500, time: "12:48" },
-    ],
-  },
-  {
-    id: "RID-4811",
-    customer: {
-      name: "Patricia Mukamana",
-      phone: "+250 788 322 178",
-      rating: 2.4,
-    },
-    driver: null,
-    pickup: "Nyarugunga",
-    destination: "Town",
-    vehicleType: "Moto Bike",
-    status: "Searching",
-    startedAt: "2 min ago",
-    eta: null,
-    fare: 0,
-    paymentMethod: "Cash",
-    district: "Kicukiro",
-    position: { x: 60, y: 65 },
-    timeline: [
-      { time: "12:46", event: "Ride requested", kind: "system" },
-      { time: "12:46", event: "No drivers responded — retrying", kind: "alert" },
-      { time: "12:48", event: "Still searching", kind: "system" },
-    ],
-    negotiation: [],
-  },
-  {
-    id: "RID-4810",
-    customer: {
-      name: "Robert Tuyizere",
-      phone: "+250 788 670 219",
-      rating: 4.8,
-    },
-    driver: {
-      name: "Roland Karangwa",
-      phone: "+250 788 670 219",
-      vehicleType: "Moto Bike",
-      plate: "RAA 489 R",
-      rating: 4.8,
-    },
-    pickup: "Remera",
-    destination: "Kacyiru",
-    vehicleType: "Moto Bike",
-    status: "Driver arriving",
-    startedAt: "1 min ago",
-    eta: "2 min",
-    fare: 1400,
-    paymentMethod: "MTN MoMo",
-    district: "Gasabo",
-    position: { x: 58, y: 40 },
-    timeline: [
-      { time: "12:47", event: "Ride requested", kind: "system" },
-      { time: "12:48", event: "Driver Roland Karangwa accepted", kind: "system" },
-      { time: "12:48", event: "Agreed on 1,400 RWF", kind: "negotiation" },
-    ],
-    negotiation: [
-      { from: "customer", amount: 1200, time: "12:47" },
-      { from: "driver", amount: 1500, time: "12:48" },
-      { from: "customer", amount: 1400, time: "12:48" },
-    ],
-  },
-];
+    position: { x: Math.random() * 80 + 10, y: Math.random() * 70 + 10 },
+    _transportCode: r.transport_type,
+  };
+}
+
+function mapApiDetail(r: ApiRideDetail, base: Ride): Ride {
+  const timeline: TimelineEvent[] = (r.events ?? []).map((e) => ({
+    time: new Date(e.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    event: e.type.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase()),
+    kind: e.type.includes("CANCEL") ? "alert"
+      : e.type.includes("NEGOTIAT") ? "negotiation"
+      : e.type.includes("TRIP") || e.type.includes("COMPLET") ? "trip"
+      : "system",
+  }));
+
+  const negotiation: NegotiationOffer[] = (r.negotiation_rounds ?? []).map((n) => ({
+    from: n.proposed_by === "DRIVER" ? "driver" : "customer",
+    amount: n.amount,
+    time: new Date(n.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  }));
+
+  return {
+    ...base,
+    timeline,
+    negotiation,
+    fare: r.agreed_fare ?? base.fare,
+    driver: r.driver?.name
+      ? {
+          name: r.driver.name,
+          phone: r.driver.phone ?? "",
+          vehicleType: toVehicleType(r.transport_type),
+          plate: r.driver.plate ?? "—",
+          rating: 0,
+        }
+      : base.driver,
+  };
+}
+
+// ── Tabs / filters ────────────────────────────────────────────────────────
 
 type Tab = { id: "all" | RideStatus; label: string };
 
@@ -415,19 +126,20 @@ const tabs: Tab[] = [
   { id: "On trip", label: "On trip" },
 ];
 
-const VEHICLE_FILTERS: { id: VehicleType | "all"; label: string }[] = [
+const VEHICLE_FILTERS: { id: string; label: string }[] = [
   { id: "all", label: "All vehicles" },
-  { id: "Moto Bike", label: "Moto Bike" },
-  { id: "Cab Taxi", label: "Cab Taxi" },
-  { id: "Light Hilux", label: "Light Hilux" },
-  { id: "Heavy Fuso", label: "Heavy Fuso" },
+  { id: "MOTO_BIKE", label: "Moto Bike" },
+  { id: "CAB_TAXI", label: "Cab Taxi" },
+  { id: "LIGHT_HILUX", label: "Light Hilux" },
+  { id: "HEAVY_FUSO", label: "Heavy Fuso" },
 ];
+
+// ── Styles ────────────────────────────────────────────────────────────────
 
 const statusStyles: Record<RideStatus, string> = {
   Searching: "bg-muted text-muted-foreground",
   Negotiating: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100",
-  "Driver arriving":
-    "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-100",
+  "Driver arriving": "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-100",
   "On trip": "bg-primary/15 text-primary",
 };
 
@@ -438,17 +150,16 @@ const pinColor: Record<RideStatus, string> = {
   "On trip": "bg-primary",
 };
 
-const vehicleEmoji: Record<VehicleType, string> = {
-  "Moto Bike": "M",
-  "Cab Taxi": "C",
-  "Light Hilux": "H",
-  "Heavy Fuso": "F",
+const vehicleChar: Record<string, string> = {
+  MOTO_BIKE: "M", CAB_TAXI: "C", LIGHT_HILUX: "H", HEAVY_FUSO: "F", TUK_TUK: "T",
 };
 
 function formatRWF(n: number) {
   if (n === 0) return "—";
   return `${n.toLocaleString("en-US")} RWF`;
 }
+
+// ── Live map ──────────────────────────────────────────────────────────────
 
 function LiveMap({
   rides,
@@ -461,12 +172,7 @@ function LiveMap({
 }) {
   return (
     <div className="relative aspect-[16/8] overflow-hidden rounded-2xl border border-border bg-card">
-      <img
-        src="/maps/map.png"
-        alt=""
-        aria-hidden
-        className="absolute inset-0 h-full w-full object-cover"
-      />
+      <img src="/maps/map.png" alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
       {rides.map((r) => {
         const isSelected = selectedId === r.id;
         return (
@@ -480,16 +186,10 @@ function LiveMap({
           >
             <span className="relative flex h-4 w-4 items-center justify-center">
               {r.status !== "Searching" ? (
-                <span
-                  className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${pinColor[r.status]}`}
-                />
+                <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${pinColor[r.status]}`} />
               ) : null}
-              <span
-                className={`relative flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold text-white ring-2 ring-card transition-transform ${
-                  pinColor[r.status]
-                } ${isSelected ? "scale-150" : ""}`}
-              >
-                {vehicleEmoji[r.vehicleType]}
+              <span className={`relative flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold text-white ring-2 ring-card transition-transform ${pinColor[r.status]} ${isSelected ? "scale-150" : ""}`}>
+                {vehicleChar[r._transportCode] ?? "?"}
               </span>
             </span>
           </button>
@@ -507,26 +207,20 @@ function LiveMap({
       </div>
 
       <div className="absolute right-4 top-4 z-10 space-y-1 rounded-xl border border-border bg-card/85 px-3 py-2 text-[10px] backdrop-blur">
-        {(["On trip", "Driver arriving", "Negotiating", "Searching"] as RideStatus[]).map(
-          (s) => (
-            <div key={s} className="flex items-center gap-1.5">
-              <span className={`block h-2 w-2 rounded-full ${pinColor[s]}`} />
-              <span className="text-foreground">{s}</span>
-            </div>
-          ),
-        )}
+        {(["On trip", "Driver arriving", "Negotiating", "Searching"] as RideStatus[]).map((s) => (
+          <div key={s} className="flex items-center gap-1.5">
+            <span className={`block h-2 w-2 rounded-full ${pinColor[s]}`} />
+            <span className="text-foreground">{s}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-function RideCard({
-  ride,
-  onOpen,
-}: {
-  ride: Ride;
-  onOpen: () => void;
-}) {
+// ── Ride card ─────────────────────────────────────────────────────────────
+
+function RideCard({ ride, onOpen }: { ride: Ride; onOpen: () => void }) {
   return (
     <button
       type="button"
@@ -534,12 +228,8 @@ function RideCard({
       className="group flex flex-col rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/30"
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[11px] font-bold text-foreground">
-          {ride.id}
-        </span>
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${statusStyles[ride.status]}`}
-        >
+        <span className="font-mono text-[11px] font-bold text-foreground truncate">{ride.id.slice(0, 8)}…</span>
+        <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${statusStyles[ride.status]}`}>
           {ride.status}
         </span>
       </div>
@@ -551,66 +241,52 @@ function RideCard({
           <span className="block h-2 w-2 rounded-full bg-foreground" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-semibold text-foreground">
-            {ride.pickup}
-          </p>
-          <p className="mt-2 truncate text-xs font-semibold text-foreground">
-            {ride.destination}
-          </p>
+          <p className="truncate text-xs font-semibold text-foreground">{ride.pickup}</p>
+          <p className="mt-2 truncate text-xs font-semibold text-foreground">{ride.destination}</p>
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-border bg-surface/50 p-2.5">
         <div>
-          <p className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Vehicle
-          </p>
-          <p className="mt-0.5 text-xs font-bold text-foreground">
-            {ride.vehicleType}
-          </p>
+          <p className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">Vehicle</p>
+          <p className="mt-0.5 text-xs font-bold text-foreground">{ride.vehicleType}</p>
         </div>
         <div>
           <p className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {ride.status === "Negotiating" || ride.status === "Searching"
-              ? "Started"
-              : "Fare · ETA"}
+            {ride.status === "Negotiating" || ride.status === "Searching" ? "Started" : "Fare"}
           </p>
           <p className="mt-0.5 truncate text-xs font-bold text-foreground">
             {ride.status === "Negotiating" || ride.status === "Searching"
               ? ride.startedAt
-              : `${formatRWF(ride.fare)} · ${ride.eta ?? "—"}`}
+              : formatRWF(ride.fare)}
           </p>
         </div>
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           <Avatar name={ride.customer.name} tone="neutral" size="sm" />
-          <span className="truncate text-[11px] text-foreground">
-            {ride.customer.name}
-          </span>
+          <span className="truncate text-[11px] text-foreground">{ride.customer.name}</span>
         </div>
         {ride.driver ? (
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
             <Avatar name={ride.driver.name} size="sm" />
-            <span className="truncate text-[11px] text-foreground">
-              {ride.driver.name.split(" ")[0]}
-            </span>
+            <span className="truncate text-[11px] text-foreground">{ride.driver.name.split(" ")[0]}</span>
           </div>
         ) : (
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            No driver yet
-          </span>
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">No driver yet</span>
         )}
       </div>
     </button>
   );
 }
 
+// ── Main console ──────────────────────────────────────────────────────────
+
 export function LiveRidesConsole() {
-  const [rides, setRides] = useState<Ride[]>(baseRides);
+  const [rides, setRides] = useState<Ride[]>([]);
   const [tab, setTab] = useState<Tab["id"]>("all");
-  const [vehicleFilter, setVehicleFilter] = useState<VehicleType | "all">("all");
+  const [vehicleFilter, setVehicleFilter] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -618,12 +294,29 @@ export function LiveRidesConsole() {
   const [tickAt, setTickAt] = useState(new Date());
   const tickInterval = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    tickInterval.current = setInterval(() => setTickAt(new Date()), 15000);
-    return () => {
-      if (tickInterval.current) clearInterval(tickInterval.current);
-    };
+  const loadRides = useCallback(() => {
+    getLiveRides({ limit: "100", offset: "0" })
+      .then((res) =>
+        setRides((prev) => {
+          const existing = new Map(prev.map((r) => [r.id, r]));
+          return (res.rides ?? []).map((r) => {
+            const e = existing.get(r.id);
+            const mapped = mapApiRide(r);
+            return e ? { ...mapped, position: e.position, timeline: e.timeline, negotiation: e.negotiation } : mapped;
+          });
+        })
+      )
+      .catch(() => null);
   }, []);
+
+  useEffect(() => {
+    loadRides();
+    tickInterval.current = setInterval(() => {
+      setTickAt(new Date());
+      loadRides();
+    }, 15000);
+    return () => { if (tickInterval.current) clearInterval(tickInterval.current); };
+  }, [loadRides]);
 
   useEffect(() => {
     if (!toast) return;
@@ -631,10 +324,22 @@ export function LiveRidesConsole() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  const openRide = (id: string) => {
+    setSelectedId(id);
+    setOpeningId(id);
+    getLiveRide(id)
+      .then((detail) => {
+        setRides((prev) =>
+          prev.map((r) => (r.id === id ? mapApiDetail(detail, r) : r))
+        );
+      })
+      .catch(() => null);
+  };
+
   const filtered = useMemo(() => {
     return rides.filter((r) => {
       if (tab !== "all" && r.status !== tab) return false;
-      if (vehicleFilter !== "all" && r.vehicleType !== vehicleFilter) return false;
+      if (vehicleFilter !== "all" && r._transportCode !== vehicleFilter) return false;
       if (query) {
         const q = query.toLowerCase();
         return (
@@ -649,33 +354,24 @@ export function LiveRidesConsole() {
     });
   }, [rides, tab, vehicleFilter, query]);
 
-  const counts: Record<Tab["id"], number> = useMemo(
-    () => ({
-      all: rides.length,
-      Searching: rides.filter((r) => r.status === "Searching").length,
-      Negotiating: rides.filter((r) => r.status === "Negotiating").length,
-      "Driver arriving": rides.filter((r) => r.status === "Driver arriving").length,
-      "On trip": rides.filter((r) => r.status === "On trip").length,
-    }),
-    [rides],
-  );
+  const counts = useMemo(() => ({
+    all: rides.length,
+    Searching: rides.filter((r) => r.status === "Searching").length,
+    Negotiating: rides.filter((r) => r.status === "Negotiating").length,
+    "Driver arriving": rides.filter((r) => r.status === "Driver arriving").length,
+    "On trip": rides.filter((r) => r.status === "On trip").length,
+  }), [rides]);
 
   const openingRide = openingId ? rides.find((r) => r.id === openingId) ?? null : null;
 
-  const lastUpdate = `${tickAt.getHours().toString().padStart(2, "0")}:${tickAt
-    .getMinutes()
-    .toString()
-    .padStart(2, "0")}`;
+  const lastUpdate = `${tickAt.getHours().toString().padStart(2, "0")}:${tickAt.getMinutes().toString().padStart(2, "0")}`;
 
   return (
     <div className="space-y-6">
       <LiveMap
         rides={filtered}
         selectedId={selectedId}
-        onSelect={(id) => {
-          setSelectedId(id);
-          setOpeningId(id);
-        }}
+        onSelect={openRide}
       />
 
       <Card
@@ -709,19 +405,11 @@ export function LiveRidesConsole() {
                   type="button"
                   onClick={() => setTab(t.id)}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                    active
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-surface hover:text-foreground"
+                    active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-surface hover:text-foreground"
                   }`}
                 >
                   {t.label}
-                  <span
-                    className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                      active
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
+                  <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${active ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
                     {counts[t.id]}
                   </span>
                 </button>
@@ -737,9 +425,7 @@ export function LiveRidesConsole() {
                   type="button"
                   onClick={() => setVehicleFilter(v.id)}
                   className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                    active
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                    active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {v.label}
@@ -757,14 +443,7 @@ export function LiveRidesConsole() {
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.map((r) => (
-                <RideCard
-                  key={r.id}
-                  ride={r}
-                  onOpen={() => {
-                    setSelectedId(r.id);
-                    setOpeningId(r.id);
-                  }}
-                />
+                <RideCard key={r.id} ride={r} onOpen={() => openRide(r.id)} />
               ))}
             </div>
           )}
@@ -780,15 +459,16 @@ export function LiveRidesConsole() {
         }}
         onMessageDriver={(id) => {
           const r = rides.find((x) => x.id === id);
-          setToast(
-            r?.driver ? `Message sent to ${r.driver.name}` : "Message sent",
-          );
+          setToast(r?.driver ? `Message sent to ${r.driver.name}` : "Message sent");
         }}
-        onCancelRide={(id) => {
-          const r = rides.find((x) => x.id === id);
+        onCancelRide={async (id) => {
+          try {
+            await interveneRide(id, "cancel", "Admin cancelled ride");
+          } catch { /* ignore */ }
           setRides((prev) => prev.filter((x) => x.id !== id));
           setOpeningId(null);
-          setToast(`${r?.id ?? "Ride"} cancelled`);
+          const r = rides.find((x) => x.id === id);
+          setToast(`${r?.id.slice(0, 8) ?? "Ride"}… cancelled`);
         }}
       />
 
