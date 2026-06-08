@@ -141,9 +141,9 @@ function PreviewField({
 
 function docUrlFor(driver: VerifyDriver, kind: DocKey): string | null {
   const map: Record<DocKey, string[]> = {
-    license: ["license", "drivers_license", "DRIVERS_LICENSE"],
-    insurance: ["insurance", "vehicle_insurance", "INSURANCE"],
-    authorization: ["authorization", "vehicle_authorization", "AUTHORIZATION"],
+    license: ["licence_front", "license", "drivers_license"],
+    insurance: ["vehicle_insurance", "insurance"],
+    authorization: ["vehicle_authorization", "authorization"],
   };
   const keys = map[kind];
   const doc = driver.documents?.find((d) =>
