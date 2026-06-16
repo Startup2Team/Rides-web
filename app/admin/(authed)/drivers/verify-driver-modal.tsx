@@ -28,7 +28,7 @@ export type VerifyDriver = {
 };
 
 const RWANDA_PLATE = /^R[A-Z]{2}\s\d{3}\s[A-Z]$/;
-const MIN_DRIVER_AGE = 21;
+const MIN_DRIVER_AGE = 16;
 
 type ChecklistItem = {
   label: string;
@@ -40,7 +40,7 @@ function buildChecklist(driver: VerifyDriver): ChecklistItem[] {
   const plateOk = RWANDA_PLATE.test(driver.plate.toUpperCase());
   const ageOk = driver.kyc.age >= MIN_DRIVER_AGE;
   const phoneOk = driver.kyc.phone.replace(/\D/g, "").length >= 10;
-  const licenseOk = /^DL-\d{6,}$/i.test(driver.kyc.licenseNumber);
+  const licenseOk = driver.kyc.licenseNumber.trim().length === 16;
   const momoOk = driver.kyc.momoCode.replace(/\D/g, "").length >= 9;
 
   return [

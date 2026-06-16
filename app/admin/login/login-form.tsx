@@ -248,7 +248,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         body: JSON.stringify({ email: em, password }),
       });
 
-      const j = (await r.json()) as { data?: LoginPayload; error?: { message?: string } };
+      const j = (await r.json()) as { data?: LoginPayload; error?: { code?: string; message?: string } };
 
       if (!r.ok) {
         const code = j.error?.code;

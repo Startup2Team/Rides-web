@@ -441,6 +441,12 @@ export type DriversOverview = {
   suspended: number;
 };
 
+export const sendDriverOTP = (phone: string) =>
+  request<{ dev_otp?: string } | void>("/admin/drivers/send-otp", { method: "POST", body: { phone } });
+
+export const verifyDriverOTP = (phone: string, otp: string) =>
+  request<{ status: string }>("/admin/drivers/verify-otp", { method: "POST", body: { phone, otp } });
+
 export const getDrivers = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
   return request<DriversResponse>(`/admin/drivers${qs ? `?${qs}` : ""}`);
@@ -1106,3 +1112,108 @@ export const updateRolePermissions = (roleId: string, permissions: string[]) =>
     method: "POST",
     body: { permissions },
   });
+
+// ── Packages ──────────────────────────────────────────────────────────────
+
+export type Package = {
+  id: string;
+  name: string;
+  vehicle_type_id: string;
+  vehicle_type_code: string;
+  ride_count: number;
+  bonus_rides: number;
+  validity_days: number;
+  price_rwf: number;
+  is_promotional: boolean;
+  is_active: boolean;
+  created_at: string;
+};
+
+export const getAdminPackages = () =>
+  request<Package[]>("/admin/packages");
+
+export const createPackage = (data: {
+  name: string;
+  vehicle_type_code: string;
+  ride_count: number;
+  bonus_rides: number;
+  validity_days: number;
+  price_rwf: number;
+  is_promotional: boolean;
+}) =>
+  request<Package>("/admin/packages", { method: "POST", body: data });
+
+export const updatePackage = (
+  id: string,
+  data: {
+    name?: string;
+    ride_count?: number;
+    bonus_rides?: number;
+    validity_days?: number;
+    price_rwf?: number;
+  }
+) =>
+  request<Package>(`/admin/packages/${id}`, { method: "PATCH", body: data });
+
+export const togglePackage = (id: string, isActive: boolean) =>
+  request<{ status: string }>(`/admin/packages/${id}/toggle`, {
+    method: "POST",
+    body: { is_active: isActive },
+  });
+
+// ── Audit Logs ────────────────────────────────────────────────────────────
+
+export type AuditLogEntry = {
+  id: number;
+  admin_id?: string;
+  admin_name?: string;
+  admin_role?: string;
+  action: string;
+  target_type?: string;
+  target_id?: string;
+  detail?: string;
+  ip?: string;
+  metadata?: Record<string, any>;
+  occurred_at: string;
+};
+
+export const getAuditLogs = (params: {
+  actor?: string;
+  action?: string;
+  target_type?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}) => {
+  const qs = new URLSearchParams();
+  if (params.actor) qs.append("actor", params.actor);
+  if (params.action) qs.append("action", params.action);
+  if (params.target_type) qs.append("target_type", params.target_type);
+  if (params.from) qs.append("from", params.from);
+  if (params.to) qs.append("to", params.to);
+  if (params.limit !== undefined) qs.append("limit", params.limit.toString());
+  if (params.offset !== undefined) qs.append("offset", params.offset.toString());
+  
+  const query = qs.toString();
+  return request<{ entries: AuditLogEntry[]; total: number; limit: number; offset: number }>(
+    `/admin/audit${query ? `?${query}` : ""}`
+  );
+};
+
+// ── Account Assist ────────────────────────────────────────────────────────
+
+export const clearOTPLockout = (userID: string) =>
+  request<void>(`/admin/customers/${userID}/clear-otp-lockout`, { method: "POST" });
+
+export const clearGPSFlags = (profileID: string) =>
+  request<void>(`/admin/drivers/${profileID}/clear-gps-flags`, { method: "POST" });
+
+export const clearDeviceCollision = (userID: string, deviceID: string) =>
+  request<void>(`/admin/users/${userID}/clear-device-collision`, {
+    method: "POST",
+    body: { device_id: deviceID },
+  });
+
+export const getAccountTimeline = (userID: string, limit?: number) =>
+  request<any>(`/admin/users/${userID}/timeline${limit !== undefined ? `?limit=${limit}` : ""}`);
