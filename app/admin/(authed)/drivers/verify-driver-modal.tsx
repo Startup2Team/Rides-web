@@ -40,7 +40,9 @@ function buildChecklist(driver: VerifyDriver): ChecklistItem[] {
   const plateOk = RWANDA_PLATE.test(driver.plate.toUpperCase());
   const ageOk = driver.kyc.age >= MIN_DRIVER_AGE;
   const phoneOk = driver.kyc.phone.replace(/\D/g, "").length >= 10;
-  const licenseOk = /^DL-\d{6,}$/i.test(driver.kyc.licenseNumber);
+  // Accept a plain numeric licence (optionally with a DL- prefix). Strict
+  // formatting (DL-XXXXXXX) is deferred — for now just require enough digits.
+  const licenseOk = /^(DL-)?\d{6,}$/i.test((driver.kyc.licenseNumber ?? "").trim());
   const momoOk = driver.kyc.momoCode.replace(/\D/g, "").length >= 9;
 
   return [
@@ -65,7 +67,7 @@ function buildChecklist(driver: VerifyDriver): ChecklistItem[] {
     },
     {
       label: "Driver licence number format valid",
-      detail: licenseOk ? driver.kyc.licenseNumber : "Format should be DL-XXXXXXX",
+      detail: licenseOk ? driver.kyc.licenseNumber : "Enter a valid licence number (at least 6 digits)",
       status: licenseOk ? "pass" : "fail",
     },
     {
