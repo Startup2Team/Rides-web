@@ -141,7 +141,6 @@ function PreviewField({
 
 function docUrlFor(driver: VerifyDriver, kind: DocKey): string | null {
   const map: Record<DocKey, string[]> = {
-<<<<<<< HEAD
     // Match both spellings and casing (e.g. licence_front / DRIVERS_LICENSE).
     license: ["licence_front", "licence", "license", "drivers_license", "DRIVERS_LICENSE"],
     insurance: ["vehicle_insurance", "insurance", "INSURANCE"],
