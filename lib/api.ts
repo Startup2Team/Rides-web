@@ -1161,6 +1161,9 @@ export const togglePackage = (id: string, isActive: boolean) =>
     body: { is_active: isActive },
   });
 
+export const deletePackage = (id: string) =>
+  request<{ status: string }>(`/admin/packages/${id}`, { method: "DELETE" });
+
 // ── Audit Logs ────────────────────────────────────────────────────────────
 
 export type AuditLogEntry = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminPackages, createPackage, updatePackage, togglePackage, type Package } from "@/lib/api";
+import { getAdminPackages, createPackage, updatePackage, togglePackage, deletePackage, type Package } from "@/lib/api";
 
 const VEHICLE_TYPES = [
   { code: "MOTO_BIKE", name: "Moto" },
@@ -19,6 +19,7 @@ export function PackagesConsole() {
   // Modal states
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
 
   // Form states (Create)
@@ -127,6 +128,25 @@ export function PackagesConsole() {
     setEditOpen(true);
   };
 
+  const openDeleteConfirm = (pkg: Package) => {
+    setSelectedPackage(pkg);
+    setDeleteOpen(true);
+  };
+
+  const handleDeleteSubmit = () => {
+    if (!selectedPackage) return;
+    setError(null);
+    deletePackage(selectedPackage.id)
+      .then(() => {
+        setDeleteOpen(false);
+        setSelectedPackage(null);
+        fetchPackages();
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to delete package");
+      });
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US").format(price) + " RWF";
   };
@@ -230,12 +250,18 @@ export function PackagesConsole() {
                         {pkg.is_active ? "Active" : "Inactive"}
                       </button>
                     </td>
-                    <td className="px-4 py-3.5 text-right">
+                     <td className="px-4 py-3.5 text-right space-x-3">
                       <button
                         onClick={() => openEditModal(pkg)}
                         className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
                       >
                         Edit
+                      </button>
+                      <button
+                        onClick={() => openDeleteConfirm(pkg)}
+                        className="text-xs font-semibold text-destructive hover:text-destructive/80 transition-colors"
+                      >
+                        Delete
                       </button>
                     </td>
                   </tr>
@@ -494,6 +520,40 @@ export function PackagesConsole() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteOpen && selectedPackage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl animate-in fade-in-50 zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-destructive">Delete Package</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Are you sure you want to delete the package <strong className="text-foreground">"{selectedPackage.name}"</strong>?
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground bg-destructive/10 text-destructive border border-destructive/20 rounded-xl p-3">
+              This action will remove the package from sale. Active driver credits purchased from this package will remain unaffected.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-2 pt-4 border-t border-border">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteOpen(false);
+                  setSelectedPackage(null);
+                }}
+                className="h-10 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-muted-foreground hover:text-foreground transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteSubmit}
+                className="h-10 rounded-xl bg-destructive px-4 text-sm font-semibold text-destructive-foreground hover:bg-destructive/95 transition-all shadow-sm"
+              >
+                Delete Package
+              </button>
+            </div>
           </div>
         </div>
       )}
