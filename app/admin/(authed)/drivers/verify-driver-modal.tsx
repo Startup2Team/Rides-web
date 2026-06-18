@@ -152,7 +152,13 @@ function docUrlFor(driver: VerifyDriver, kind: DocKey): string | null {
   const doc = driver.documents?.find((d) =>
     keys.some((k) => d.document_type.toLowerCase().includes(k.toLowerCase())),
   );
-  return doc?.file_url?.trim() || null;
+  const raw = doc?.file_url?.trim();
+  if (!raw) return null;
+  // MinIO/proxy URLs are served from the backend's tunnel host, which a browser
+  // <img> can't load through ngrok's interstitial. Route them through our own
+  // same-origin proxy. Real S3/R2 URLs (prod) render directly.
+  const m = raw.match(/\/uploads\/objects\/(.+)$/);
+  return m ? `/api/admin/document-image?key=${encodeURIComponent(m[1])}` : raw;
 }
 
 function DocumentPreview({
