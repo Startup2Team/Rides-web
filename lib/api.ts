@@ -1055,8 +1055,8 @@ export type Role = {
   id: string;
   name: string;
   description: string;
-  permissions?: string[] | unknown;
   is_system: boolean;
+  permissions?: string[] | unknown;
 };
 
 export const getTeam = () =>

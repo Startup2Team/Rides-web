@@ -65,7 +65,7 @@ function buildChecklist(driver: VerifyDriver): ChecklistItem[] {
     },
     {
       label: "Driver licence number format valid",
-      detail: licenseOk ? driver.kyc.licenseNumber : "Format should be DL-XXXXXXX",
+      detail: licenseOk ? driver.kyc.licenseNumber : "Enter a valid licence number (at least 6 digits)",
       status: licenseOk ? "pass" : "fail",
     },
     {
@@ -141,9 +141,11 @@ function PreviewField({
 
 function docUrlFor(driver: VerifyDriver, kind: DocKey): string | null {
   const map: Record<DocKey, string[]> = {
-    license: ["licence_front", "license", "drivers_license"],
-    insurance: ["vehicle_insurance", "insurance"],
-    authorization: ["vehicle_authorization", "authorization"],
+<<<<<<< HEAD
+    // Match both spellings and casing (e.g. licence_front / DRIVERS_LICENSE).
+    license: ["licence_front", "licence", "license", "drivers_license", "DRIVERS_LICENSE"],
+    insurance: ["vehicle_insurance", "insurance", "INSURANCE"],
+    authorization: ["vehicle_authorization", "authorization", "AUTHORIZATION"],
   };
   const keys = map[kind];
   const doc = driver.documents?.find((d) =>
