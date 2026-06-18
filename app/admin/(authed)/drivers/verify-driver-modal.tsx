@@ -143,7 +143,8 @@ function PreviewField({
 
 function docUrlFor(driver: VerifyDriver, kind: DocKey): string | null {
   const map: Record<DocKey, string[]> = {
-    license: ["license", "drivers_license", "DRIVERS_LICENSE"],
+    // Match both spellings: the backend emits LICENCE_FRONT (British).
+    license: ["licence", "license", "drivers_license", "DRIVERS_LICENSE"],
     insurance: ["insurance", "vehicle_insurance", "INSURANCE"],
     authorization: ["authorization", "vehicle_authorization", "AUTHORIZATION"],
   };
