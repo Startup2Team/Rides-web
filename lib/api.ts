@@ -27,8 +27,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     clearToken();
     if (typeof window !== "undefined") {
       // Clear the HttpOnly admin_access_token cookie via the server logout route
-      // so proxy.ts does not redirect back to /admin and loop.
-      await fetch("/api/admin/auth/logout", { method: "POST" }).catch(() => {});
+      // so middleware.ts does not redirect back to /admin and loop.
+      await fetch("/api/admin/auth/logout?local=true", { method: "POST" }).catch(() => {});
       window.location.href = "/admin/login";
     }
     throw new Error("Unauthorized");
@@ -478,6 +478,9 @@ export type DriverDetail = {
   approval_status: string;
   created_at: string;
   is_online?: boolean;
+  license_expiry_date?: string | null;
+  insurance_expiry_date?: string | null;
+  authorization_expiry_date?: string | null;
   documents?: Array<{
     document_type: string;
     file_url: string;
