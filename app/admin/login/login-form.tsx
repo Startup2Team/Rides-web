@@ -420,13 +420,12 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
   if (step === "credentials") {
     return (
       <form onSubmit={handleCredentials} className="mt-8 space-y-4">
-        <h1 className="text-3xl font-bold tracking-[-0.02em] text-foreground">Sign in</h1>
-        <p className="text-sm text-muted-foreground">
-          Welcome back. Sign in with your admin email and password. You&apos;ll confirm with your authenticator app.
-        </p>
+        <h1 className="text-3xl font-bold tracking-[-0.02em] text-foreground">
+          Sign in
+        </h1>
 
-        <label className="block pt-4">
-          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Email</span>
+        <label className="block pt-6">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Email</span>
           <input
             name="email"
             type="email"
@@ -434,16 +433,16 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            className="mt-2 block h-11 w-full rounded-xl border border-border bg-surface px-3.5 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="mt-2 block w-full border-0 border-b border-border bg-transparent px-0 py-3 text-base text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-foreground"
           />
         </label>
 
-        <div>
+        <div className="pt-2">
           <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Password
             </span>
-            <div className="relative mt-2">
+            <div className="relative">
               <input
                 name="password"
                 type={showPassword ? "text" : "password"}
@@ -451,22 +450,25 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="block h-11 w-full rounded-xl border border-border bg-surface pl-3.5 pr-11 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="mt-2 block w-full border-0 border-b border-border bg-transparent pl-0 pr-10 py-3 text-base text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-foreground"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
               >
                 {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
               </button>
             </div>
           </label>
-          <div className="mt-2 flex justify-end">
-            <span className="text-xs font-medium text-muted-foreground">
-              Forgot password? Contact a super admin.
-            </span>
+          <div className="mt-3 flex justify-end">
+            <a
+              href="mailto:admin@rides.rw?subject=Password%20reset%20request"
+              className="text-xs font-bold text-primary underline-offset-4 transition-colors hover:underline"
+            >
+              Forgot password
+            </a>
           </div>
         </div>
 
@@ -479,7 +481,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         <button
           type="submit"
           disabled={busy}
-          className="mt-2 flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold tracking-[-0.01em] text-primary-foreground transition duration-200 hover:scale-[1.01] hover:bg-foreground active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Signing in…" : "Continue"}
         </button>
@@ -577,7 +579,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         <button
           type="submit"
           disabled={!codeReady || busy || provisioningLoading || !!loadProvisioningFailed}
-          className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold tracking-[-0.01em] text-primary-foreground transition duration-200 hover:scale-[1.01] hover:bg-foreground active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {busy ? "Verifying…" : provisioningLoading ? "Loading setup…" : "Enable 2FA & enter dashboard"}
         </button>
@@ -667,7 +669,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
       <button
         type="submit"
         disabled={!codeReady || busy}
-        className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold tracking-[-0.01em] text-primary-foreground transition duration-200 hover:scale-[1.01] hover:bg-foreground active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
       >
         {busy ? "Verifying…" : "Verify & continue"}
       </button>

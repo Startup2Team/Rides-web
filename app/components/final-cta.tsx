@@ -21,7 +21,7 @@ function StarRow() {
 
 export default function FinalCTA() {
   return (
-    <section id="download" className="py-8 sm:py-10 lg:py-12">
+    <section id="download" className="py-12 sm:py-16 lg:py-20">
       <div className="mx-auto max-w-7xl px-6">
         <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-[#1F88FF] to-[#0056B3] shadow-2xl shadow-primary/40 ring-1 ring-inset ring-white/10">
           {/* Mesh + glow backdrop */}
