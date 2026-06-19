@@ -482,7 +482,40 @@ export type DriverDetail = {
 export const getDriver = (id: string) => request<DriverDetail>(`/admin/drivers/${id}`);
 
 export const createDriver = (body: Record<string, unknown>) =>
-  request<{ id: string; message: string }>("/admin/drivers", { method: "POST", body });
+  request<{ id: string; user_id?: string; message: string }>("/admin/drivers", {
+    method: "POST",
+    body,
+  });
+
+export const uploadDriverDocument = (
+  driverId: string,
+  documentType: string,
+  fileUrl: string,
+) =>
+  request<void>(`/admin/drivers/${driverId}/documents`, {
+    method: "POST",
+    body: { document_type: documentType, file_url: fileUrl },
+  });
+
+/** Upload a driver document image/PDF via admin multipart endpoint. */
+export async function uploadDriverFile(file: File): Promise<string> {
+  const token = getToken();
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${BASE_URL}/admin/uploads/file`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = json?.error?.message ?? "File upload failed";
+    throw new Error(msg);
+  }
+  const data = (json?.data ?? json) as { file_url?: string };
+  if (!data.file_url) throw new Error("Upload succeeded but no file URL returned");
+  return data.file_url;
+}
 
 export const forceDriverOffline = (id: string) =>
   request<{ message: string }>(`/admin/drivers/${id}/force-offline`, { method: "POST" });
