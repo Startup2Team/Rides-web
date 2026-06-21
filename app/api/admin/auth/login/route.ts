@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminAuthUrl } from "@/lib/admin-backend-url";
+import { applyAdminTokenCookies } from "../set-token-cookies";
 import type { ApiEnvelope } from "@/lib/api-envelope";
 
 type BackendLoginData = {
@@ -55,6 +56,14 @@ export async function POST(request: Request) {
   }
 
   if (data.two_factor_required === false && data.access_token) {
+    // Dev: the backend skips 2FA and authenticates directly. Log straight in by
+    // setting the session cookie — don't force the (production-only) 2FA
+    // enrollment that would otherwise gate every dev login.
+    if (process.env.NODE_ENV !== "production") {
+      const response = NextResponse.json({ data: { status: "success" } });
+      applyAdminTokenCookies(response, data.access_token);
+      return response;
+    }
     return NextResponse.json({
       data: { status: "totp_setup_required", challenge_token: data.access_token },
     });

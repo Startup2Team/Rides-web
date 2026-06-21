@@ -7,6 +7,8 @@ import {
   createDriver,
   uploadDriverDocument,
   uploadDriverFile,
+  sendDriverOTP,
+  verifyDriverOTP,
 } from "@/lib/api";
 import { slugToTransportType, VEHICLE_SLUG_LABELS } from "@/lib/drivers";
 import {
@@ -184,7 +186,7 @@ function validateStep(
     const phoneErr = validateRwandaMobilePhone(form.phone);
     if (phoneErr) e.phone = phoneErr;
     if (!form.dob) e.dob = "Required";
-    else if (form.dob > maxDob) e.dob = "Driver must be at least 18 years old";
+    else if (form.dob > maxDob) e.dob = "Driver must be at least 16 years old";
     if (!selfie) e.selfie = "Identity photo is required";
     if (!form.province) e.province = "Required";
     if (!form.district) e.district = "Required";
@@ -196,6 +198,7 @@ function validateStep(
   if (step === 1) {
     if (!form.plate.trim()) e.plate = "Required";
     if (!form.license.trim()) e.license = "Required";
+    else if (form.license.trim().length !== 16) e.license = "Licence number must be exactly 16 characters";
     if (form.vehicleType === "cab" || form.vehicleType === "hilux") {
       if (!form.passengerSeats || parseInt(form.passengerSeats, 10) < 1) {
         e.passengerSeats = "Enter number of passenger seats";
@@ -210,7 +213,8 @@ function validateStep(
 
   if (step === 2) {
     (["license", "insurance", "authorization"] as DocKey[]).forEach((key) => {
-      if (!docs[key][0]) e[key] = `${DOC_LABELS[key].label} front face is required`;
+      if (!docs[key][0]) e[`${key}_front`] = `${DOC_LABELS[key].label} front face is required`;
+      if (!docs[key][1]) e[`${key}_back`] = `${DOC_LABELS[key].label} back face is required`;
     });
   }
 
@@ -264,6 +268,14 @@ export function AddDriverButton({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Phone OTP verification state
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpCode, setOtpCode] = useState<string[]>(["", "", "", "", "", ""]);
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
+
   const reset = () => {
     setStep(0);
     setForm(initialForm);
@@ -273,6 +285,10 @@ export function AddDriverButton({
     setSubmitError(null);
     setSubmitting(false);
     setErrors({});
+    setOtpSent(false);
+    setOtpVerified(false);
+    setOtpCode(["", "", "", "", "", ""]);
+    setOtpError(null);
   };
 
   const close = () => {
@@ -300,6 +316,12 @@ export function AddDriverButton({
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) => {
     if (lockedVehicle && k === "vehicleType") return;
+    if (k === "phone") {
+      setOtpSent(false);
+      setOtpVerified(false);
+      setOtpCode(["", "", "", "", "", ""]);
+      setOtpError(null);
+    }
     setForm((f) => {
       const next = { ...f, [k]: v } as FormState;
       if (k === "province") {
@@ -307,9 +329,9 @@ export function AddDriverButton({
       } else if (k === "district") {
         next.sector = next.village = next.cell = "";
       } else if (k === "sector") {
-        next.village = next.cell = "";
-      } else if (k === "village") {
-        next.cell = "";
+        next.cell = next.village = "";
+      } else if (k === "cell") {
+        next.village = "";
       }
       return next;
     });
@@ -344,28 +366,51 @@ export function AddDriverButton({
     [form.province, form.district, form.sector],
   );
   const villages = useMemo(
-    () =>
-      Array.from(
-        new Set(cellsInSector.flatMap((c) => c.villages ?? [])),
-      ).sort((a, b) => a.localeCompare(b)),
-    [cellsInSector],
+    () => cellsInSector.find((c) => c.name === form.cell)?.villages ?? [],
+    [cellsInSector, form.cell],
   );
-  const cellOptions = useMemo(() => {
-    if (!form.village) return cellsInSector.map((c) => c.name);
-    return cellsInSector
-      .filter((c) => c.villages?.includes(form.village))
-      .map((c) => c.name);
-  }, [cellsInSector, form.village]);
 
   const plateWarning = useMemo(() => validatePlate(form.plate), [form.plate]);
   const maxDob = minAgeDob();
 
+  async function handleSendOTP() {
+    const phoneErr = validateRwandaMobilePhone(form.phone);
+    if (phoneErr) { setErrors((e) => ({ ...e, phone: phoneErr })); return; }
+    setOtpBusy(true);
+    setOtpError(null);
+    try {
+      const res = await sendDriverOTP("+250" + form.phone.slice(1)) as { dev_otp?: string } | void;
+      setOtpSent(true);
+      if (res && typeof res === "object" && res.dev_otp) {
+        setOtpCode(res.dev_otp.split("") as string[]);
+      }
+    } catch {
+      setOtpError("Failed to send OTP. Check the phone number and try again.");
+    } finally {
+      setOtpBusy(false);
+    }
+  }
+
+  async function handleVerifyOTP() {
+    const code = otpCode.join("");
+    if (code.length !== 6) { setOtpError("Enter the 6-digit code."); return; }
+    setOtpBusy(true);
+    setOtpError(null);
+    try {
+      await verifyDriverOTP("+250" + form.phone.slice(1), code);
+      setOtpVerified(true);
+      setOtpError(null);
+    } catch {
+      setOtpError("Incorrect or expired code. Try again.");
+    } finally {
+      setOtpBusy(false);
+    }
+  }
+
   const handleContinue = () => {
     const e = validateStep(step, form, selfie, docs, acceptedTerms);
-    if (Object.keys(e).length) {
-      setErrors(e);
-      return;
-    }
+    if (Object.keys(e).length) { setErrors(e); return; }
+    if (step === 0 && !otpVerified) { setOtpError("Verify the driver's phone number before continuing."); return; }
     setErrors({});
     if (step < STEPS.length - 1) setStep((s) => s + 1);
     else void handleSubmit();
@@ -467,7 +512,7 @@ export function AddDriverButton({
                   Register driver
                 </h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Step {step + 1} of {STEPS.length} · {STEPS[step]} — same requirements as mobile onboarding
+                  Step {step + 1} of {STEPS.length} · {STEPS[step]} — driver will be immediately approved upon submission
                 </p>
               </div>
               <button
@@ -525,16 +570,79 @@ export function AddDriverButton({
                         error={errors.phone}
                         hint="10 digits — 078 (MTN), 072 or 073 (Airtel)"
                       >
-                        <Input
-                          value={form.phone}
-                          onChange={(e) =>
-                            update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))
-                          }
-                          placeholder={rwandaMobilePlaceholder()}
-                          inputMode="numeric"
-                          maxLength={10}
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            value={form.phone}
+                            onChange={(e) =>
+                              update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))
+                            }
+                            placeholder={rwandaMobilePlaceholder()}
+                            inputMode="numeric"
+                            maxLength={10}
+                            disabled={otpVerified}
+                          />
+                          {!otpVerified && (
+                            <button
+                              type="button"
+                              onClick={() => void handleSendOTP()}
+                              disabled={otpBusy || form.phone.length !== 10}
+                              className="shrink-0 inline-flex h-10 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                            >
+                              {otpBusy && !otpSent ? "Sending…" : otpSent ? "Resend" : "Send OTP"}
+                            </button>
+                          )}
+                          {otpVerified && (
+                            <span className="inline-flex h-10 items-center gap-1 rounded-lg bg-primary/10 px-3 text-xs font-semibold text-primary">
+                              ✓ Verified
+                            </span>
+                          )}
+                        </div>
                       </Field>
+                      {otpSent && !otpVerified && (
+                        <div className="sm:col-span-2 rounded-xl border border-primary/20 bg-primary/[0.03] p-4 space-y-3">
+                          <p className="text-xs font-semibold text-foreground">OTP sent — enter the 6-digit code from the driver's phone</p>
+                          <div className="flex items-center gap-1.5">
+                            {otpCode.map((v, i) => (
+                              <input
+                                key={i}
+                                ref={(el) => { otpRefs.current[i] = el; }}
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                maxLength={1}
+                                value={v}
+                                disabled={otpBusy}
+                                autoFocus={i === 0}
+                                onChange={(e) => {
+                                  const digit = e.target.value.replace(/\D/g, "").slice(-1);
+                                  const next = [...otpCode]; next[i] = digit; setOtpCode(next);
+                                  if (digit && i < 5) otpRefs.current[i + 1]?.focus();
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Backspace" && !otpCode[i] && i > 0) otpRefs.current[i - 1]?.focus();
+                                }}
+                                onPaste={(e) => {
+                                  const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                                  if (!text) return; e.preventDefault();
+                                  const next = otpCode.map((_, idx) => text[idx] ?? ""); setOtpCode(next);
+                                  otpRefs.current[Math.min(text.length, 6) - 1]?.focus();
+                                }}
+                                className="h-12 w-11 rounded-lg border border-border bg-surface text-center text-lg font-bold text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                              />
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => void handleVerifyOTP()}
+                              disabled={otpBusy || otpCode.join("").length !== 6}
+                              className="ml-2 inline-flex h-12 items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                            >
+                              {otpBusy ? "Verifying…" : "Verify"}
+                            </button>
+                          </div>
+                          {otpError && <p className="text-[11px] font-medium text-red-600">{otpError}</p>}
+                          <p className="text-[11px] text-muted-foreground">Didn't receive it? <button type="button" onClick={() => void handleSendOTP()} className="font-semibold text-primary hover:underline">Resend OTP</button></p>
+                        </div>
+                      )}
+                      {!otpSent && otpError && <p className="text-[11px] font-medium text-red-600 sm:col-span-2">{otpError}</p>}
                       <Field label="Date of birth" required error={errors.dob} className="sm:col-span-2">
                         <Input type="date" max={maxDob} value={form.dob} onChange={(e) => update("dob", e.target.value)} />
                       </Field>
@@ -591,22 +699,22 @@ export function AddDriverButton({
                           onChange={(v) => update("sector", v)}
                         />
                       </Field>
+                      <Field label="Cell" required error={errors.cell}>
+                        <Select
+                          value={form.cell}
+                          options={cellsInSector.map((c) => c.name)}
+                          placeholder={form.sector ? "Select cell" : "Select sector first"}
+                          disabled={!form.sector}
+                          onChange={(v) => update("cell", v)}
+                        />
+                      </Field>
                       <Field label="Village" required error={errors.village}>
                         <Select
                           value={form.village}
                           options={villages}
-                          placeholder={form.sector ? "Select village" : "Select sector first"}
-                          disabled={!form.sector}
+                          placeholder={form.cell ? "Select village" : "Select cell first"}
+                          disabled={!form.cell}
                           onChange={(v) => update("village", v)}
-                        />
-                      </Field>
-                      <Field label="Cell" required error={errors.cell} className="sm:col-span-2">
-                        <Select
-                          value={form.cell}
-                          options={cellOptions}
-                          placeholder={form.village ? "Select cell" : "Select village first"}
-                          disabled={!form.village}
-                          onChange={(v) => update("cell", v)}
                         />
                       </Field>
                     </div>
@@ -698,11 +806,12 @@ export function AddDriverButton({
                           placeholder="RAD 000 A"
                         />
                       </Field>
-                      <Field label="Driver licence number" required error={errors.license}>
+                      <Field label="Driver licence number" required error={errors.license} hint="Exactly 16 characters">
                         <Input
                           value={form.license}
-                          onChange={(e) => update("license", e.target.value.toUpperCase())}
+                          onChange={(e) => update("license", e.target.value.toUpperCase().slice(0, 16))}
                           placeholder="DL-0000000"
+                          maxLength={16}
                         />
                       </Field>
                     </div>
@@ -713,33 +822,35 @@ export function AddDriverButton({
               {step === 2 ? (
                 <div className="space-y-6">
                   <p className="text-xs text-muted-foreground">
-                    Front face of each document is required. Add back face where applicable. JPEG, PNG, or PDF — camera or file upload.
+                    Both front and back faces are required for all documents. JPEG, PNG, or PDF — camera or file upload.
                   </p>
                   {(Object.keys(DOC_LABELS) as DocKey[]).map((key) => (
                     <div key={key} className="rounded-xl border border-border bg-surface/40 p-4">
                       <p className="text-sm font-semibold text-foreground">{DOC_LABELS[key].label}</p>
                       <p className="text-[11px] text-muted-foreground">{DOC_LABELS[key].hint}</p>
-                      {errors[key] ? (
-                        <p className="mt-1 text-[11px] font-medium text-red-600">{errors[key]}</p>
-                      ) : null}
                       <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                        <ImageCaptureField
-                          label="Front face"
-                          required
-                          acceptPdf
-                          file={docs[key][0]}
-                          previewUrl={null}
-                          onChange={(f) => setDocFace(key, 0, f)}
-                        />
-                        {docs[key][0] ? (
+                        <div>
                           <ImageCaptureField
-                            label="Back face (optional)"
+                            label="Front face"
+                            required
+                            acceptPdf
+                            file={docs[key][0]}
+                            previewUrl={null}
+                            error={errors[`${key}_front`]}
+                            onChange={(f) => setDocFace(key, 0, f)}
+                          />
+                        </div>
+                        <div>
+                          <ImageCaptureField
+                            label="Back face"
+                            required
                             acceptPdf
                             file={docs[key][1]}
                             previewUrl={null}
+                            error={errors[`${key}_back`]}
                             onChange={(f) => setDocFace(key, 1, f)}
                           />
-                        ) : null}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -822,7 +933,7 @@ export function AddDriverButton({
                       {acceptedTerms ? "✓" : null}
                     </span>
                     <span className="text-xs font-medium text-foreground">
-                      Driver terms accepted on behalf of the applicant (same as mobile registration).
+                      Driver terms accepted on behalf of the applicant — driver will be activated immediately.
                     </span>
                   </button>
                   {errors.acceptedTerms ? (

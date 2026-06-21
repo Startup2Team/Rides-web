@@ -51,7 +51,7 @@ export function validatePlate(plate: string): string | null {
 
 export function minAgeDob(): string {
   const d = new Date();
-  d.setFullYear(d.getFullYear() - 18);
+  d.setFullYear(d.getFullYear() - 16);
   return d.toISOString().slice(0, 10);
 }
 

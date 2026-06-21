@@ -267,6 +267,14 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
       const status = j.data?.status;
       const token = j.data?.challenge_token ?? "";
 
+      // Dev: backend authenticated directly (2FA skipped) — go straight in.
+      if (status === "success") {
+        const dest = await resolvePostLoginRedirect(nextPath);
+        router.replace(dest);
+        router.refresh();
+        return;
+      }
+
       if (!token || (status !== "totp_required" && status !== "totp_setup_required")) {
         setError("Unexpected response from server.");
         return;
