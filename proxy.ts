@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-
-// Cookie name must match lib/admin-session.ts ADMIN_ACCESS_COOKIE
-const COOKIE_NAME = "admin_access_token";
+import { ADMIN_ACCESS_COOKIE } from "@/lib/admin-session";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hasSession = request.cookies.has(COOKIE_NAME);
+  const hasSession = request.cookies.has(ADMIN_ACCESS_COOKIE);
 
   const isLoginPage = pathname === "/admin/login" || pathname.startsWith("/admin/login/");
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
@@ -19,11 +17,16 @@ export function proxy(request: NextRequest) {
         ? next
         : "/admin";
     const url = request.nextUrl.clone();
-    // safe may contain a query string (e.g. /admin/drivers?vehicle=moto)
     const [safePath, safeSearch] = safe.split("?");
     url.pathname = safePath;
     url.search = safeSearch ? `?${safeSearch}` : "";
-    return NextResponse.redirect(url);
+    
+    const response = NextResponse.redirect(url);
+    // Prevent browser from caching this redirect
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+    return response;
   }
 
   // Redirect unauthenticated users to login
@@ -33,7 +36,13 @@ export function proxy(request: NextRequest) {
     url.pathname = "/admin/login";
     url.search = "";
     url.searchParams.set("next", fullPath);
-    return NextResponse.redirect(url);
+    
+    const response = NextResponse.redirect(url);
+    // Prevent browser from caching this redirect
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+    return response;
   }
 
   return NextResponse.next();

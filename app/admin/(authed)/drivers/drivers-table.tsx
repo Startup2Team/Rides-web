@@ -31,6 +31,7 @@ const statusStyles: Record<DriverStatus, string> = {
   Offline: "bg-muted text-muted-foreground",
   Pending: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100",
   Suspended: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-100",
+  Rejected: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-100",
 };
 
 type Tab = { id: "all" | DriverStatus; label: string };
@@ -41,6 +42,7 @@ const tabs: Tab[] = [
   { id: "On trip", label: "On trip" },
   { id: "Pending", label: "Pending" },
   { id: "Suspended", label: "Suspended" },
+  { id: "Rejected", label: "Rejected" },
 ];
 
 type SortKey = "name" | "acceptance" | "rating" | "lastActive" | "applied";
@@ -457,6 +459,7 @@ export function DriversTable() {
     Offline: drivers.filter((d) => d.status === "Offline").length,
     Pending: drivers.filter((d) => d.status === "Pending").length,
     Suspended: drivers.filter((d) => d.status === "Suspended").length,
+    Rejected: drivers.filter((d) => d.status === "Rejected").length,
   };
 
   const filtered = drivers.filter((d) => {
@@ -886,7 +889,7 @@ export function DriversTable() {
         onReject={async (id, reason) => {
           try {
             await rejectDriver(id, reason);
-            updateStatus(id, "Suspended");
+            updateStatus(id, "Rejected");
             setToast(`${verifyingDriver?.name ?? "Driver"} rejected`);
             setVerifyingId(null);
             void loadDrivers();
