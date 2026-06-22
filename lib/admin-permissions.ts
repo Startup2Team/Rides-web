@@ -17,6 +17,11 @@ export type Permission =
   | "/admin/safety-center"
   | "/admin/support"
   | "/admin/inbox"
+  | "/admin/packages"
+  | "/admin/campaigns"
+  | "/admin/purchases"
+  | "/admin/entitlements"
+  | "/admin/audit-logs"
   | "/admin/settings"
   | "/admin/team";
 
@@ -55,6 +60,11 @@ export const SIDEBAR_ITEMS: {
   { href: "/admin/safety-center", label: "Safety Center", group: "Trust" },
   { href: "/admin/support", label: "Support", group: "Trust" },
   { href: "/admin/inbox", label: "Inbox", group: "Trust" },
+  { href: "/admin/packages", label: "Packages", group: "Monetization" },
+  { href: "/admin/campaigns", label: "Campaigns", group: "Monetization" },
+  { href: "/admin/purchases", label: "Purchases", group: "Monetization" },
+  { href: "/admin/entitlements", label: "Entitlements", group: "Monetization" },
+  { href: "/admin/audit-logs", label: "Audit Logs", group: "Monetization" },
   { href: "/admin/settings", label: "System Settings", group: "System" },
   { href: "/admin/team", label: "Admins & Roles", group: "System" },
 ];
@@ -81,13 +91,22 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
     id: "finance",
     name: "Finance Manager",
     description: "Revenue, commission, payouts, analytics, and financial reports.",
-    permissions: ["/admin", "/admin/revenue", "/admin/analytics", "/admin/reports"],
+    permissions: [
+      "/admin",
+      "/admin/revenue",
+      "/admin/analytics",
+      "/admin/reports",
+      "/admin/packages",
+      "/admin/campaigns",
+      "/admin/purchases",
+      "/admin/audit-logs",
+    ],
     homePath: "/admin",
   },
   {
     id: "ops",
     name: "Operations Manager",
-    description: "Live operations — rides, drivers, customers, negotiations, heatmaps, safety, support.",
+    description: "Live operations — rides, drivers, customers, negotiations, heatmaps, safety, support, packages.",
     permissions: [
       "/admin",
       "/admin/drivers",
@@ -98,14 +117,25 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       "/admin/safety-center",
       "/admin/support",
       "/admin/inbox",
+      "/admin/packages",
+      "/admin/campaigns",
+      "/admin/purchases",
+      "/admin/entitlements",
+      "/admin/audit-logs",
     ],
     homePath: "/admin",
   },
   {
     id: "support",
     name: "Support Staff",
-    description: "Tickets, complaints, contact inbox — customer-facing only.",
-    permissions: ["/admin", "/admin/support", "/admin/inbox"],
+    description: "Tickets, complaints, contact inbox, and entitlement adjustments — customer-facing only.",
+    permissions: [
+      "/admin",
+      "/admin/support",
+      "/admin/inbox",
+      "/admin/entitlements",
+      "/admin/audit-logs",
+    ],
     homePath: "/admin",
   },
 ];
@@ -126,6 +156,11 @@ export function normalizePermissions(raw: unknown): Permission[] {
     "/admin/safety-center",
     "/admin/support",
     "/admin/inbox",
+    "/admin/packages",
+    "/admin/campaigns",
+    "/admin/purchases",
+    "/admin/entitlements",
+    "/admin/audit-logs",
     "/admin/settings",
     "/admin/team",
   ]);

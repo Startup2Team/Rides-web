@@ -35,43 +35,25 @@ function BrandMark({
 export default function AdminLoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden flex-col overflow-hidden bg-[#1d2dd4] p-12 text-white lg:flex xl:p-16">
-        {/* Faint sweeping contour lines — the only decoration */}
-        <svg
-          viewBox="0 0 800 800"
-          preserveAspectRatio="none"
+      <div className="relative hidden items-center justify-center overflow-hidden bg-surface-alt border-r border-border lg:flex">
+        {/* Soft tinted background glow matching the primary branding */}
+        <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 h-full w-full text-white/[0.09]"
-        >
-          <g fill="none" stroke="currentColor" strokeWidth="1.2">
-            <path d="M -100 250 Q 200 -50 500 100 T 1000 200" />
-            <path d="M -100 330 Q 220 30 520 180 T 1000 280" />
-            <path d="M -100 420 Q 240 110 540 270 T 1000 370" />
-            <path d="M -100 520 Q 260 200 560 360 T 1000 460" />
-            <path d="M -100 630 Q 280 300 580 460 T 1000 560" />
-            <path d="M -100 750 Q 300 410 600 560 T 1000 660" />
-          </g>
-        </svg>
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 70% at 50% 55%, rgba(0, 122, 255, 0.08), transparent 70%)",
+          }}
+        />
 
-        {/* Top cluster — logo + headline read as one composition */}
-        <div className="relative">
-          <Link
-            href="/"
-            aria-label="Rides"
-            className="inline-block"
-          >
-            <BrandMark inverse size="large" />
-          </Link>
-
-          <h2 className="mt-10 text-balance text-5xl font-bold leading-[1.05] tracking-[-0.025em] text-white xl:mt-12 xl:text-[4rem]">
-            Welcome back
-          </h2>
-        </div>
-
-        {/* Footer pinned to the bottom */}
-        <p className="relative mt-auto text-sm text-white/60">
-          © {new Date().getFullYear()} Rides. All rights reserved.
-        </p>
+        <Image
+          src="/images/drivers-fleet-africa.png"
+          alt="3D illustration of Africa with Rides vehicles"
+          width={520}
+          height={520}
+          priority
+          className="relative h-auto max-h-[80vh] w-full max-w-[520px] object-contain transition-transform duration-700 hover:scale-[1.03]"
+        />
       </div>
 
       <div className="flex items-start justify-center px-6 py-16 sm:px-10 lg:px-16 lg:py-24">
@@ -93,12 +75,12 @@ export default function AdminLoginPage() {
               width={112}
               height={112}
               priority
-              className="-mb-1.5 h-14 w-14"
+              className="-mb-1.5 h-14 w-14 grayscale opacity-60 contrast-[1.1]"
               aria-hidden
             />
             <span
               aria-hidden
-              className="-ml-2.5 text-[2.75rem] font-bold leading-[0.85] tracking-[-0.06em] text-primary"
+              className="-ml-2.5 text-[2.75rem] font-bold leading-[0.85] tracking-[-0.06em] text-muted-foreground"
             >
               ides
             </span>

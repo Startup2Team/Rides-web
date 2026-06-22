@@ -13,6 +13,7 @@ import {
   type Ticket,
 } from "@/lib/api";
 import { useAuth } from "@/context/auth-context";
+import { MonetizationGrid } from "../monetization-widgets";
 
 function QuickLink({
   href,
@@ -28,7 +29,7 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-primary/5"
+      className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5"
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
@@ -90,7 +91,7 @@ function priorityRank(p: string): number {
 
 function TicketQueue({ tickets, loading }: { tickets: Ticket[]; loading: boolean }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-foreground">Needs attention</h2>
         <Link href="/admin/support" className="text-xs font-medium text-primary hover:underline">
@@ -253,7 +254,7 @@ export function SupportDashboard() {
             hint: "Unread contact form messages",
           },
         ].map((kpi) => (
-          <div key={kpi.label} className="rounded-2xl border border-border bg-card p-4">
+          <div key={kpi.label} className="rounded-2xl border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
               {kpi.label}
             </p>
@@ -285,9 +286,11 @@ export function SupportDashboard() {
         />
       </div>
 
+      <MonetizationGrid />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <TicketQueue tickets={queue} loading={loading} />
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
           <h2 className="text-sm font-semibold text-foreground">Today at a glance</h2>
           <ul className="mt-4 space-y-3 text-xs text-muted-foreground">
             <li className="flex justify-between gap-2">

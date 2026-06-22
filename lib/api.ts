@@ -477,6 +477,23 @@ export type DriverDetail = {
     file_url: string;
     uploaded_at: string;
   }>;
+  /**
+   * Append-only audit trail of every prior admin review decision for this
+   * driver — populated by the backend when a re-submission occurs.
+   * Newest first. Optional because legacy drivers may have no recorded history.
+   */
+  review_history?: Array<{
+    id: string;
+    decided_at: string;
+    decided_by: string;
+    decision: "approved" | "rejected" | "more_info_requested";
+    reason?: string;
+    document_decisions?: Array<{
+      document_type: string;
+      decision: "accepted" | "rejected" | "more_info";
+      comment?: string;
+    }>;
+  }>;
 };
 
 export const getDriver = (id: string) => request<DriverDetail>(`/admin/drivers/${id}`);
@@ -525,6 +542,21 @@ export const approveDriver = (id: string) =>
 
 export const rejectDriver = (id: string, reason: string) =>
   request<void>(`/admin/drivers/${id}/reject`, { method: "POST", body: { reason } });
+
+/**
+ * Ask the driver to re-upload specific documents without rejecting the whole
+ * application. Backend sends an SMS/push to the driver pointing at the items
+ * that need attention, and the driver app re-opens those documents for upload.
+ */
+export const requestDriverMoreInfo = (
+  id: string,
+  reason: string,
+  documents?: Array<{ document_type: string; comment?: string }>,
+) =>
+  request<void>(`/admin/drivers/${id}/request-more-info`, {
+    method: "POST",
+    body: { reason, documents },
+  });
 
 export const suspendDriver = (id: string, durationHours: number) =>
   request<void>(`/admin/drivers/${id}/suspend`, {
