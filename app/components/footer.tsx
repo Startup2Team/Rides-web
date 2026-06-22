@@ -1,29 +1,39 @@
 import Link from "next/link";
 
-const productLinks = [
-  { label: "Features", href: "/#features" },
-  { label: "How It Works", href: "/#how-it-works" },
-  { label: "Drivers", href: "/drivers" },
-  { label: "Download App", href: "/#download" },
-];
-
-const companyLinks = [
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
-];
-
-const legalLinks = [
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Terms of Service", href: "/terms" },
+const COLS: { title: string; links: { label: string; href: string }[] }[] = [
+  {
+    title: "Product",
+    links: [
+      { label: "How it works", href: "/#how" },
+      { label: "Fleet", href: "/#fleet" },
+      { label: "Safety", href: "/#safety" },
+      { label: "Get the app", href: "/#get-app" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About", href: "/about" },
+      { label: "Drive with us", href: "/drivers" },
+      { label: "Contact", href: "/contact" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+    ],
+  },
 ];
 
 export default function Footer() {
   const year = new Date().getFullYear();
-
   return (
-    <footer className="border-t border-border bg-background">
-      <div className="mx-auto max-w-7xl px-6 py-16 lg:py-20">
-        <div className="grid gap-10 lg:grid-cols-12">
+    <footer className="rides" style={{ borderTop: "1px solid var(--line)", background: "var(--paper)" }}>
+      <div className="rides-container py-16">
+        <div className="grid gap-12 lg:grid-cols-12">
+          {/* brand */}
           <div className="lg:col-span-5">
             <Link href="/" className="inline-flex items-center">
               <img src="/ridelogo.png" alt="Rides" className="h-9 w-9 shrink-0 object-contain" />
@@ -31,9 +41,8 @@ export default function Footer() {
                 id<span className="text-emerald-500">es</span>
               </span>
             </Link>
-            <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              People-powered mobility and logistics — connecting riders,
-              drivers, and communities across Africa and beyond.
+            <p className="mt-5 max-w-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+              Move the way Rwanda moves — one app for every kind of journey.
             </p>
             <p className="mt-2 text-xs italic text-muted-foreground/60">
               &ldquo;Driven by People, Powered by Choice.&rdquo;
@@ -72,82 +81,31 @@ export default function Footer() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-7">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
-                Product
-              </p>
-              <ul className="mt-4 space-y-3">
-                {productLinks.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
-                Company
-              </p>
-              <ul className="mt-4 space-y-3">
-                {companyLinks.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
-                Legal
-              </p>
-              <ul className="mt-4 space-y-3">
-                {legalLinks.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {/* link columns */}
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-6 lg:col-start-7">
+            {COLS.map((col) => (
+              <div key={col.title}>
+                <p className="rides-label" style={{ fontSize: "0.66rem" }}>{col.title}</p>
+                <ul className="mt-4 space-y-3">
+                  {col.links.map((l) => (
+                    <li key={l.href}>
+                      <Link href={l.href} className="text-sm transition-colors" style={{ color: "var(--muted)" }}>
+                        {l.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col-reverse items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
-          <p className="text-xs text-muted-foreground">
-            © {year} Rides. All rights reserved.
-          </p>
-          <div className="flex items-center gap-4">
-            <Link href="/privacy" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
-              Privacy
-            </Link>
-            <span className="h-3 w-px bg-border" />
-            <Link href="/terms" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
-              Terms
-            </Link>
-            <span className="h-3 w-px bg-border" />
-            <Link href="/about" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
-              About
-            </Link>
-          </div>
+        <div className="mt-14 flex flex-col-reverse items-start justify-between gap-4 border-t pt-7 sm:flex-row sm:items-center" style={{ borderColor: "var(--line)" }}>
+          <p className="rides-label" style={{ fontSize: "0.66rem" }}>© {year} Rides · Kigali, Rwanda</p>
+          <p className="rides-label" style={{ fontSize: "0.66rem" }}>Driven by people, powered by choice</p>
         </div>
       </div>
     </footer>
   );
 }
+

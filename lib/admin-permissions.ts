@@ -23,7 +23,9 @@ export type Permission =
   | "/admin/entitlements"
   | "/admin/audit-logs"
   | "/admin/settings"
-  | "/admin/team";
+  | "/admin/team"
+  | "/admin/packages"
+  | "/admin/audit";
 
 export type AdminRoleName =
   | "Super Admin"
@@ -67,6 +69,8 @@ export const SIDEBAR_ITEMS: {
   { href: "/admin/audit-logs", label: "Audit Logs", group: "Monetization" },
   { href: "/admin/settings", label: "System Settings", group: "System" },
   { href: "/admin/team", label: "Admins & Roles", group: "System" },
+  { href: "/admin/packages", label: "Ride Packages", group: "System" },
+  { href: "/admin/audit", label: "Audit Log", group: "System" },
 ];
 
 /** Default roles — aligned with DB seed in migration 025. */
@@ -163,6 +167,8 @@ export function normalizePermissions(raw: unknown): Permission[] {
     "/admin/audit-logs",
     "/admin/settings",
     "/admin/team",
+    "/admin/packages",
+    "/admin/audit",
   ]);
   return raw.filter((p): p is Permission => typeof p === "string" && allowed.has(p as Permission));
 }

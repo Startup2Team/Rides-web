@@ -42,7 +42,8 @@ export type DriverStatus =
   | "On trip"
   | "Offline"
   | "Pending"
-  | "Suspended";
+  | "Suspended"
+  | "Rejected";
 
 export type DriverRow = {
   id: string;
@@ -64,7 +65,8 @@ export function mapApprovalStatus(
 ): DriverStatus {
   const s = approvalStatus.toUpperCase();
   if (s === "PENDING_REVIEW" || s === "PENDING") return "Pending";
-  if (s === "REJECTED" || s === "SUSPENDED") return "Suspended";
+  if (s === "REJECTED") return "Rejected";
+  if (s === "SUSPENDED") return "Suspended";
   if (onTrip) return "On trip";
   if (isOnline) return "Online";
   if (s === "APPROVED" || s === "ACTIVE") return "Offline";
@@ -158,6 +160,15 @@ export function mapDriverDetailToVerify(
         : "—",
       momoProvider: mapMomoProvider(detail.momo_provider),
       momoCode: detail.momo_pay_code ?? "",
+      licenseExpiryDate: detail.license_expiry_date
+        ? new Date(detail.license_expiry_date).toLocaleDateString()
+        : undefined,
+      insuranceExpiryDate: detail.insurance_expiry_date
+        ? new Date(detail.insurance_expiry_date).toLocaleDateString()
+        : undefined,
+      authorizationExpiryDate: detail.authorization_expiry_date
+        ? new Date(detail.authorization_expiry_date).toLocaleDateString()
+        : undefined,
     },
     documents: detail.documents,
     reviewHistory: detail.review_history?.map((h) => ({

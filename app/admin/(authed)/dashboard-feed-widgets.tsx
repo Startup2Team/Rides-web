@@ -143,7 +143,7 @@ export function ActivityFeed() {
           </span>
           <h2 className="text-sm font-semibold tracking-tight text-foreground">Recent Activity</h2>
         </div>
-        <Link href="/admin/activity" className="text-[11px] font-medium text-muted-foreground hover:text-primary">
+        <Link href="/admin/audit" className="text-[11px] font-medium text-muted-foreground hover:text-primary">
           View all
         </Link>
       </div>

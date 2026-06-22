@@ -44,6 +44,9 @@ export type VerifyDriver = {
     submittedAt: string;
     momoProvider: "MTN MoMo" | "Airtel Money";
     momoCode: string;
+    licenseExpiryDate?: string;
+    insuranceExpiryDate?: string;
+    authorizationExpiryDate?: string;
   };
   documents?: DriverDocument[];
   /** Past admin decisions on this driver, newest first. Empty if no prior reviews. */
@@ -51,7 +54,7 @@ export type VerifyDriver = {
 };
 
 const RWANDA_PLATE = /^R[A-Z]{2}\s\d{3}\s[A-Z]$/;
-const MIN_DRIVER_AGE = 21;
+const MIN_DRIVER_AGE = 16;
 
 type ChecklistItem = {
   label: string;
@@ -63,7 +66,7 @@ function buildChecklist(driver: VerifyDriver): ChecklistItem[] {
   const plateOk = RWANDA_PLATE.test(driver.plate.toUpperCase());
   const ageOk = driver.kyc.age >= MIN_DRIVER_AGE;
   const phoneOk = driver.kyc.phone.replace(/\D/g, "").length >= 10;
-  const licenseOk = /^DL-\d{6,}$/i.test(driver.kyc.licenseNumber);
+  const licenseOk = driver.kyc.licenseNumber.trim().length === 16;
   const momoOk = driver.kyc.momoCode.replace(/\D/g, "").length >= 9;
 
   return [
@@ -88,7 +91,7 @@ function buildChecklist(driver: VerifyDriver): ChecklistItem[] {
     },
     {
       label: "Driver licence number format valid",
-      detail: licenseOk ? driver.kyc.licenseNumber : "Format should be DL-XXXXXXX",
+      detail: licenseOk ? driver.kyc.licenseNumber : "Enter a valid licence number (at least 6 digits)",
       status: licenseOk ? "pass" : "fail",
     },
     {
@@ -121,12 +124,23 @@ function buildChecklist(driver: VerifyDriver): ChecklistItem[] {
   ];
 }
 
-type DocKey = "license" | "insurance" | "authorization";
+type DocKey =
+  | "license_front"
+  | "license_back"
+  | "national_id_front"
+  | "national_id_back"
+  | "insurance"
+  | "authorization"
+  | "selfie";
 
 const DOCS: { key: DocKey; label: string }[] = [
-  { key: "license", label: "Driver's licence (front)" },
-  { key: "insurance", label: "Vehicle insurance certificate" },
-  { key: "authorization", label: "Vehicle authorization / inspection" },
+  { key: "license_front", label: "Driver's Licence (Front)" },
+  { key: "license_back", label: "Driver's Licence (Back)" },
+  { key: "national_id_front", label: "National ID (Front)" },
+  { key: "national_id_back", label: "National ID (Back)" },
+  { key: "insurance", label: "Vehicle Insurance Certificate" },
+  { key: "authorization", label: "Vehicle Authorization / Inspection" },
+  { key: "selfie", label: "Driver Selfie" },
 ];
 
 function licenseCategory(vehicle: string) {
@@ -164,9 +178,13 @@ function PreviewField({
 
 function docUrlFor(driver: VerifyDriver, kind: DocKey): string | null {
   const map: Record<DocKey, string[]> = {
-    license: ["licence_front", "license", "drivers_license"],
-    insurance: ["vehicle_insurance", "insurance"],
-    authorization: ["vehicle_authorization", "authorization"],
+    license_front: ["licence_front", "license_front"],
+    license_back: ["licence_back", "license_back"],
+    national_id_front: ["national_id_front", "national_id"],
+    national_id_back: ["national_id_back"],
+    insurance: ["vehicle_insurance", "insurance", "INSURANCE"],
+    authorization: ["vehicle_authorization", "authorization", "AUTHORIZATION"],
+    selfie: ["selfie", "SELFIE"],
   };
   const keys = map[kind];
   const doc = driver.documents?.find((d) =>
@@ -211,17 +229,34 @@ function DocumentPreview({
               Preview not available for this file type. Use the link above to open it.
             </p>
           )}
+          {/* Metadata Display for Uploaded Documents */}
+          {(kind === "license_front" || kind === "license_back" || kind === "insurance" || kind === "authorization") && (
+            <div className="mt-3 border-t border-border pt-3 grid grid-cols-2 gap-x-3 gap-y-2">
+              {(kind === "license_front" || kind === "license_back") && (
+                <>
+                  <PreviewField label="Licence no." value={driver.kyc.licenseNumber} mono />
+                  <PreviewField label="Expires" value={driver.kyc.licenseExpiryDate || "—"} />
+                </>
+              )}
+              {kind === "insurance" && (
+                <PreviewField label="Valid until" value={driver.kyc.insuranceExpiryDate || "—"} />
+              )}
+              {kind === "authorization" && (
+                <PreviewField label="Valid until" value={driver.kyc.authorizationExpiryDate || "—"} />
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  if (kind === "license") {
+  if (kind === "license_front" || kind === "license_back") {
     return (
       <div className="overflow-hidden rounded-lg border border-border bg-gradient-to-br from-surface to-card">
         <div className="flex items-center justify-between border-b border-border bg-primary/[0.05] px-3 py-2">
           <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary">
-            Republic of Rwanda · Driver Licence
+            Republic of Rwanda · Driver Licence ({kind === "license_front" ? "Front" : "Back"})
           </span>
           <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-primary">
             Valid
@@ -240,8 +275,61 @@ function DocumentPreview({
             <PreviewField label="Date of birth" value={driver.kyc.dob} />
             <PreviewField label="Category" value={licenseCategory(driver.vehicle)} />
             <PreviewField label="Issued" value="05 Jan 2022" />
-            <PreviewField label="Expires" value="05 Jan 2027" />
+            <PreviewField label="Expires" value={driver.kyc.licenseExpiryDate || "05 Jan 2027"} />
           </div>
+        </div>
+      </div>
+    );
+  }
+  if (kind === "national_id_front" || kind === "national_id_back") {
+    return (
+      <div className="overflow-hidden rounded-lg border border-border bg-gradient-to-br from-surface to-card">
+        <div className="flex items-center justify-between border-b border-border bg-primary/[0.05] px-3 py-2">
+          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary">
+            Republic of Rwanda · National ID ({kind === "national_id_front" ? "Front" : "Back"})
+          </span>
+          <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-primary">
+            Valid
+          </span>
+        </div>
+        <div className="flex gap-3 p-3">
+          <div className="flex h-20 w-16 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-inset ring-border">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7" aria-hidden>
+              <circle cx="12" cy="8" r="4" />
+              <path d="M5 20a7 7 0 0 1 14 0" />
+            </svg>
+          </div>
+          <div className="grid flex-1 grid-cols-2 gap-x-3 gap-y-2">
+            <PreviewField label="Name" value={driver.name} />
+            <PreviewField label="National ID" value="1199580012345678" mono />
+            <PreviewField label="Date of birth" value={driver.kyc.dob} />
+            <PreviewField label="Gender" value="Male" />
+            <PreviewField label="Place of Issue" value={driver.kyc.location} />
+            <PreviewField label="Expires" value="05 Jan 2030" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (kind === "selfie") {
+    return (
+      <div className="overflow-hidden rounded-lg border border-border bg-gradient-to-br from-surface to-card">
+        <div className="flex items-center justify-between border-b border-border bg-primary/[0.05] px-3 py-2">
+          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary">
+            Driver Selfie Verification
+          </span>
+          <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-primary">
+            Required
+          </span>
+        </div>
+        <div className="flex flex-col items-center justify-center p-6 gap-2">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-muted text-muted-foreground ring-4 ring-inset ring-border">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10" aria-hidden>
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">Driver self-portrait photo</p>
         </div>
       </div>
     );
@@ -264,7 +352,7 @@ function DocumentPreview({
           <PreviewField label="Vehicle plate" value={driver.plate} mono />
           <PreviewField label="Coverage" value="Third-party + Comprehensive" />
           <PreviewField label="Valid from" value="01 Mar 2026" />
-          <PreviewField label="Valid until" value="28 Feb 2027" />
+          <PreviewField label="Valid until" value={driver.kyc.insuranceExpiryDate || "28 Feb 2027"} />
           <PreviewField label="Premium" value="148,000 RWF" />
         </div>
       </div>
@@ -286,7 +374,7 @@ function DocumentPreview({
         <PreviewField label="Vehicle type" value={driver.vehicle} />
         <PreviewField label="Owner" value={driver.name} />
         <PreviewField label="Inspection date" value="14 Mar 2026" />
-        <PreviewField label="Valid until" value="14 Mar 2027" />
+        <PreviewField label="Valid until" value={driver.kyc.authorizationExpiryDate || "14 Mar 2027"} />
         <PreviewField label="Inspection result" value="Passed — no defects" />
         <PreviewField label="Inspector ID" value="INS-RNP-0421" mono />
       </div>
@@ -456,6 +544,17 @@ export function VerifyDriverModal({
               <Detail label="Plate" value={driver.plate} mono />
               <Detail label="Licence" value={driver.kyc.licenseNumber} mono />
               <Detail label="Payment" value={`${driver.kyc.momoProvider} · ${driver.kyc.momoCode}`} className="sm:col-span-2" />
+            </div>
+          </section>
+
+          <section className="mt-5">
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+              Document Expiries
+            </h3>
+            <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <Detail label="Licence Expiry" value={driver.kyc.licenseExpiryDate || "—"} />
+              <Detail label="Insurance Expiry" value={driver.kyc.insuranceExpiryDate || "—"} />
+              <Detail label="Authorization Expiry" value={driver.kyc.authorizationExpiryDate || "—"} />
             </div>
           </section>
 

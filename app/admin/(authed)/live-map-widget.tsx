@@ -14,7 +14,7 @@ function driverIconHtml(d: LiveMapDriver): string {
   return `
     <span style="position:relative;display:inline-block;width:14px;height:14px;">
       ${ringActive
-        ? `<span style="position:absolute;inset:-6px;border-radius:50%;background:${color};opacity:.35;animation:taravelisPulse 1.8s ease-out infinite;"></span>`
+        ? `<span style="position:absolute;inset:-6px;border-radius:50%;background:${color};opacity:.35;animation:ridesPulse 1.8s ease-out infinite;"></span>`
         : ""}
       <span style="position:relative;display:block;width:14px;height:14px;border-radius:50%;background:${color};box-shadow:0 0 0 2px #fff;"></span>
     </span>
@@ -209,7 +209,7 @@ export function LiveMapWidget() {
 
         {/* Pulse keyframe for driver markers */}
         <style>{`
-          @keyframes taravelisPulse {
+          @keyframes ridesPulse {
             0% { transform: scale(.8); opacity: .55; }
             70% { transform: scale(1.8); opacity: 0; }
             100% { transform: scale(1.8); opacity: 0; }
