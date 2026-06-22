@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { RidesLogo } from "./rides-logo";
 
 const COLS: { title: string; links: { label: string; href: string }[] }[] = [
   {
@@ -36,19 +35,49 @@ export default function Footer() {
         <div className="grid gap-12 lg:grid-cols-12">
           {/* brand */}
           <div className="lg:col-span-5">
-            <Link href="/" className="inline-flex items-center gap-2.5" style={{ color: "var(--ink)" }}>
-              <RidesLogo size={30} className="h-7 w-7" />
-              <span className="text-lg font-semibold tracking-[-0.03em]">Rides</span>
+            <Link href="/" className="inline-flex items-center">
+              <img src="/ridelogo.png" alt="Rides" className="h-9 w-9 shrink-0 object-contain" />
+              <span className="text-xl font-black tracking-[-0.04em] text-foreground">
+                id<span className="text-emerald-500">es</span>
+              </span>
             </Link>
             <p className="mt-5 max-w-xs leading-relaxed" style={{ color: "var(--muted)" }}>
               Move the way Rwanda moves — one app for every kind of journey.
             </p>
-            <div className="mt-6 flex items-center gap-2.5">
-              {SOCIALS.map((s) => (
-                <a key={s.label} href="#" aria-label={s.label} className="flex h-9 w-9 items-center justify-center rounded-md border transition-colors" style={{ borderColor: "var(--line-2)", color: "var(--muted)" }}>
-                  {s.icon}
-                </a>
-              ))}
+            <p className="mt-2 text-xs italic text-muted-foreground/60">
+              &ldquo;Driven by People, Powered by Choice.&rdquo;
+            </p>
+
+            <div className="mt-6 flex items-center gap-2">
+              <Link
+                href="#"
+                aria-label="Twitter"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden>
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+              </Link>
+              <Link
+                href="#"
+                aria-label="Instagram"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+                  <rect x="3" y="3" width="18" height="18" rx="5" />
+                  <circle cx="12" cy="12" r="4" />
+                  <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" />
+                </svg>
+              </Link>
+              <Link
+                href="#"
+                aria-label="LinkedIn"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden>
+                  <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.95v5.66H9.36V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zm1.78 13.02H3.56V9h3.56z" />
+                </svg>
+              </Link>
             </div>
           </div>
 
@@ -80,31 +109,3 @@ export default function Footer() {
   );
 }
 
-const SOCIALS = [
-  {
-    label: "X",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
-        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-      </svg>
-    ),
-  },
-  {
-    label: "Instagram",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden>
-        <rect x="3" y="3" width="18" height="18" rx="5" />
-        <circle cx="12" cy="12" r="4" />
-        <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" />
-      </svg>
-    ),
-  },
-  {
-    label: "LinkedIn",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden>
-        <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.95v5.66H9.36V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zm1.78 13.02H3.56V9h3.56z" />
-      </svg>
-    ),
-  },
-];

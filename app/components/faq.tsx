@@ -1,10 +1,6 @@
-"use client";
-
-import { useState, type ReactNode } from "react";
-
 type Item = {
   q: string;
-  a: ReactNode;
+  a: string;
 };
 
 const items: Item[] = [
@@ -38,45 +34,25 @@ const items: Item[] = [
   },
   {
     q: "How do I become a driver?",
-    a: "Tap \"Drivers\" in the nav and start the application. You'll need a valid licence, vehicle insurance, and an inspection certificate. Approval usually takes 24–48 hours.",
+    a: 'Tap "Drivers" in the nav and start the application. You\'ll need a valid licence, vehicle insurance, and an inspection certificate. Approval usually takes 24–48 hours.',
   },
 ];
 
-function ChevronIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
-        open ? "rotate-180" : ""
-      }`}
-    >
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
-
 export default function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
-
   return (
     <section id="faq" className="py-16 sm:py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-6">
         <div className="grid gap-10 lg:grid-cols-12 lg:gap-16">
           {/* Left: intro */}
           <div className="lg:col-span-5 lg:sticky lg:top-24 lg:self-start">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            <div className="inline-flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              <span className="h-px w-8 bg-foreground/30" />
               FAQ
-            </p>
-            <h2 className="mt-3 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
+            </div>
+            <h2 className="mt-5 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[3.25rem]">
               Frequently asked questions
             </h2>
-            <p className="mt-4 text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="mt-5 text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
               Everything you need to know about riding, driving, paying, and
               staying safe with Rides. Still not finding it?{" "}
               <a
@@ -91,34 +67,28 @@ export default function FAQ() {
 
           {/* Right: accordion */}
           <div className="lg:col-span-7">
-            <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
-              {items.map((it, i) => {
-                const open = openIndex === i;
-                return (
-                  <li key={it.q}>
-                    <button
-                      type="button"
-                      onClick={() => setOpenIndex(open ? null : i)}
-                      aria-expanded={open}
-                      aria-controls={`faq-panel-${i}`}
-                      className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none sm:px-6"
-                    >
-                      <span className="flex-1 text-sm font-semibold text-foreground sm:text-base">
-                        {it.q}
+            <ul className="divide-y divide-border border-y border-border">
+              {items.map((item) => (
+                <li key={item.q}>
+                  <details className="group">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-base font-semibold text-foreground transition-colors hover:text-primary sm:text-lg [&::-webkit-details-marker]:hidden">
+                      <span>{item.q}</span>
+                      <span
+                        aria-hidden
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform duration-200 group-open:rotate-45"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <line x1="12" y1="5" x2="12" y2="19" />
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
                       </span>
-                      <ChevronIcon open={open} />
-                    </button>
-                    <div
-                      id={`faq-panel-${i}`}
-                      role="region"
-                      hidden={!open}
-                      className="px-5 pb-5 text-sm leading-relaxed text-muted-foreground sm:px-6 sm:pb-6"
-                    >
-                      {it.a}
-                    </div>
-                  </li>
-                );
-              })}
+                    </summary>
+                    <p className="pb-6 pr-12 text-pretty text-sm leading-[1.6] text-muted-foreground sm:text-[15px]">
+                      {item.a}
+                    </p>
+                  </details>
+                </li>
+              ))}
             </ul>
           </div>
         </div>

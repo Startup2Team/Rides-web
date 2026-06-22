@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { RidesLogo } from "../../components/rides-logo";
 import { LoginForm } from "./login-form";
@@ -9,77 +10,97 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function BrandMark({ inverse: _inverse = false }: { inverse?: boolean }) {
+function BrandMark({
+  inverse = false,
+  size = "default",
+}: {
+  inverse?: boolean;
+  size?: "default" | "large";
+}) {
+  if (inverse) {
+    return (
+      <Image
+        src="/ridelogo-white.png"
+        alt="Rides"
+        width={224}
+        height={224}
+        priority
+        className={`shrink-0 ${size === "large" ? "h-28 w-28" : "h-20 w-20"}`}
+      />
+    );
+  }
   return <RidesLogo size={80} priority className="shrink-0" />;
 }
 
 export default function AdminLoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden flex-col overflow-hidden bg-gradient-to-br from-primary via-primary to-[#0056B3] p-10 text-white lg:flex xl:p-14">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-white/20 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-32 -right-24 h-[28rem] w-[28rem] rounded-full bg-black/15 blur-3xl"
-        />
+      <div className="relative hidden flex-col overflow-hidden bg-[#1d2dd4] p-12 text-white lg:flex xl:p-16">
+        {/* Faint sweeping contour lines — the only decoration */}
         <svg
-          viewBox="0 0 320 320"
+          viewBox="0 0 800 800"
+          preserveAspectRatio="none"
           aria-hidden
-          className="pointer-events-none absolute -bottom-28 -right-28 h-[26rem] w-[26rem] text-white opacity-[0.18]"
+          className="pointer-events-none absolute inset-0 h-full w-full text-white/[0.09]"
         >
-          {Array.from({ length: 24 }).map((_, i) => (
-            <ellipse
-              key={i}
-              cx="160"
-              cy="160"
-              rx="140"
-              ry="50"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="0.5"
-              transform={`rotate(${i * 7.5} 160 160)`}
-            />
-          ))}
+          <g fill="none" stroke="currentColor" strokeWidth="1.2">
+            <path d="M -100 250 Q 200 -50 500 100 T 1000 200" />
+            <path d="M -100 330 Q 220 30 520 180 T 1000 280" />
+            <path d="M -100 420 Q 240 110 540 270 T 1000 370" />
+            <path d="M -100 520 Q 260 200 560 360 T 1000 460" />
+            <path d="M -100 630 Q 280 300 580 460 T 1000 560" />
+            <path d="M -100 750 Q 300 410 600 560 T 1000 660" />
+          </g>
         </svg>
 
-        <Link href="/" className="relative inline-flex items-center gap-2.5">
-          <BrandMark inverse />
-          <span className="text-base font-semibold tracking-[-0.02em] text-white">
-            Rides
-          </span>
-        </Link>
+        {/* Top cluster — logo + headline read as one composition */}
+        <div className="relative">
+          <Link
+            href="/"
+            aria-label="Rides"
+            className="inline-block"
+          >
+            <BrandMark inverse size="large" />
+          </Link>
 
-        <div className="relative flex flex-1 flex-col justify-center">
-          <div className="max-w-md">
-            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-white/80">
-              <span className="h-px w-8 bg-white/60" />
-              Admin Console
-            </p>
-            <h2 className="mt-5 text-balance text-4xl font-bold leading-[1.05] tracking-[-0.02em] text-white xl:text-5xl">
-              Operate Rides with confidence.
-            </h2>
-            <p className="mt-5 text-pretty text-base leading-relaxed text-white/85 xl:text-lg">
-              Real-time visibility into rides, drivers, and demand zones — all
-              in one place.
-            </p>
-          </div>
+          <h2 className="mt-10 text-balance text-5xl font-bold leading-[1.05] tracking-[-0.025em] text-white xl:mt-12 xl:text-[4rem]">
+            Welcome back
+          </h2>
         </div>
 
-        <div className="relative flex items-center justify-between text-xs text-white/60">
-          <span>Built for the future of mobility in Africa.</span>
-          <span>© {new Date().getFullYear()} Rides</span>
-        </div>
+        {/* Footer pinned to the bottom */}
+        <p className="relative mt-auto text-sm text-white/60">
+          © {new Date().getFullYear()} Rides. All rights reserved.
+        </p>
       </div>
 
-      <div className="flex items-center justify-center px-6 py-12 sm:px-10 lg:px-16">
+      <div className="flex items-start justify-center px-6 py-16 sm:px-10 lg:px-16 lg:py-24">
         <div className="w-full max-w-md">
+          {/* Mobile brand — splash is hidden on small screens */}
           <div className="flex items-center gap-2.5 lg:hidden">
             <BrandMark />
             <span className="text-base font-semibold tracking-[-0.02em] text-foreground">
               Rides
+            </span>
+          </div>
+
+          {/* Desktop wordmark — logo R fuses with "ides" as one continuous word */}
+          <div className="hidden items-end lg:flex">
+            <span className="sr-only">Rides</span>
+            <Image
+              src="/ridelogo-primary.png"
+              alt=""
+              width={112}
+              height={112}
+              priority
+              className="-mb-1.5 h-14 w-14"
+              aria-hidden
+            />
+            <span
+              aria-hidden
+              className="-ml-2.5 text-[2.75rem] font-bold leading-[0.85] tracking-[-0.06em] text-primary"
+            >
+              ides
             </span>
           </div>
 
