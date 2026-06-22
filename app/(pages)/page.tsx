@@ -7,7 +7,7 @@ import FinalCTA from "../components/final-cta";
 
 export default function Home() {
   return (
-    <main className="rides flex-1">
+    <main className="flex-1">
       <Hero />
       <Features />
       <HowItWorks />

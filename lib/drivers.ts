@@ -146,6 +146,7 @@ export function mapDriverDetailToVerify(
     name,
     vehicle: row?.vehicle ?? formatTransportType(detail.transport_type),
     plate: detail.vehicle_plate ?? row?.plate ?? "—",
+    approvalStatus: detail.approval_status ?? "pending",
     kyc: {
       phone: detail.phone ?? "",
       dob: detail.date_of_birth
@@ -170,6 +171,18 @@ export function mapDriverDetailToVerify(
         : undefined,
     },
     documents: detail.documents,
+    reviewHistory: detail.review_history?.map((h) => ({
+      id: h.id,
+      decidedAt: h.decided_at,
+      decidedBy: h.decided_by,
+      decision: h.decision,
+      reason: h.reason,
+      documentDecisions: h.document_decisions?.map((d) => ({
+        documentType: d.document_type,
+        decision: d.decision,
+        comment: d.comment,
+      })),
+    })),
   };
 }
 

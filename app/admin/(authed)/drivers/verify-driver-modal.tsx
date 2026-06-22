@@ -9,11 +9,32 @@ export type DriverDocument = {
   uploaded_at?: string;
 };
 
+export type ReviewDecision = "approved" | "rejected" | "more_info_requested";
+
+export type ReviewHistoryEntry = {
+  id: string;
+  /** ISO timestamp of the decision */
+  decidedAt: string;
+  /** Email or display name of the admin who decided */
+  decidedBy: string;
+  decision: ReviewDecision;
+  /** Overall reason (joined message) — present on rejected/more-info entries */
+  reason?: string;
+  /** Per-document decisions if the backend tracks them */
+  documentDecisions?: Array<{
+    documentType: string;
+    decision: "accepted" | "rejected" | "more_info";
+    comment?: string;
+  }>;
+};
+
 export type VerifyDriver = {
   id: string;
   name: string;
   vehicle: string;
   plate: string;
+  /** Raw approval state from the backend (e.g. "pending", "approved", "rejected"). */
+  approvalStatus: string;
   kyc: {
     phone: string;
     dob: string;
@@ -28,6 +49,8 @@ export type VerifyDriver = {
     authorizationExpiryDate?: string;
   };
   documents?: DriverDocument[];
+  /** Past admin decisions on this driver, newest first. Empty if no prior reviews. */
+  reviewHistory?: ReviewHistoryEntry[];
 };
 
 const RWANDA_PLATE = /^R[A-Z]{2}\s\d{3}\s[A-Z]$/;

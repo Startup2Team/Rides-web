@@ -12,6 +12,7 @@ import {
   type Transaction,
 } from "@/lib/api";
 import { useAuth } from "@/context/auth-context";
+import { MonetizationGrid } from "../monetization-widgets";
 
 function formatLargeRWF(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M RWF`;
@@ -33,7 +34,7 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-primary/5"
+      className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5"
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
@@ -192,7 +193,7 @@ export function FinanceDashboard() {
             value: loading || monthTrips == null ? "…" : String(monthTrips),
           },
         ].map((kpi) => (
-          <div key={kpi.label} className="rounded-2xl border border-border bg-card p-4">
+          <div key={kpi.label} className="rounded-2xl border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
               {kpi.label}
             </p>
@@ -205,7 +206,7 @@ export function FinanceDashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-2xl border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             Today
           </p>
@@ -227,7 +228,7 @@ export function FinanceDashboard() {
             ) : null}
           </p>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-2xl border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             Revenue trend
           </p>
@@ -262,7 +263,9 @@ export function FinanceDashboard() {
         />
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <MonetizationGrid />
+
+      <div className="rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-foreground">Revenue — last 14 buckets</h2>
           <Link href="/admin/revenue" className="text-xs font-medium text-primary hover:underline">
@@ -274,7 +277,7 @@ export function FinanceDashboard() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-foreground">Recent transactions</h2>
           <Link href="/admin/revenue" className="text-xs font-medium text-primary hover:underline">

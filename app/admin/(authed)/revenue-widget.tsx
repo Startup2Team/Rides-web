@@ -111,7 +111,7 @@ export function RevenueWidget() {
   }, [fetchKey]);
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border bg-card">
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold tracking-tight text-foreground">
           Revenue {series?.current.label ?? "Today"}
