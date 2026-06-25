@@ -5,8 +5,8 @@ type Item = {
 
 const items: Item[] = [
   {
-    q: "What is Rides?",
-    a: "Rides is a ride-hailing platform for Kigali. We connect you with motos, cabs, hilux pickups, and fuso trucks for whatever you need — daily commutes, errands, parcel runs, or moving day.",
+    q: "What is Taravelis?",
+    a: "Taravelis is a ride-hailing platform for Kigali. We connect you with motos, cabs, hilux pickups, and fuso trucks for whatever you need — daily commutes, errands, parcel runs, or moving day.",
   },
   {
     q: "How do I book a ride?",
@@ -54,7 +54,7 @@ export default function FAQ() {
             </h2>
             <p className="mt-5 text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
               Everything you need to know about riding, driving, paying, and
-              staying safe with Rides. Still not finding it?{" "}
+              staying safe with Taravelis. Still not finding it?{" "}
               <a
                 href="/contact"
                 className="font-medium text-primary underline-offset-4 hover:underline"

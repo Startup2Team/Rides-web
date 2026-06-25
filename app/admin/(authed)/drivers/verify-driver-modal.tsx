@@ -40,12 +40,16 @@ export type VerifyDriver = {
     dob: string;
     age: number;
     location: string;
+    nationalIdNumber?: string;
     licenseNumber: string;
     submittedAt: string;
     momoProvider: "MTN MoMo" | "Airtel Money";
     momoCode: string;
+    licenseIssuedDate?: string;
     licenseExpiryDate?: string;
+    insuranceIssuedDate?: string;
     insuranceExpiryDate?: string;
+    authorizationIssuedDate?: string;
     authorizationExpiryDate?: string;
   };
   documents?: DriverDocument[];

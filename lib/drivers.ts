@@ -4,6 +4,7 @@ import type { VerifyDriver } from "@/app/admin/(authed)/drivers/verify-driver-mo
 /** URL slug ?vehicle=moto → backend transport_type */
 export const VEHICLE_SLUG_TO_TYPE: Record<string, string> = {
   moto: "MOTO_BIKE",
+  rifani: "RIFANI",
   cab: "CAB_TAXI",
   hilux: "LIGHT_HILUX",
   fuso: "HEAVY_FUSO",
@@ -11,6 +12,7 @@ export const VEHICLE_SLUG_TO_TYPE: Record<string, string> = {
 
 export const VEHICLE_SLUG_LABELS: Record<string, string> = {
   moto: "Moto Bikes",
+  rifani: "Rifani",
   cab: "Cab Taxis",
   hilux: "Light Hilux",
   fuso: "Heavy Fuso",
@@ -30,6 +32,7 @@ export function isVehicleSlug(slug: string | null): slug is VehicleSlug {
 export function formatTransportType(code: string): string {
   const map: Record<string, string> = {
     MOTO_BIKE: "Moto Bike",
+    RIFANI: "Rifani",
     CAB_TAXI: "Cab Taxi",
     LIGHT_HILUX: "Light Hilux",
     HEAVY_FUSO: "Heavy Fuso",
@@ -154,17 +157,27 @@ export function mapDriverDetailToVerify(
         : "—",
       age: ageFromDob(detail.date_of_birth),
       location: formatLocation(detail),
+      nationalIdNumber: detail.national_id_number ?? undefined,
       licenseNumber: detail.license_number ?? "—",
       submittedAt: detail.created_at
         ? new Date(detail.created_at).toLocaleString()
         : "—",
       momoProvider: mapMomoProvider(detail.momo_provider),
       momoCode: detail.momo_pay_code ?? "",
+      licenseIssuedDate: detail.license_issued_date
+        ? new Date(detail.license_issued_date).toLocaleDateString()
+        : undefined,
       licenseExpiryDate: detail.license_expiry_date
         ? new Date(detail.license_expiry_date).toLocaleDateString()
         : undefined,
+      insuranceIssuedDate: detail.insurance_issued_date
+        ? new Date(detail.insurance_issued_date).toLocaleDateString()
+        : undefined,
       insuranceExpiryDate: detail.insurance_expiry_date
         ? new Date(detail.insurance_expiry_date).toLocaleDateString()
+        : undefined,
+      authorizationIssuedDate: detail.authorization_issued_date
+        ? new Date(detail.authorization_issued_date).toLocaleDateString()
         : undefined,
       authorizationExpiryDate: detail.authorization_expiry_date
         ? new Date(detail.authorization_expiry_date).toLocaleDateString()

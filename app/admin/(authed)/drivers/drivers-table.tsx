@@ -21,6 +21,8 @@ import {
   type DriverRow,
   type DriverStatus,
 } from "@/lib/drivers";
+import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
+import { getLocalApiDrivers } from "@/lib/local-drivers";
 
 type Driver = DriverRow;
 
@@ -373,8 +375,19 @@ export function DriversTable() {
       if (debouncedQuery) params.search = debouncedQuery;
 
       const res = await getDrivers(params);
-      setDrivers((res.drivers ?? []).map(mapApiDriver));
-      setTotalFromApi(res.total ?? res.drivers?.length ?? 0);
+      const apiRows = (res.drivers ?? []).map(mapApiDriver);
+      const mockRows = MOCK_API_DRIVERS
+        .filter((d) => !vehicleType || d.transport_type === vehicleType)
+        .map(mapApiDriver);
+      const localRows = getLocalApiDrivers()
+        .filter((d) => !vehicleType || d.transport_type === vehicleType)
+        .map(mapApiDriver);
+      // Deduplicate — real API takes precedence over mock/local if IDs ever collide.
+      const seenIds = new Set(apiRows.map((d) => d.id));
+      const extras = [...mockRows, ...localRows].filter((d) => !seenIds.has(d.id));
+      const merged = [...apiRows, ...extras];
+      setDrivers(merged);
+      setTotalFromApi((res.total ?? apiRows.length) + extras.length);
     } catch (err) {
       setDrivers([]);
       setTotalFromApi(0);
@@ -386,6 +399,12 @@ export function DriversTable() {
 
   useEffect(() => {
     void loadDrivers();
+  }, [loadDrivers]);
+
+  useEffect(() => {
+    const handle = () => void loadDrivers();
+    window.addEventListener("localDriversUpdated", handle);
+    return () => window.removeEventListener("localDriversUpdated", handle);
   }, [loadDrivers]);
 
   // getDriver effect removed in favor of page navigation

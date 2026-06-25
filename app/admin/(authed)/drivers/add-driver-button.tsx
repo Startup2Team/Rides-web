@@ -18,10 +18,19 @@ import {
   type DocKey,
   type VehicleSlug,
   minAgeDob,
+  todayIso,
   normalizeRwandaMobilePhone,
   rwandaMobilePlaceholder,
   validatePlate,
   validateRwandaMobilePhone,
+  validateRwandaNationalId,
+  validateFullName,
+  validateLicenseNumber,
+  validatePassengerSeats,
+  validateLoadCapacity,
+  formatRwandaNationalId,
+  formatRwandaPlate,
+  platePlaceholder,
 } from "@/lib/driver-registration";
 import {
   RWANDA_PROVINCES,
@@ -30,18 +39,24 @@ import {
   getSectors,
 } from "@/lib/rwanda-locations";
 import { ImageCaptureField } from "./image-capture-field";
+import { saveLocalDriver } from "@/lib/local-drivers";
 
 const VEHICLE_TYPES: { value: VehicleSlug; label: string; description: string }[] = [
-  { value: "moto", label: "Moto Bike", description: "Motorcycle transport" },
-  { value: "cab", label: "Cab Taxi", description: "Standard sedan" },
-  { value: "hilux", label: "Light Hilux", description: "Pickup transport" },
-  { value: "fuso", label: "Heavy Fuso", description: "Cargo & logistics" },
+  { value: "moto",   label: "Moto Bike",   description: "Motorcycle transport" },
+  { value: "rifani", label: "Rifani",       description: "Three-wheel transport" },
+  { value: "cab",    label: "Cab Taxi",     description: "Standard sedan" },
+  { value: "hilux",  label: "Light Hilux",  description: "Pickup transport" },
+  { value: "fuso",   label: "Heavy Fuso",   description: "Cargo & logistics" },
 ];
 
 const STEPS = ["Personal Info", "Vehicle Info", "Documents", "Payment"] as const;
 
+// When no API base URL is configured, skip OTP so the form can be tested locally.
+const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+
 type FormState = {
   fullName: string;
+  nationalIdNumber: string;
   phone: string;
   dob: string;
   province: string;
@@ -61,6 +76,7 @@ type FormState = {
 
 const INITIAL_FORM: FormState = {
   fullName: "",
+  nationalIdNumber: "",
   phone: "",
   dob: "",
   province: "",
@@ -80,6 +96,7 @@ const INITIAL_FORM: FormState = {
 
 function emptyDocs(): Record<DocKey, DocFaces> {
   return {
+    national_id: [null, null],
     license: [null, null],
     insurance: [null, null],
     authorization: [null, null],
@@ -180,13 +197,30 @@ function validateStep(
 ): Record<string, string> {
   const e: Record<string, string> = {};
   const maxDob = minAgeDob();
+  const today = todayIso();
 
   if (step === 0) {
-    if (!form.fullName.trim()) e.fullName = "Required";
+    if (!form.fullName.trim()) {
+      e.fullName = "Required";
+    } else {
+      const nameErr = validateFullName(form.fullName);
+      if (nameErr) e.fullName = nameErr;
+    }
+    if (!form.nationalIdNumber.trim()) {
+      e.nationalIdNumber = "Required";
+    } else {
+      const nidErr = validateRwandaNationalId(form.nationalIdNumber);
+      if (nidErr) e.nationalIdNumber = nidErr;
+    }
     const phoneErr = validateRwandaMobilePhone(form.phone);
     if (phoneErr) e.phone = phoneErr;
-    if (!form.dob) e.dob = "Required";
-    else if (form.dob > maxDob) e.dob = "Driver must be at least 16 years old";
+    if (!form.dob) {
+      e.dob = "Required";
+    } else if (form.dob >= today) {
+      e.dob = "Date of birth cannot be today or in the future";
+    } else if (form.dob > maxDob) {
+      e.dob = "Driver must be at least 18 years old";
+    }
     if (!selfie) e.selfie = "Identity photo is required";
     if (!form.province) e.province = "Required";
     if (!form.district) e.district = "Required";
@@ -196,25 +230,34 @@ function validateStep(
   }
 
   if (step === 1) {
-    if (!form.plate.trim()) e.plate = "Required";
-    if (!form.license.trim()) e.license = "Required";
-    else if (form.license.trim().length !== 16) e.license = "Licence number must be exactly 16 characters";
-    if (form.vehicleType === "cab" || form.vehicleType === "hilux") {
-      if (!form.passengerSeats || parseInt(form.passengerSeats, 10) < 1) {
-        e.passengerSeats = "Enter number of passenger seats";
-      }
+    if (!form.plate.trim()) {
+      e.plate = "Required";
+    } else {
+      const plateErr = validatePlate(form.plate, form.vehicleType);
+      if (plateErr) e.plate = plateErr;
     }
-    if (form.vehicleType === "fuso") {
-      if (!form.loadCapacityKg || parseInt(form.loadCapacityKg, 10) < 1) {
-        e.loadCapacityKg = "Enter load capacity in kg";
-      }
+    if (!form.license.trim()) {
+      e.license = "Required";
+    } else {
+      const licErr = validateLicenseNumber(form.license);
+      if (licErr) e.license = licErr;
+    }
+    if (form.vehicleType === "cab") {
+      const seatsErr = validatePassengerSeats(form.passengerSeats);
+      if (seatsErr) e.passengerSeats = seatsErr;
+    }
+    if (form.vehicleType === "fuso" || form.vehicleType === "hilux") {
+      const loadErr = validateLoadCapacity(form.loadCapacityKg);
+      if (loadErr) e.loadCapacityKg = loadErr;
     }
   }
 
   if (step === 2) {
-    (["license", "insurance", "authorization"] as DocKey[]).forEach((key) => {
+    (Object.keys(DOC_LABELS) as DocKey[]).forEach((key) => {
       if (!docs[key][0]) e[`${key}_front`] = `${DOC_LABELS[key].label} front face is required`;
-      if (!docs[key][1]) e[`${key}_back`] = `${DOC_LABELS[key].label} back face is required`;
+      if (DOC_LABELS[key].backRequired && !docs[key][1]) {
+        e[`${key}_back`] = `${DOC_LABELS[key].label} back face is required`;
+      }
     });
   }
 
@@ -370,12 +413,21 @@ export function AddDriverButton({
     [cellsInSector, form.cell],
   );
 
-  const plateWarning = useMemo(() => validatePlate(form.plate), [form.plate]);
+  const plateWarning = useMemo(() => validatePlate(form.plate, form.vehicleType), [form.plate, form.vehicleType]);
   const maxDob = minAgeDob();
 
   async function handleSendOTP() {
     const phoneErr = validateRwandaMobilePhone(form.phone);
     if (phoneErr) { setErrors((e) => ({ ...e, phone: phoneErr })); return; }
+
+    // No backend — auto-verify so the form is testable without a running API.
+    if (NO_BACKEND) {
+      setOtpVerified(true);
+      setOtpSent(true);
+      setOtpError(null);
+      return;
+    }
+
     setOtpBusy(true);
     setOtpError(null);
     try {
@@ -423,6 +475,72 @@ export function AddDriverButton({
       return;
     }
 
+    // No backend — persist driver locally so the review flow can be tested end-to-end.
+    if (NO_BACKEND) {
+      const toDataUrl = (file: File): Promise<string> =>
+        new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result as string);
+          r.onerror = rej;
+          r.readAsDataURL(file);
+        });
+
+      const now = new Date().toISOString();
+      const id = `local-driver-${Date.now()}`;
+
+      const documents: { document_type: string; file_url: string; uploaded_at: string }[] = [];
+
+      if (selfie) {
+        try {
+          const url = await toDataUrl(selfie);
+          documents.push({ document_type: "PROFILE_SELFIE", file_url: url, uploaded_at: now });
+        } catch { /* skip if conversion fails */ }
+      }
+
+      for (const [key, faces] of Object.entries(docs) as [DocKey, DocFaces][]) {
+        const types = DOC_API_TYPE[key];
+        for (let i = 0; i < faces.length; i++) {
+          const file = faces[i];
+          if (file && types[i]) {
+            try {
+              const url = await toDataUrl(file);
+              documents.push({ document_type: types[i], file_url: url, uploaded_at: now });
+            } catch { /* skip */ }
+          }
+        }
+      }
+
+      saveLocalDriver({
+        id,
+        full_name: form.fullName.trim(),
+        phone: normalizeRwandaMobilePhone(form.phone),
+        transport_type: slugToTransportType(form.vehicleType),
+        vehicle_plate: form.plate.trim().toUpperCase(),
+        national_id_number: form.nationalIdNumber.trim().toUpperCase(),
+        license_number: form.license.trim().toUpperCase(),
+        date_of_birth: form.dob,
+        city: "Kigali",
+        address: {
+          province: form.province,
+          district: form.district,
+          sector: form.sector,
+          cell: form.cell,
+          village: form.village,
+        },
+        momo_provider: form.momoProvider,
+        momo_pay_code: form.momoCode ? normalizeRwandaMobilePhone(form.momoCode) : "",
+        approval_status: "APPROVED",
+        created_at: now,
+        is_online: false,
+        documents,
+        review_history: [],
+      });
+
+      close();
+      window.dispatchEvent(new Event("localDriversUpdated"));
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -434,6 +552,7 @@ export function AddDriverButton({
       const transportType = slugToTransportType(form.vehicleType);
       const created = await createDriver({
         full_name: form.fullName.trim(),
+        national_id_number: form.nationalIdNumber.trim().toUpperCase(),
         phone: normalizeRwandaMobilePhone(form.phone),
         transport_type: transportType,
         vehicle_plate: form.plate.trim().toUpperCase(),
@@ -457,6 +576,7 @@ export function AddDriverButton({
         load_capacity_kg: form.loadCapacityKg
           ? parseInt(form.loadCapacityKg, 10)
           : undefined,
+        approval_status: "APPROVED",
       });
 
       const driverId = created.id;
@@ -509,7 +629,7 @@ export function AddDriverButton({
             <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
               <div>
                 <h2 id="add-driver-title" className="text-lg font-bold tracking-tight text-foreground">
-                  Register driver
+                  Register {VEHICLE_TYPES.find((v) => v.value === form.vehicleType)?.label ?? ""} driver
                 </h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Step {step + 1} of {STEPS.length} · {STEPS[step]} — driver will be immediately approved upon submission
@@ -643,8 +763,29 @@ export function AddDriverButton({
                         </div>
                       )}
                       {!otpSent && otpError && <p className="text-[11px] font-medium text-red-600 sm:col-span-2">{otpError}</p>}
-                      <Field label="Date of birth" required error={errors.dob} className="sm:col-span-2">
+                      <Field label="Date of birth" required error={errors.dob}>
                         <Input type="date" max={maxDob} value={form.dob} onChange={(e) => update("dob", e.target.value)} />
+                      </Field>
+                      <Field
+                        label="National ID number"
+                        required
+                        hint="16 digits — e.g. 1 19950 7123456 7 89"
+                        error={errors.nationalIdNumber}
+                      >
+                        <Input
+                          value={form.nationalIdNumber}
+                          onChange={(e) => {
+                            const formatted = formatRwandaNationalId(e.target.value);
+                            update("nationalIdNumber", formatted);
+                            if (errors.nationalIdNumber) {
+                              const err = validateRwandaNationalId(formatted);
+                              setErrors((prev) => ({ ...prev, nationalIdNumber: err ?? "" }));
+                            }
+                          }}
+                          placeholder="1 XXXXX XXXXXXX X XX"
+                          maxLength={20}
+                          inputMode="numeric"
+                        />
                       </Field>
                     </div>
                   </section>
@@ -772,7 +913,7 @@ export function AddDriverButton({
                       Vehicle details
                     </h3>
                     <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {(form.vehicleType === "cab" || form.vehicleType === "hilux") ? (
+                      {form.vehicleType === "cab" ? (
                         <Field label="Passenger seats" required error={errors.passengerSeats} className="sm:col-span-2">
                           <Input
                             type="number"
@@ -783,35 +924,58 @@ export function AddDriverButton({
                           />
                         </Field>
                       ) : null}
-                      {form.vehicleType === "fuso" ? (
+                      {(form.vehicleType === "fuso" || form.vehicleType === "hilux") ? (
                         <Field label="Max load capacity (kg)" required error={errors.loadCapacityKg} className="sm:col-span-2">
                           <Input
                             type="number"
                             min={1}
                             value={form.loadCapacityKg}
                             onChange={(e) => update("loadCapacityKg", e.target.value.replace(/\D/g, ""))}
-                            placeholder="e.g. 5000"
+                            placeholder={form.vehicleType === "hilux" ? "e.g. 1000" : "e.g. 5000"}
                           />
                         </Field>
                       ) : null}
                       <Field
                         label="Plate number"
                         required
-                        hint="Rwanda formats: RAD 000 A (Moto) · RAC 000 A (Commercial) · RAA 000 A (Private)"
+                        hint={
+                          form.vehicleType === "moto" || form.vehicleType === "rifani"
+                            ? "Format: RX XXX X — e.g. RA 000 B"
+                            : "Format: RXX XXX X — e.g. RAC 000 A"
+                        }
                         error={errors.plate || plateWarning || undefined}
                       >
                         <Input
                           value={form.plate}
-                          onChange={(e) => update("plate", e.target.value.toUpperCase())}
-                          placeholder="RAD 000 A"
+                          onChange={(e) => {
+                            const formatted = formatRwandaPlate(e.target.value, form.vehicleType);
+                            update("plate", formatted);
+                            if (errors.plate) {
+                              const err = validatePlate(formatted, form.vehicleType);
+                              setErrors((prev) => ({ ...prev, plate: err ?? "" }));
+                            }
+                          }}
+                          placeholder={platePlaceholder(form.vehicleType)}
                         />
                       </Field>
-                      <Field label="Driver licence number" required error={errors.license} hint="Exactly 16 characters">
+                      <Field
+                        label="Driver licence number"
+                        required
+                        error={errors.license}
+                        hint='DL- prefix + 16 characters — e.g. DL-0000000000000000'
+                      >
                         <Input
                           value={form.license}
-                          onChange={(e) => update("license", e.target.value.toUpperCase().slice(0, 16))}
-                          placeholder="DL-0000000"
-                          maxLength={16}
+                          onChange={(e) => {
+                            const v = e.target.value.toUpperCase().slice(0, 19);
+                            update("license", v);
+                            if (errors.license) {
+                              const err = validateLicenseNumber(v);
+                              setErrors((prev) => ({ ...prev, license: err ?? "" }));
+                            }
+                          }}
+                          placeholder="DL-0000000000000000"
+                          maxLength={19}
                         />
                       </Field>
                     </div>
@@ -822,13 +986,13 @@ export function AddDriverButton({
               {step === 2 ? (
                 <div className="space-y-6">
                   <p className="text-xs text-muted-foreground">
-                    Both front and back faces are required for all documents. JPEG, PNG, or PDF — camera or file upload.
+                    Driver's licence requires both faces. Insurance requires the front face (back optional). Authorization is a single-face document. JPEG, PNG, or PDF.
                   </p>
                   {(Object.keys(DOC_LABELS) as DocKey[]).map((key) => (
                     <div key={key} className="rounded-xl border border-border bg-surface/40 p-4">
                       <p className="text-sm font-semibold text-foreground">{DOC_LABELS[key].label}</p>
                       <p className="text-[11px] text-muted-foreground">{DOC_LABELS[key].hint}</p>
-                      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                      <div className={`mt-3 grid gap-4 ${DOC_LABELS[key].twoFaces ? "sm:grid-cols-2" : "sm:grid-cols-1 max-w-xs"}`}>
                         <div>
                           <ImageCaptureField
                             label="Front face"
@@ -840,17 +1004,19 @@ export function AddDriverButton({
                             onChange={(f) => setDocFace(key, 0, f)}
                           />
                         </div>
-                        <div>
-                          <ImageCaptureField
-                            label="Back face"
-                            required
-                            acceptPdf
-                            file={docs[key][1]}
-                            previewUrl={null}
-                            error={errors[`${key}_back`]}
-                            onChange={(f) => setDocFace(key, 1, f)}
-                          />
-                        </div>
+                        {DOC_LABELS[key].twoFaces && (
+                          <div>
+                            <ImageCaptureField
+                              label={DOC_LABELS[key].backRequired ? "Back face" : "Back face (optional)"}
+                              required={DOC_LABELS[key].backRequired}
+                              acceptPdf
+                              file={docs[key][1]}
+                              previewUrl={null}
+                              error={errors[`${key}_back`]}
+                              onChange={(f) => setDocFace(key, 1, f)}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

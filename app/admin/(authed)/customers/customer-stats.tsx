@@ -3,12 +3,38 @@
 import { useEffect, useState } from "react";
 import { StatCard } from "../_components";
 import { getCustomersOverview, type CustomerOverview } from "@/lib/api";
+import { MOCK_API_CUSTOMERS } from "@/lib/mock-customers";
+
+const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+
+function mockOverview(): CustomerOverview {
+  const active = MOCK_API_CUSTOMERS.filter((c) => !c.is_suspended).length;
+  const suspended = MOCK_API_CUSTOMERS.filter((c) => c.is_suspended).length;
+  return {
+    total: MOCK_API_CUSTOMERS.length,
+    active,
+    suspended,
+    active_this_week: active,
+  };
+}
 
 export function CustomerStats() {
-  const [data, setData] = useState<CustomerOverview | null>(null);
+  const [data, setData] = useState<CustomerOverview | null>(
+    NO_BACKEND ? mockOverview() : null,
+  );
 
   useEffect(() => {
-    getCustomersOverview().then(setData).catch(() => null);
+    if (NO_BACKEND) return;
+    getCustomersOverview()
+      .then((res) => {
+        setData({
+          total: res.total + MOCK_API_CUSTOMERS.length,
+          active: res.active + MOCK_API_CUSTOMERS.filter((c) => !c.is_suspended).length,
+          suspended: res.suspended + MOCK_API_CUSTOMERS.filter((c) => c.is_suspended).length,
+          active_this_week: res.active_this_week + MOCK_API_CUSTOMERS.filter((c) => !c.is_suspended).length,
+        });
+      })
+      .catch(() => null);
   }, []);
 
   const stats = [
