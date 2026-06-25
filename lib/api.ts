@@ -463,6 +463,7 @@ export type DriverDetail = {
   phone?: string;
   transport_type: string;
   vehicle_plate?: string;
+  national_id_number?: string | null;
   license_number?: string;
   date_of_birth?: string | null;
   city?: string;
@@ -478,8 +479,11 @@ export type DriverDetail = {
   approval_status: string;
   created_at: string;
   is_online?: boolean;
+  license_issued_date?: string | null;
   license_expiry_date?: string | null;
+  insurance_issued_date?: string | null;
   insurance_expiry_date?: string | null;
+  authorization_issued_date?: string | null;
   authorization_expiry_date?: string | null;
   documents?: Array<{
     document_type: string;
@@ -602,6 +606,10 @@ export type CustomerTrip = {
   pickup_address: string;
   destination_address: string;
   created_at: string;
+  driver_id?: string | null;
+  driver_name?: string | null;
+  driver_phone?: string | null;
+  vehicle_plate?: string | null;
 };
 
 export type CustomerDetail = Customer & {

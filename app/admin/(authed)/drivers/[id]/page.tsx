@@ -3,39 +3,87 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { DOC_LABELS } from "@/lib/driver-registration";
 import {
   getDriver,
   approveDriver,
   rejectDriver,
-  requestDriverMoreInfo,
 } from "@/lib/api";
 import { mapDriverDetailToVerify } from "@/lib/drivers";
+import { isMockDriverId, MOCK_DRIVERS } from "@/lib/mock-drivers";
+import { isLocalDriverId, getLocalDriverDetail } from "@/lib/local-drivers";
 import type { VerifyDriver, ReviewHistoryEntry } from "../verify-driver-modal";
 
-type DocKey = "license" | "insurance" | "authorization";
+type DocKey = "national_id" | "license" | "insurance" | "authorization";
 
 const DOCS: { key: DocKey; label: string }[] = [
-  { key: "license", label: "Driver's licence (front)" },
+  { key: "national_id", label: "National ID" },
+  { key: "license", label: "Driver's licence" },
   { key: "insurance", label: "Vehicle insurance certificate" },
   { key: "authorization", label: "Vehicle authorization / inspection" },
 ];
 
-type DocDecision = {
-  status: "none" | "accepted" | "rejected" | "more_info";
-  comment?: string;
+const REJECTION_REASONS = [
+  "Image is blurry or unreadable",
+  "Document has expired",
+  "Personal information does not match",
+  "Wrong document type submitted",
+  "Document is cut off or incomplete",
+  "Signature or stamp is missing",
+  "Other",
+] as const;
+
+type FaceReason = { preset: string; custom: string };
+const emptyFaceReason = (): FaceReason => ({ preset: "", custom: "" });
+
+type FaceDecision = { status: "none" | "accepted" | "rejected"; reason: FaceReason };
+const emptyFace = (status: FaceDecision["status"] = "none"): FaceDecision => ({ status, reason: emptyFaceReason() });
+
+type DocDecision = { front: FaceDecision; back: FaceDecision };
+
+function docStatus(key: DocKey, dec: DocDecision): "none" | "accepted" | "rejected" {
+  const two = DOC_LABELS[key].twoFaces;
+  if (dec.front.status === "rejected" || (two && dec.back.status === "rejected")) return "rejected";
+  if (dec.front.status === "accepted" && (!two || dec.back.status === "accepted")) return "accepted";
+  return "none";
+}
+function docReviewed(key: DocKey, dec: DocDecision): boolean {
+  const two = DOC_LABELS[key].twoFaces;
+  return dec.front.status !== "none" && (!two || dec.back.status !== "none");
+}
+
+// Exact document_type values sent by both the mobile app and the admin add-driver form.
+const DOC_TYPES: Record<DocKey, { front: string[]; back: string[] }> = {
+  national_id: {
+    front: ["NATIONAL_ID_FRONT", "NATIONAL_ID"],
+    back: ["NATIONAL_ID_BACK"],
+  },
+  license: {
+    front: ["LICENCE_FRONT", "LICENSE_FRONT", "DRIVERS_LICENSE"],
+    back: ["LICENCE_BACK", "LICENSE_BACK"],
+  },
+  insurance: {
+    front: ["VEHICLE_INSURANCE"],
+    back: [],
+  },
+  authorization: {
+    front: ["VEHICLE_AUTHORIZATION"],
+    back: [],
+  },
 };
 
-function docUrlFor(driver: VerifyDriver, kind: DocKey): string | null {
-  const map: Record<DocKey, string[]> = {
-    license: ["licence_front", "license", "drivers_license"],
-    insurance: ["vehicle_insurance", "insurance"],
-    authorization: ["vehicle_authorization", "authorization"],
-  };
-  const keys = map[kind];
+function findDocUrl(driver: VerifyDriver, types: string[]): string | null {
   const doc = driver.documents?.find((d) =>
-    keys.some((k) => d.document_type.toLowerCase().includes(k.toLowerCase())),
+    types.some((t) => d.document_type.toUpperCase() === t.toUpperCase()),
   );
   return doc?.file_url?.trim() || null;
+}
+
+function docFacesFor(driver: VerifyDriver, kind: DocKey): { front: string | null; back: string | null } {
+  return {
+    front: findDocUrl(driver, DOC_TYPES[kind].front),
+    back: findDocUrl(driver, DOC_TYPES[kind].back),
+  };
 }
 
 function licenseCategory(vehicle: string) {
@@ -257,6 +305,15 @@ function ApprovalStatusPill({ status }: { status: string }) {
   );
 }
 
+function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase font-semibold text-muted-foreground">{label}</p>
+      <p className={`text-xs font-bold text-foreground ${mono ? "font-mono" : ""}`}>{value}</p>
+    </div>
+  );
+}
+
 function PreviewField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
@@ -270,37 +327,57 @@ function PreviewField({ label, value, mono }: { label: string; value: string; mo
   );
 }
 
+function DocFaceCard({ label, url }: { label: string; url: string }) {
+  const isImage = /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url) || url.startsWith("data:image/");
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="flex items-center justify-between border-b border-border bg-muted/20 px-3 py-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] font-semibold text-primary hover:underline"
+        >
+          Open ↗
+        </a>
+      </div>
+      <div className="p-3">
+        {isImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={label} className="max-h-52 w-full rounded-md object-contain" />
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Preview not available — use the link above to open the file.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DocumentPreview({ kind, driver }: { kind: DocKey; driver: VerifyDriver }) {
-  const fileUrl = docUrlFor(driver, kind);
-  if (fileUrl) {
-    const label = DOCS.find((d) => d.key === kind)?.label ?? "Document";
+  const { front, back } = docFacesFor(driver, kind);
+
+  if (front || back) {
     return (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="flex items-center justify-between border-b border-border px-3 py-2 bg-muted/20">
-          <span className="text-xs font-semibold text-foreground">{label}</span>
-          <a
-            href={fileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] font-semibold text-primary hover:underline"
-          >
-            Open full file ↗
-          </a>
-        </div>
-        <div className="p-3">
-          {/\.(png|jpe?g|webp|gif)(\?|$)/i.test(fileUrl) ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={fileUrl}
-              alt={label}
-              className="max-h-60 w-full rounded-md object-contain"
-            />
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Preview not available for this file type. Use the link above to open it.
-            </p>
-          )}
-        </div>
+      <div className="space-y-3">
+        {front ? (
+          <DocFaceCard label="Front face" url={front} />
+        ) : (
+          <div className="rounded-lg border border-dashed border-border px-4 py-3 text-xs text-muted-foreground">
+            Front face not yet uploaded
+          </div>
+        )}
+        {back ? (
+          <DocFaceCard label="Back face" url={back} />
+        ) : (
+          <div className="rounded-lg border border-dashed border-border px-4 py-3 text-xs text-muted-foreground">
+            Back face not uploaded
+          </div>
+        )}
       </div>
     );
   }
@@ -395,14 +472,36 @@ export default function DriverReviewPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const [decisions, setDecisions] = useState<Record<DocKey, DocDecision>>({
-    license: { status: "none" },
-    insurance: { status: "none" },
-    authorization: { status: "none" },
+  const isMock = isMockDriverId(id);
+  const isLocal = isLocalDriverId(id);
+
+  // Admin-added drivers are trusted — pre-accept all documents on load.
+  const [decisions, setDecisions] = useState<Record<DocKey, DocDecision>>(() => {
+    const s: FaceDecision["status"] = isLocal ? "accepted" : "none";
+    const base = (): DocDecision => ({ front: emptyFace(s), back: emptyFace(s) });
+    return { national_id: base(), license: base(), insurance: base(), authorization: base() };
   });
 
   useEffect(() => {
     setLoading(true);
+    if (isMock) {
+      // Simulate a brief network delay so the loading state is visible.
+      const t = setTimeout(() => {
+        setDriver(mapDriverDetailToVerify(MOCK_DRIVERS[id as keyof typeof MOCK_DRIVERS]));
+        setLoading(false);
+      }, 400);
+      return () => clearTimeout(t);
+    }
+    if (isLocal) {
+      const detail = getLocalDriverDetail(id);
+      if (detail) {
+        setDriver(mapDriverDetailToVerify(detail));
+      } else {
+        setError("Locally-saved driver not found. It may have been cleared from storage.");
+      }
+      setLoading(false);
+      return;
+    }
     getDriver(id)
       .then((detail) => {
         setDriver(mapDriverDetailToVerify(detail));
@@ -413,32 +512,34 @@ export default function DriverReviewPage() {
       .finally(() => {
         setLoading(false);
       });
-  }, [id]);
+  }, [id, isMock, isLocal]);
 
-  const updateDecision = (key: DocKey, status: DocDecision["status"], comment?: string) => {
+  const updateFaceStatus = (key: DocKey, face: "front" | "back", status: FaceDecision["status"]) => {
     setDecisions((prev) => ({
       ...prev,
-      [key]: { status, comment },
+      [key]: { ...prev[key], [face]: { status, reason: emptyFaceReason() } },
     }));
   };
 
-  const allReviewed = DOCS.every((d) => decisions[d.key].status !== "none");
-  const allAccepted = DOCS.every((d) => decisions[d.key].status === "accepted");
-  const someRejected = DOCS.some((d) => decisions[d.key].status === "rejected");
-  const someMoreInfo = DOCS.some((d) => decisions[d.key].status === "more_info");
-  // Precedence: rejection trumps more-info trumps approval.
-  const primaryAction: "approve" | "reject" | "more_info" =
-    someRejected ? "reject" : someMoreInfo ? "more_info" : "approve";
+  const updateFaceReason = (key: DocKey, face: "front" | "back", field: keyof FaceReason, value: string) => {
+    setDecisions((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], [face]: { ...prev[key][face], reason: { ...prev[key][face].reason, [field]: value } } },
+    }));
+  };
+
+  const allReviewed = DOCS.every((d) => docReviewed(d.key, decisions[d.key]));
+  const allAccepted = DOCS.every((d) => docStatus(d.key, decisions[d.key]) === "accepted");
+  const someRejected = DOCS.some((d) => docStatus(d.key, decisions[d.key]) === "rejected");
+  const primaryAction: "approve" | "reject" = someRejected ? "reject" : "approve";
 
   const handleApprove = async () => {
     if (!driver) return;
     setActionLoading(true);
     try {
-      await approveDriver(driver.id);
-      setToast("Driver approved successfully!");
-      setTimeout(() => {
-        router.push("/admin/drivers");
-      }, 1500);
+      if (!isMock && !isLocal) await approveDriver(driver.id);
+      setToast(isMock || isLocal ? "[Local] Driver approved — no real API call made." : "Driver approved successfully!");
+      setTimeout(() => router.push("/admin/drivers"), 1500);
     } catch (err) {
       setToast(err instanceof Error ? err.message : "Failed to approve driver");
     } finally {
@@ -449,17 +550,22 @@ export default function DriverReviewPage() {
   const handleReject = async () => {
     if (!driver) return;
     setActionLoading(true);
-
-    const reasons = DOCS.filter((d) => decisions[d.key].status === "rejected")
-      .map((d) => `${DOCS.find((item) => item.key === d.key)?.label}: ${decisions[d.key].comment || "No comment"}`)
+    const faceText = (f: FaceDecision) =>
+      f.status === "accepted" ? "Accepted" :
+      f.reason.preset === "Other" ? f.reason.custom || "Other" : f.reason.preset || "No reason given";
+    const reasons = DOCS.filter((d) => docStatus(d.key, decisions[d.key]) === "rejected")
+      .map((d) => {
+        const dec = decisions[d.key];
+        const isTwoFace = DOC_LABELS[d.key].twoFaces;
+        const frontPart = `Front: ${faceText(dec.front)}`;
+        const backPart = isTwoFace ? ` | Back: ${faceText(dec.back)}` : "";
+        return `${d.label}: ${frontPart}${backPart}`;
+      })
       .join("; ");
-
     try {
-      await rejectDriver(driver.id, reasons || "Application rejected by admin");
-      setToast("Driver application rejected");
-      setTimeout(() => {
-        router.push("/admin/drivers");
-      }, 1500);
+      if (!isMock && !isLocal) await rejectDriver(driver.id, reasons || "Application rejected by admin");
+      setToast(isMock || isLocal ? "[Local] Application rejected — no real API call made." : "Driver application rejected");
+      setTimeout(() => router.push("/admin/drivers"), 1500);
     } catch (err) {
       setToast(err instanceof Error ? err.message : "Failed to reject application");
     } finally {
@@ -467,36 +573,6 @@ export default function DriverReviewPage() {
     }
   };
 
-  /**
-   * Ask the driver to re-upload only the flagged documents. Different from a
-   * rejection: the application is kept open and the driver app reopens the
-   * specific documents for fresh upload.
-   */
-  const handleRequestMoreInfo = async () => {
-    if (!driver) return;
-    setActionLoading(true);
-
-    const flagged = DOCS.filter((d) => decisions[d.key].status === "more_info");
-    const reason = flagged
-      .map((d) => `${d.label}: ${decisions[d.key].comment || "No comment"}`)
-      .join("; ");
-    const documents = flagged.map((d) => ({
-      document_type: d.key,
-      comment: decisions[d.key].comment,
-    }));
-
-    try {
-      await requestDriverMoreInfo(driver.id, reason, documents);
-      setToast("Request sent — driver will be asked to re-upload the flagged documents");
-      setTimeout(() => {
-        router.push("/admin/drivers");
-      }, 1500);
-    } catch (err) {
-      setToast(err instanceof Error ? err.message : "Failed to send the request");
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -522,15 +598,15 @@ export default function DriverReviewPage() {
     );
   }
 
-  const profilePicDoc = driver.documents?.find(
-    (d) =>
-      d.document_type.toUpperCase().includes("SELFIE") ||
-      d.document_type.toUpperCase().includes("PROFILE")
-  );
+  const profilePicDoc = driver.documents?.find((d) => {
+    const t = d.document_type.toUpperCase();
+    return t === "PROFILE_SELFIE" || t.includes("SELFIE") || t.includes("PROFILE");
+  });
   const profilePicUrl = profilePicDoc?.file_url || null;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
+
       {/* Toast Alert */}
       {toast && (
         <div className="fixed bottom-4 right-4 z-50 rounded-xl bg-foreground text-background px-4 py-3 text-xs font-semibold shadow-lg">
@@ -581,7 +657,7 @@ export default function DriverReviewPage() {
         </Link>
       </div>
 
-      {driver.reviewHistory && driver.reviewHistory.length > 0 ? (
+      {!isLocal && driver.reviewHistory && driver.reviewHistory.length > 0 ? (
         <ReviewHistorySection history={driver.reviewHistory} />
       ) : null}
 
@@ -592,118 +668,100 @@ export default function DriverReviewPage() {
           <ul className="space-y-4">
             {DOCS.map((d) => {
               const current = decisions[d.key];
-              const fileUrl = docUrlFor(driver, d.key);
+              const ds = docStatus(d.key, current);
+              const faces = docFacesFor(driver, d.key);
+              const hasAnyFace = !!(faces.front || faces.back);
+              const isTwoFace = DOC_LABELS[d.key].twoFaces;
               return (
                 <li
                   key={d.key}
                   className={`overflow-hidden rounded-2xl border bg-card p-5 transition-all duration-300 ${
-                    current.status === "accepted"
+                    ds === "accepted"
                       ? "border-emerald-500/30 shadow-md shadow-emerald-500/5"
-                      : current.status === "rejected"
+                      : ds === "rejected"
                       ? "border-red-500/30 shadow-md shadow-red-500/5"
-                      : current.status === "more_info"
-                      ? "border-amber-500/30 shadow-md shadow-amber-500/5"
                       : "border-border"
                   }`}
                 >
                   <div className="flex flex-col md:flex-row justify-between gap-4">
                     <div className="flex-1 space-y-4">
-                      <div>
+                      <div className="flex items-start justify-between gap-2">
                         <h3 className="text-sm font-bold text-foreground">{d.label}</h3>
-                        {fileUrl && (
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            Filename: {fileUrl.split("/").pop()}
-                          </p>
+                        {hasAnyFace && (
+                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                            {faces.front && faces.back ? "2 faces" : "1 face"}
+                          </span>
                         )}
                       </div>
                       <DocumentPreview kind={d.key} driver={driver} />
                     </div>
 
-                    {/* Checkbox Accept / Reject one-by-one */}
-                    <div className="shrink-0 space-y-4 md:w-48 border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-4">
+                    {/* Per-face document decisions */}
+                    <div className="shrink-0 space-y-4 md:w-56 border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-4">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         Document Decision
                       </p>
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={current.status === "accepted"}
-                            onChange={() =>
-                              updateDecision(
-                                d.key,
-                                current.status === "accepted" ? "none" : "accepted"
-                              )
-                            }
-                            className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                          />
-                          Accept Document
-                        </label>
-
-                        <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={current.status === "more_info"}
-                            onChange={() =>
-                              updateDecision(
-                                d.key,
-                                current.status === "more_info" ? "none" : "more_info",
-                                current.comment,
-                              )
-                            }
-                            className="h-4 w-4 rounded border-border text-amber-600 focus:ring-amber-500"
-                          />
-                          Ask to re-upload
-                        </label>
-
-                        <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={current.status === "rejected"}
-                            onChange={() =>
-                              updateDecision(
-                                d.key,
-                                current.status === "rejected" ? "none" : "rejected",
-                                current.comment
-                              )
-                            }
-                            className="h-4 w-4 rounded border-border text-red-600 focus:ring-red-500"
-                          />
-                          Reject Document
-                        </label>
-                      </div>
-
-                      {current.status === "more_info" && (
-                        <div className="space-y-1">
-                          <label className="block text-[10px] font-semibold uppercase text-amber-700">
-                            What does the driver need to fix?
-                          </label>
-                          <textarea
-                            value={current.comment || ""}
-                            onChange={(e) => updateDecision(d.key, "more_info", e.target.value)}
-                            placeholder="e.g. The licence photo is blurry — please re-take it in daylight."
-                            rows={3}
-                            className="w-full rounded-xl border border-amber-200 bg-amber-50/20 px-3 py-2 text-xs text-foreground outline-none focus:border-amber-500"
-                            required
-                          />
-                        </div>
-                      )}
-
-                      {current.status === "rejected" && (
-                        <div className="space-y-1">
-                          <label className="block text-[10px] font-semibold text-red-600 uppercase">
-                            Rejection Comment
-                          </label>
-                          <textarea
-                            value={current.comment || ""}
-                            onChange={(e) => updateDecision(d.key, "rejected", e.target.value)}
-                            placeholder="Reason for rejection (required)"
-                            rows={3}
-                            className="w-full rounded-xl border border-red-200 bg-red-50/20 px-3 py-2 text-xs text-foreground outline-none focus:border-red-500"
-                            required
-                          />
-                        </div>
-                      )}
+                      {(["front", "back"] as const)
+                        .filter((face) => face === "front" || isTwoFace)
+                        .map((face) => {
+                          const fd = current[face];
+                          return (
+                            <div key={face} className="space-y-2">
+                              {isTwoFace && (
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  {face === "front" ? "Front face" : "Back face"}
+                                </p>
+                              )}
+                              <div className="flex gap-4">
+                                <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer select-none text-emerald-700">
+                                  <input
+                                    type="checkbox"
+                                    checked={fd.status === "accepted"}
+                                    onChange={() =>
+                                      updateFaceStatus(d.key, face, fd.status === "accepted" ? "none" : "accepted")
+                                    }
+                                    className="h-3.5 w-3.5 rounded border-border accent-emerald-600"
+                                  />
+                                  Accept
+                                </label>
+                                <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer select-none text-red-600">
+                                  <input
+                                    type="checkbox"
+                                    checked={fd.status === "rejected"}
+                                    onChange={() =>
+                                      updateFaceStatus(d.key, face, fd.status === "rejected" ? "none" : "rejected")
+                                    }
+                                    className="h-3.5 w-3.5 rounded border-border accent-red-600"
+                                  />
+                                  Reject
+                                </label>
+                              </div>
+                              {fd.status === "rejected" && (
+                                <div className="space-y-1">
+                                  <select
+                                    value={fd.reason.preset}
+                                    onChange={(e) => updateFaceReason(d.key, face, "preset", e.target.value)}
+                                    className="w-full rounded-lg border border-red-200 bg-white px-2 py-1.5 text-xs text-foreground outline-none focus:border-red-500"
+                                  >
+                                    <option value="">— Select reason —</option>
+                                    {REJECTION_REASONS.map((r) => (
+                                      <option key={r} value={r}>{r}</option>
+                                    ))}
+                                  </select>
+                                  {fd.reason.preset === "Other" && (
+                                    <textarea
+                                      value={fd.reason.custom}
+                                      onChange={(e) => updateFaceReason(d.key, face, "custom", e.target.value)}
+                                      placeholder="Describe the issue…"
+                                      rows={2}
+                                      className="w-full rounded-lg border border-red-200 bg-red-50/20 px-2 py-1.5 text-xs text-foreground outline-none focus:border-red-500 resize-none"
+                                    />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                     </div>
                   </div>
                 </li>
@@ -712,131 +770,119 @@ export default function DriverReviewPage() {
           </ul>
         </div>
 
-        {/* Sidebar Info & Overall Actions */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Driver Details Card */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        {/* Sidebar Info — sticky so it stays visible while scrolling docs */}
+        <div className="lg:col-span-4">
+          <div className="sticky top-6 rounded-2xl border border-border bg-card p-5 space-y-5">
             <h2 className="text-sm font-semibold tracking-tight text-foreground">Driver and Vehicle Info</h2>
+
+            {/* Personal */}
             <div className="space-y-3">
-              <div>
-                <p className="text-[10px] uppercase font-semibold text-muted-foreground">Phone Number</p>
-                <p className="text-xs font-bold text-foreground">{driver.kyc.phone}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-semibold text-muted-foreground">Date of Birth / Age</p>
-                <p className="text-xs font-bold text-foreground">{driver.kyc.dob} (Age {driver.kyc.age})</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-semibold text-muted-foreground">Residential Location</p>
-                <p className="text-xs font-bold text-foreground">{driver.kyc.location}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-semibold text-muted-foreground">Licence number</p>
-                <p className="text-xs font-bold text-foreground font-mono">{driver.kyc.licenseNumber}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-semibold text-muted-foreground">Vehicle details</p>
-                <p className="text-xs font-bold text-foreground">{driver.vehicle} · {driver.plate}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-semibold text-muted-foreground">MoMo Payout Code</p>
-                <p className="text-xs font-bold text-foreground font-mono">{driver.kyc.momoProvider} · {driver.kyc.momoCode}</p>
-              </div>
+              <InfoRow label="Phone number" value={driver.kyc.phone} />
+              <InfoRow label="Date of birth / Age" value={`${driver.kyc.dob} (Age ${driver.kyc.age})`} />
+              <InfoRow label="Residential location" value={driver.kyc.location} />
+              <InfoRow label="Vehicle" value={`${driver.vehicle} · ${driver.plate}`} />
+              <InfoRow label="MoMo payout" value={`${driver.kyc.momoProvider} · ${driver.kyc.momoCode}`} mono />
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* National ID */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-primary">National ID</p>
+              <InfoRow label="ID number" value={driver.kyc.nationalIdNumber || "—"} mono />
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* Driver's Licence */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Driver's Licence</p>
+              <InfoRow label="Licence number" value={driver.kyc.licenseNumber} mono />
+              <InfoRow label="Issued" value={driver.kyc.licenseIssuedDate || "—"} />
+              <InfoRow label="Expires" value={driver.kyc.licenseExpiryDate || "—"} />
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* Vehicle Insurance */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Vehicle Insurance</p>
+              <InfoRow label="Issued" value={driver.kyc.insuranceIssuedDate || "—"} />
+              <InfoRow label="Expires" value={driver.kyc.insuranceExpiryDate || "—"} />
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* Vehicle Authorization */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Vehicle Authorization</p>
+              <InfoRow label="Issued" value={driver.kyc.authorizationIssuedDate || "—"} />
+              <InfoRow label="Expires" value={driver.kyc.authorizationExpiryDate || "—"} />
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Action Decision Panel */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">Review Progress</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs text-muted-foreground">
-                <span>Progress:</span>
-                <span className="font-bold text-foreground">
-                  {DOCS.filter((d) => decisions[d.key].status !== "none").length} / {DOCS.length} reviewed
-                </span>
+      {/* Review Progress — full-width bar at the bottom */}
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">Review Progress</h2>
+          <span className="text-xs font-bold text-foreground">
+            {DOCS.filter((d) => docReviewed(d.key, decisions[d.key])).length} / {DOCS.length} reviewed
+          </span>
+        </div>
+        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary transition-all duration-300"
+            style={{
+              width: `${(DOCS.filter((d) => docReviewed(d.key, decisions[d.key])).length / DOCS.length) * 100}%`,
+            }}
+          />
+        </div>
+
+        <div className="pt-2 border-t border-border">
+          {primaryAction === "reject" ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex-1 rounded-xl border border-red-200 bg-red-50/20 px-3 py-2.5">
+                <p className="text-[11px] leading-snug text-red-700">
+                  <strong>Rejection active</strong> — provide a reason for each rejected document, then submit.
+                </p>
               </div>
-              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{
-                    width: `${
-                      (DOCS.filter((d) => decisions[d.key].status !== "none").length / DOCS.length) * 100
-                    }%`,
-                  }}
-                />
-              </div>
+              <button
+                type="button"
+                onClick={handleReject}
+                disabled={
+                  actionLoading ||
+                  !allReviewed ||
+                  DOCS.some((d) => {
+                    const dec = decisions[d.key];
+                    const faceInvalid = (f: FaceDecision) =>
+                      f.status === "rejected" && (!f.reason.preset || (f.reason.preset === "Other" && !f.reason.custom.trim()));
+                    return faceInvalid(dec.front) || (DOC_LABELS[d.key].twoFaces && faceInvalid(dec.back));
+                  })
+                }
+                className="shrink-0 inline-flex h-11 items-center justify-center rounded-xl bg-red-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
+              >
+                {actionLoading ? "Submitting…" : "Reject Driver Application"}
+              </button>
             </div>
-
-            <div className="pt-2 space-y-2 border-t border-border">
-              {primaryAction === "reject" ? (
-                <>
-                  <div className="rounded-xl border border-red-200 bg-red-50/20 p-3">
-                    <p className="text-[11px] leading-snug text-red-700">
-                      <strong>Rejection active</strong>: You must provide rejection reasons for all rejected items, then submit the rejection.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleReject}
-                    disabled={
-                      actionLoading ||
-                      !allReviewed ||
-                      DOCS.some((d) => decisions[d.key].status === "rejected" && !decisions[d.key].comment?.trim())
-                    }
-                    className="w-full inline-flex h-11 items-center justify-center rounded-xl bg-red-600 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
-                  >
-                    {actionLoading ? "Submitting Rejection..." : "Reject Driver Application"}
-                  </button>
-                  {!allReviewed && (
-                    <p className="text-[10px] text-center text-muted-foreground leading-normal mt-1">
-                      Review every document before submitting.
-                    </p>
-                  )}
-                </>
-              ) : primaryAction === "more_info" ? (
-                <>
-                  <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-3">
-                    <p className="text-[11px] leading-snug text-amber-800">
-                      <strong>More info requested</strong>: The driver will be notified to re-upload the flagged documents with your guidance.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleRequestMoreInfo}
-                    disabled={
-                      actionLoading ||
-                      !allReviewed ||
-                      DOCS.some((d) => decisions[d.key].status === "more_info" && !decisions[d.key].comment?.trim())
-                    }
-                    className="w-full inline-flex h-11 items-center justify-center rounded-xl bg-amber-600 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:opacity-50"
-                  >
-                    {actionLoading ? "Sending Request..." : "Request More Info from Driver"}
-                  </button>
-                  {!allReviewed && (
-                    <p className="text-[10px] text-center text-muted-foreground leading-normal mt-1">
-                      Review every document before submitting.
-                    </p>
-                  )}
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleApprove}
-                    disabled={actionLoading || !allAccepted}
-                    className="w-full inline-flex h-11 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.01] disabled:scale-100 disabled:opacity-40 disabled:shadow-none"
-                  >
-                    {actionLoading ? "Approving..." : "Approve Driver Application"}
-                  </button>
-                  {!allAccepted && (
-                    <p className="text-[10px] text-center text-muted-foreground leading-normal mt-1">
-                      Accept all 3 documents to enable approval.
-                    </p>
-                  )}
-                </>
+          ) : (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              {!allAccepted && (
+                <p className="text-[11px] text-muted-foreground">
+                  Accept all documents to enable approval.
+                </p>
               )}
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={actionLoading || !allAccepted}
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-8 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.01] disabled:scale-100 disabled:opacity-40 disabled:shadow-none"
+              >
+                {actionLoading ? "Approving…" : "Approve Driver Application"}
+              </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
