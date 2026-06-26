@@ -1223,3 +1223,76 @@ export const clearDeviceCollision = (userID: string, deviceID: string) =>
 
 export const getAccountTimeline = (userID: string, limit?: number) =>
   request<any>(`/admin/users/${userID}/timeline${limit !== undefined ? `?limit=${limit}` : ""}`);
+
+// ── Campaign Management ────────────────────────────────────────────────────
+
+export type CampaignStatus = "DRAFT" | "SCHEDULED" | "ACTIVE" | "EXPIRED" | "ARCHIVED";
+export type CampaignType = "GLOBAL" | "VEHICLE_TYPE" | "PACKAGE" | "FIRST_PURCHASE" | "REFERRAL";
+
+export type AdminCampaign = {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  type: CampaignType;
+  status: CampaignStatus;
+  starts_at: string | null;
+  ends_at: string | null;
+  target_vehicle_type_id: string | null;
+  target_vehicle_type_code: string | null;
+  target_package_id: string | null;
+  target_package_name: string | null;
+  override_price_rwf: number | null;
+  override_rides: number | null;
+  override_bonus_rides: number | null;
+  priority: number;
+  max_redemptions: number | null;
+  per_driver_limit: number | null;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export const getAdminCampaigns = () =>
+  request<AdminCampaign[]>("/admin/campaigns");
+
+export const createCampaign = (data: {
+  code: string;
+  name: string;
+  description?: string;
+  type: CampaignType;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  target_vehicle_type_id?: string | null;
+  target_package_id?: string | null;
+  override_price_rwf?: number | null;
+  override_rides?: number | null;
+  override_bonus_rides?: number | null;
+  priority: number;
+  max_redemptions?: number | null;
+  per_driver_limit?: number | null;
+}) =>
+  request<AdminCampaign>("/admin/campaigns", { method: "POST", body: data });
+
+export const updateCampaign = (
+  id: string,
+  data: {
+    name?: string;
+    description?: string;
+    status?: CampaignStatus;
+    starts_at?: string | null;
+    ends_at?: string | null;
+    target_vehicle_type_id?: string | null;
+    target_package_id?: string | null;
+    override_price_rwf?: number | null;
+    override_rides?: number | null;
+    override_bonus_rides?: number | null;
+    priority?: number;
+    max_redemptions?: number | null;
+    per_driver_limit?: number | null;
+  }
+) =>
+  request<AdminCampaign>(`/admin/campaigns/${id}`, { method: "PATCH", body: data });
+
+export const deleteCampaign = (id: string) =>
+  request<{ status: string }>(`/admin/campaigns/${id}`, { method: "DELETE" });
