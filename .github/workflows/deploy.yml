@@ -1,8 +1,7 @@
 name: Deploy (Vultr JNB)
 
-# On every push to main, SSH into the production box and run the deploy script,
-# which pulls both repos (Rides-api + Rides-web) and rebuilds the Docker stack —
-# so a change to the admin/landing site ships automatically.
+# On push to main, the GitHub runner ships this repo's code to the production
+# box over SSH and rebuilds the admin/landing container. No deploy keys needed.
 #
 # Required GitHub Secret:
 #   DEPLOY_SSH_KEY — private SSH key trusted by root@139.84.251.242
@@ -17,10 +16,18 @@ jobs:
     name: Deploy to Vultr (Johannesburg)
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 139.84.251.242
-          username: root
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: /opt/rides/deploy.sh
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          ssh-keyscan -H 139.84.251.242 >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Ship code to the box and rebuild
+        run: |
+          SSH="ssh -i ~/.ssh/deploy -o BatchMode=yes root@139.84.251.242"
+          # Web has no secrets on the box, so a clean replace is safe.
+          git archive --format=tar HEAD | $SSH 'rm -rf /opt/rides/Rides-web && mkdir -p /opt/rides/Rides-web && tar -x -C /opt/rides/Rides-web'
+          $SSH 'cd /opt/rides/Rides-api/api-server && docker compose -f docker-compose.prod.yml up -d --build admin && docker image prune -f'
