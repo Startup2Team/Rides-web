@@ -44,7 +44,6 @@ const CUST_001: CustomerDetail = {
   is_suspended: false,
   total_rides: 34,
   total_spend: 187_000,
-  rating: 4.8,
   created_at: ago(180),
   last_seen_at: ago(0, 3),
   recent_trips: [
@@ -69,7 +68,6 @@ const CUST_002: CustomerDetail = {
   is_suspended: false,
   total_rides: 12,
   total_spend: 96_000,
-  rating: 4.5,
   created_at: ago(90),
   last_seen_at: ago(2),
   recent_trips: [
@@ -93,7 +91,6 @@ const CUST_003: CustomerDetail = {
   suspension_until: ago(-30), // 30 days in the future
   total_rides: 5,
   total_spend: 21_000,
-  rating: 2.9,
   created_at: ago(60),
   last_seen_at: ago(20),
   recent_trips: [
@@ -115,7 +112,6 @@ const CUST_004: CustomerDetail = {
   is_suspended: false,
   total_rides: 3,
   total_spend: 14_500,
-  rating: 5.0,
   created_at: ago(14),
   last_seen_at: ago(1),
   recent_trips: [
@@ -158,7 +154,6 @@ export const MOCK_API_CUSTOMERS: ApiCustomer[] = MOCK_CUSTOMER_IDS.map(
       suspension_until: d.suspension_until,
       total_rides: d.total_rides,
       total_spend: d.total_spend,
-      rating: d.rating,
       created_at: d.created_at,
       last_seen_at: d.last_seen_at,
     };

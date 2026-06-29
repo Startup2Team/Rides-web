@@ -198,13 +198,17 @@ export default function Hero() {
               tiltDeg={22}
               floatDelay="0s"
               className="relative z-10"
-            />
+            >
+              <DriverScreen />
+            </IphoneMockup>
             <IphoneMockup
               label="Rider"
               tiltDeg={-22}
               floatDelay="-2.5s"
               className="relative z-20 -ml-20"
-            />
+            >
+              <RiderScreen />
+            </IphoneMockup>
           </div>
         </div>
       </div>

@@ -231,7 +231,6 @@ const groups: {
     items: [
       { label: "System Settings", href: "/admin/settings", icon: icons.settings },
       { label: "Admins & Roles", href: "/admin/team", icon: icons.team },
-      { label: "Ride Packages", href: "/admin/packages", icon: icons.packages },
       { label: "Audit Log", href: "/admin/audit", icon: icons.audit },
     ],
   },

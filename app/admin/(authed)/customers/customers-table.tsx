@@ -31,7 +31,6 @@ function mapApiCustomer(c: ApiCustomer): Customer {
     lastTrip: c.last_seen_at
       ? new Date(c.last_seen_at).toLocaleDateString()
       : "—",
-    rating: c.rating ?? 0,
     preferredVehicle: "",
     status: mapCustomerStatus(c.is_suspended),
     recentTrips: [],
@@ -336,7 +335,7 @@ function CustomerCard({
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface/50 p-2.5">
+      <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-border bg-surface/50 p-2.5">
         <div className="text-center">
           <p className="text-sm font-bold tracking-tight text-foreground">
             {customer.trips}
@@ -345,7 +344,7 @@ function CustomerCard({
             Trips
           </p>
         </div>
-        <div className="border-x border-border text-center">
+        <div className="border-l border-border text-center">
           <p className="truncate text-sm font-bold tracking-tight text-foreground">
             {customer.spend === 0
               ? "—"
@@ -353,19 +352,6 @@ function CustomerCard({
           </p>
           <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
             Spend
-          </p>
-        </div>
-        <div className="text-center">
-          <p className="text-sm font-bold tracking-tight text-foreground">
-            {customer.rating === 0 ? "—" : (
-              <>
-                {customer.rating.toFixed(1)}{" "}
-                <span className="text-amber-500">★</span>
-              </>
-            )}
-          </p>
-          <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Rating
           </p>
         </div>
       </div>

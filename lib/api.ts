@@ -1,4 +1,7 @@
 import { clearToken, getToken } from "./auth";
+import { MOCK_LIVE_RIDES, MOCK_LIVE_RIDE_DETAILS, MOCK_LIVE_RIDES_STATS } from "./mock-live-rides";
+
+const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
@@ -36,7 +39,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (res.status === 204) return undefined as T;
 
-  const json = await res.json();
+  const text = await res.text();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let json: any;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Server error (${res.status})`);
+  }
 
   if (!res.ok) {
     // Backend error shape: { error: { code, message } }
@@ -594,7 +604,6 @@ export type Customer = {
   total_spend?: number;
   created_at: string;
   last_seen_at?: string | null;
-  rating?: number;
   notes?: string;
 };
 
@@ -714,23 +723,45 @@ export const getRides = (params: Record<string, string> = {}) => {
   return request<RidesResponse>(`/admin/rides${qs ? `?${qs}` : ""}`);
 };
 
-export const getLiveRides = (params: Record<string, string> = {}) => {
+export const getLiveRides = async (params: Record<string, string> = {}): Promise<RidesResponse> => {
+  if (NO_BACKEND) {
+    return {
+      rides: MOCK_LIVE_RIDES,
+      total: MOCK_LIVE_RIDES.length,
+    };
+  }
   const qs = new URLSearchParams(params).toString();
   return request<RidesResponse>(`/admin/rides/live${qs ? `?${qs}` : ""}`);
 };
 
-export const getLiveRidesStats = () =>
-  request<LiveRidesStats>("/admin/rides/live/stats");
+export const getLiveRidesStats = async (): Promise<LiveRidesStats> => {
+  if (NO_BACKEND) {
+    return MOCK_LIVE_RIDES_STATS;
+  }
+  return request<LiveRidesStats>("/admin/rides/live/stats");
+};
 
 export const getRide = (id: string) => request<RideDetail>(`/admin/rides/${id}`);
 
-export const getLiveRide = (id: string) => request<RideDetail>(`/admin/rides/live/${id}`);
+export const getLiveRide = async (id: string): Promise<RideDetail> => {
+  if (NO_BACKEND) {
+    const detail = MOCK_LIVE_RIDE_DETAILS[id];
+    if (detail) return detail;
+    throw new Error("Mock live ride not found");
+  }
+  return request<RideDetail>(`/admin/rides/live/${id}`);
+};
 
-export const interveneRide = (id: string, action: string, reason: string) =>
-  request<void>(`/admin/rides/live/${id}/intervene`, {
+export const interveneRide = async (id: string, action: string, reason: string): Promise<void> => {
+  if (NO_BACKEND) {
+    console.log(`[Mock API] Intervened ride ${id} with action=${action}, reason=${reason}`);
+    return;
+  }
+  return request<void>(`/admin/rides/live/${id}/intervene`, {
     method: "POST",
     body: { action, reason },
   });
+};
 
 // ── Negotiations ──────────────────────────────────────────────────────────
 
