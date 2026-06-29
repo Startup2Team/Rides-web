@@ -27,8 +27,7 @@ type Flow = {
 const FLOWS: Record<FlowId, Flow> = {
   welcome: {
     reply: [
-      "Hi 👋 I'm Rides, your assistant.",
-      "What can I help you with today? Pick a topic or just type your question.",
+      "Hey there! Welcome to Rides.\n\nI'm your smart assistant ask me anything about booking rides, becoming a driver, payments, or how Rides works across Rwanda.",
     ],
     next: [
       { label: "Become a driver", flow: "driver" },
@@ -143,14 +142,7 @@ const FLOWS: Record<FlowId, Flow> = {
   },
   "no-match": {
     reply: [
-      "I didn't quite catch that — I'm still learning! Try a topic below, or reach a human directly:",
-      {
-        body: "",
-        links: [
-          { label: "WhatsApp", href: "https://wa.me/250788000000", external: true },
-          { label: "Contact form", href: "/contact" },
-        ],
-      },
+      "Not feeling well Lol 😂\n\nTry asking me about rides, drivers, payments, or how Rides works across Rwanda!",
     ],
     next: [
       { label: "Become a driver", flow: "driver" },
@@ -205,16 +197,6 @@ export function Chatbot() {
   // Restore / seed history
   useEffect(() => {
     setMounted(true);
-    const stored = window.sessionStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as Message[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
-          return;
-        }
-      } catch { /* fall through */ }
-    }
     setTimeout(() => setMessages(flowToMessages(FLOWS.welcome)), 200);
   }, []);
 
@@ -286,174 +268,94 @@ export function Chatbot() {
         type="button"
         onClick={() => { setOpen((v) => !v); setHasNew(false); }}
         aria-label={open ? "Close chat" : "Open chat with Rides"}
-        className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/40 transition-transform hover:scale-[1.05] active:scale-[0.95]"
+        className="fixed bottom-6 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-[1.05] active:scale-[0.95]"
       >
-        <span
-          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${open ? "scale-100 opacity-100" : "scale-0 opacity-0"}`}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        {/* Close icon */}
+        <span className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${open ? "scale-100 opacity-100" : "scale-0 opacity-0"}`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </span>
-        <span
-          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${open ? "scale-0 opacity-0" : "scale-100 opacity-100"}`}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
+
+        {/* Open icon — logo + label */}
+        <span className={`absolute inset-0 flex flex-col items-center justify-center gap-0.5 transition-all duration-300 ${open ? "scale-0 opacity-0" : "scale-100 opacity-100"}`}>
+          <img src="/ridelogo.png" alt="" className="h-8 w-8 object-contain brightness-0 invert" aria-hidden />
+          <span className="text-[10px] font-black tracking-wide text-emerald-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]">Chat</span>
         </span>
-        {unread && (
-          <span className="absolute right-1 top-1 flex h-3 w-3">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-400 ring-2 ring-primary" />
-          </span>
-        )}
+
+
       </button>
 
-      {/* ── iPhone mockup panel ─────────────────────────────────────────── */}
+      {/* ── Chat panel ──────────────────────────────────────────────────── */}
       <div
         role="dialog"
         aria-label="Chat with Rides"
         aria-hidden={!open}
-        className={`fixed bottom-24 right-5 z-50 transition-all duration-300 ease-out ${
+        className={`fixed bottom-24 z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-black/20 transition-all duration-300 ease-out inset-x-4 sm:inset-x-auto sm:right-6 sm:w-80 ${
           open ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"
         }`}
+        style={{ height: "32rem" }}
       >
-        {/* Phone outer shell */}
-        <div className="relative w-[17rem]">
-
-          {/* Side buttons */}
-          <span aria-hidden className="absolute left-[-3px] top-14 h-6 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-600 to-zinc-500" />
-          <span aria-hidden className="absolute left-[-3px] top-24 h-9 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-600 to-zinc-500" />
-          <span aria-hidden className="absolute left-[-3px] top-36 h-9 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-600 to-zinc-500" />
-          <span aria-hidden className="absolute right-[-3px] top-20 h-12 w-[3px] rounded-r-sm bg-gradient-to-l from-zinc-600 to-zinc-500" />
-
-          {/* Phone frame */}
-          <div className="relative overflow-hidden rounded-[2.8rem] bg-gradient-to-b from-zinc-700 via-zinc-800 to-zinc-950 p-[4px] shadow-2xl shadow-black/50 ring-1 ring-inset ring-white/10">
-            <div className="relative overflow-hidden rounded-[2.5rem] bg-black p-[3px]">
-              <div className="relative overflow-hidden rounded-[2.3rem] bg-zinc-950" style={{ height: "36rem" }}>
-
-                {/* Dynamic Island */}
-                <div className="absolute left-1/2 top-2.5 z-30 flex h-[20px] w-[58px] -translate-x-1/2 items-center justify-between rounded-full bg-black px-[6px]">
-                  <span className="h-1 w-1 rounded-full bg-zinc-800" />
-                  <span className="h-[4px] w-[4px] rounded-full bg-zinc-700 ring-1 ring-inset ring-zinc-600" />
-                </div>
-
-                {/* Status bar — white text on dark */}
-                <div className="absolute inset-x-0 top-[14px] z-20 grid grid-cols-[1fr_66px_1fr] items-center px-4 text-white">
-                  <span className="flex items-center justify-end gap-1 pr-2 leading-none">
-                    <span className="text-[10px] font-semibold tabular-nums leading-none">9:41</span>
-                  </span>
-                  <div />
-                  <div className="flex items-center justify-start gap-1 pl-2">
-                    <svg viewBox="0 0 20 12" fill="currentColor" className="h-[9px]" aria-hidden>
-                      <rect x="0" y="8" width="3.6" height="4" rx="0.9" />
-                      <rect x="5.5" y="5.5" width="3.6" height="6.5" rx="0.9" />
-                      <rect x="11" y="2.5" width="3.6" height="9.5" rx="0.9" />
-                      <rect x="16.5" y="0" width="3.6" height="12" rx="0.9" />
-                    </svg>
-                    <span className="text-[9px] font-bold leading-none">5G</span>
-                    <span aria-hidden className="relative ml-0.5 flex items-center">
-                      <span className="flex h-[10px] w-[20px] items-center justify-center rounded-[3px] bg-white px-[1.5px]">
-                        <span className="text-[7px] font-bold leading-none tabular-nums text-zinc-900">92</span>
-                      </span>
-                      <span className="ml-[1px] h-[4px] w-[1.5px] rounded-r-[1px] bg-white/60" />
-                    </span>
-                  </div>
-                </div>
-
-                {/* Full screen chat layout */}
-                <div className="absolute inset-0 flex flex-col pt-9">
-
-                  {/* Chat header */}
-                  <div className="flex items-center gap-2.5 border-b border-white/10 bg-zinc-900/80 px-3 py-2 backdrop-blur-sm">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[13px] font-black text-white shadow-md shadow-primary/40">
-                      R
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-bold text-white leading-none">Rides</p>
-                      <p className="mt-0.5 flex items-center gap-1 text-[9px] text-zinc-400">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                        </span>
-                        Usually replies instantly
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={resetChat}
-                      aria-label="Restart conversation"
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-white/10 hover:text-white"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
-                        <polyline points="1 4 1 10 7 10" />
-                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  {/* Messages */}
-                  <div
-                    ref={scrollRef}
-                    className="flex-1 space-y-2.5 overflow-y-auto px-3 py-3"
-                    style={{ scrollbarWidth: "none" }}
-                  >
-                    {messages.map((m) => (
-                      <ChatBubble key={m.id} message={m} onClose={() => setOpen(false)} />
-                    ))}
-                    {typing && <TypingBubble />}
-                  </div>
-
-                  {/* Quick replies */}
-                  {quickReplies.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 border-t border-white/10 bg-zinc-900/60 px-3 py-2 backdrop-blur-sm">
-                      {quickReplies.map((q) => (
-                        <button
-                          key={q.label}
-                          type="button"
-                          onClick={() => handleQuickReply(q)}
-                          className="rounded-full border border-primary/40 bg-primary/15 px-2.5 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/25"
-                        >
-                          {q.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Input bar — iOS style */}
-                  <form
-                    onSubmit={handleSend}
-                    className="flex items-center gap-2 border-t border-white/10 bg-zinc-900 px-3 py-2.5"
-                  >
-                    <input
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder="Message…"
-                      className="h-8 flex-1 rounded-full bg-zinc-800 px-3 text-[11px] text-white placeholder-zinc-500 outline-none ring-1 ring-white/10 focus:ring-primary/60"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!input.trim()}
-                      aria-label="Send"
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-md shadow-primary/40 transition-transform hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
-                        <line x1="22" y1="2" x2="11" y2="13" />
-                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                      </svg>
-                    </button>
-                  </form>
-
-                  {/* Home indicator */}
-                  <div className="flex justify-center bg-zinc-900 pb-2">
-                    <div className="h-1 w-20 rounded-full bg-white/20" />
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Header */}
+        <div className="flex items-center gap-3 bg-primary px-4 py-3">
+          <img src="/ridelogo.png" alt="Rides" className="h-8 w-8 shrink-0 object-contain brightness-0 invert" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white leading-none">Rides Assistant</p>
           </div>
         </div>
+
+        {/* Messages */}
+        <div
+          ref={scrollRef}
+          className="relative flex-1 space-y-3 overflow-y-auto px-4 py-4"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {/* Wallpaper */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-0"
+            style={{
+              backgroundImage: "url('/ridelogo.png')",
+              backgroundSize: "150px",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+              opacity: 0.06,
+            }}
+          />
+          <div className="relative z-10 space-y-3">
+            {messages.map((m) => (
+              <ChatBubble key={m.id} message={m} onClose={() => setOpen(false)} />
+            ))}
+            {typing && <TypingBubble />}
+          </div>
+        </div>
+
+
+
+        {/* Input */}
+        <form
+          onSubmit={handleSend}
+          className="flex items-center gap-2 border-t border-border bg-card px-3 py-3"
+        >
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask me anything…"
+            className="h-9 flex-1 rounded-xl border border-border bg-surface px-3 text-xs text-foreground outline-none transition-colors focus:border-primary"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            aria-label="Send"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-md shadow-primary/30 transition-transform hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        </form>
       </div>
     </>
   );
@@ -466,10 +368,10 @@ function ChatBubble({ message, onClose }: { message: Message; onClose: () => voi
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[82%] rounded-2xl px-3 py-2 text-[11px] leading-relaxed ${
+        className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
           isUser
             ? "rounded-br-sm bg-primary text-white"
-            : "rounded-bl-sm bg-zinc-800 text-zinc-100 ring-1 ring-white/5"
+            : "rounded-bl-sm bg-card text-foreground ring-1 ring-border"
         }`}
       >
         {message.body && (
@@ -484,7 +386,7 @@ function ChatBubble({ message, onClose }: { message: Message; onClose: () => voi
                   href={l.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-white/20"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted"
                 >
                   {l.label}
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5" aria-hidden>
@@ -497,7 +399,7 @@ function ChatBubble({ message, onClose }: { message: Message; onClose: () => voi
                   key={l.label}
                   href={l.href}
                   onClick={onClose}
-                  className="inline-flex items-center rounded-lg bg-white/10 px-2 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-white/20"
+                  className="inline-flex items-center rounded-lg border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted"
                 >
                   {l.label}
                 </Link>
@@ -515,7 +417,7 @@ function ChatBubble({ message, onClose }: { message: Message; onClose: () => voi
 function TypingBubble() {
   return (
     <div className="flex justify-start">
-      <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-zinc-800 px-3 py-2.5 ring-1 ring-white/5">
+      <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-card px-3 py-2.5 ring-1 ring-border">
         {[0, 1, 2].map((i) => (
           <span
             key={i}

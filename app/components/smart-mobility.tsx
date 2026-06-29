@@ -334,7 +334,7 @@ function LiveOpsDashboard() {
 
 export default function SmartMobility() {
   return (
-    <section className="relative overflow-hidden py-12 lg:py-16">
+    <section className="relative overflow-hidden py-20 lg:py-28">
       <div
         aria-hidden
         className="pointer-events-none absolute -left-32 top-0 h-[28rem] w-[28rem] rounded-full bg-primary/10 blur-3xl"
@@ -346,20 +346,21 @@ export default function SmartMobility() {
 
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+          <div className="inline-flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="h-px w-8 bg-foreground/30" />
             The platform
-          </p>
-          <h2 className="mt-3 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-            Built for{" "}
-            <span className="text-primary">real-time</span> movement.
+            <span className="h-px w-8 bg-foreground/30" />
+          </div>
+          <h2 className="mt-5 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[3.25rem]">
+            Built for real-time movement.
           </h2>
-          <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
+          <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-[1.0625rem]">
             Live tracking, demand heatmaps, 15-second matching, and a
             negotiation-friendly fare engine. All running underneath your ride.
           </p>
         </div>
 
-        <div className="mt-12 grid items-center gap-10 lg:grid-cols-12 lg:gap-12">
+        <div className="mt-16 grid items-center gap-12 lg:mt-20 lg:grid-cols-12 lg:gap-14">
           <div className="lg:col-span-7">
             <LiveOpsDashboard />
           </div>

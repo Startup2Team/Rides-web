@@ -1,12 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { StatusPill } from "../_components";
 import { campaignStatusLabel, campaignStatusTone } from "./campaigns-console";
-import {
-  updateCampaign,
-  deleteCampaign,
-} from "@/lib/api";
 import {
   VEHICLE_LABELS,
   formatDate,
@@ -18,15 +14,10 @@ import {
 export function CampaignDetailDrawer({
   campaign,
   onClose,
-  onUpdate,
 }: {
   campaign: Campaign;
   onClose: () => void;
-  onUpdate: () => void;
 }) {
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -39,37 +30,6 @@ export function CampaignDetailDrawer({
       document.removeEventListener("keydown", onKey);
     };
   }, [onClose]);
-
-  async function handleStatusChange(status: "ACTIVE" | "EXPIRED") {
-    setSubmitting(true);
-    setError(null);
-    try {
-      await updateCampaign(campaign.id, { status });
-      onUpdate();
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update campaign status");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleArchive() {
-    if (!confirm("Are you sure you want to archive (soft-delete) this campaign?")) {
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      await deleteCampaign(campaign.id);
-      onUpdate();
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to archive campaign");
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   const isLive = campaign.status === "active";
   const isUpcoming = campaign.status === "scheduled" || campaign.status === "draft";
@@ -119,12 +79,6 @@ export function CampaignDetailDrawer({
         </header>
 
         <div className="flex-1 overflow-y-auto px-6 py-6">
-          {error ? (
-            <div className="mb-6 rounded-xl bg-destructive/15 p-4 text-xs font-semibold text-destructive">
-              {error}
-            </div>
-          ) : null}
-
           {/* Targeting */}
           <section className="rounded-2xl border border-border bg-muted/20 p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
@@ -203,9 +157,9 @@ export function CampaignDetailDrawer({
               Live window
             </p>
             <div className="mt-3 flex items-center gap-3 text-sm">
-              <Pin label="Starts" value={campaign.startsAt ? formatDateTime(campaign.startsAt) : "Immediate"} />
+              <Pin label="Starts" value={formatDateTime(campaign.startsAt)} />
               <span className="text-muted-foreground">→</span>
-              <Pin label="Ends" value={campaign.endsAt ? formatDateTime(campaign.endsAt) : "Never"} />
+              <Pin label="Ends" value={formatDateTime(campaign.endsAt)} />
             </div>
           </section>
 
@@ -215,32 +169,17 @@ export function CampaignDetailDrawer({
               Lifecycle actions
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Transition status or archive this campaign configuration.
+              Writes will be wired up once the backend lifecycle APIs ship in Phase 2.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {isUpcoming ? (
-                <ActionButton
-                  label="Activate now"
-                  tone="primary"
-                  disabled={submitting}
-                  onClick={() => handleStatusChange("ACTIVE")}
-                />
+                <ActionButton label="Activate now" tone="primary" disabled />
               ) : null}
               {isLive ? (
-                <ActionButton
-                  label="Expire campaign"
-                  tone="warn"
-                  disabled={submitting}
-                  onClick={() => handleStatusChange("EXPIRED")}
-                />
+                <ActionButton label="Expire campaign" tone="warn" disabled />
               ) : null}
-              {campaign.status === "expired" || campaign.status === "draft" ? (
-                <ActionButton
-                  label="Archive"
-                  tone="neutral"
-                  disabled={submitting}
-                  onClick={handleArchive}
-                />
+              {(campaign.status === "expired" || campaign.status === "draft") ? (
+                <ActionButton label="Archive" tone="neutral" disabled />
               ) : null}
               <ActionButton label="Preview in app" tone="neutral" disabled />
             </div>
@@ -324,24 +263,21 @@ function ActionButton({
   label,
   tone,
   disabled,
-  onClick,
 }: {
   label: string;
   tone: "primary" | "warn" | "neutral";
   disabled?: boolean;
-  onClick?: () => void;
 }) {
   const style =
     tone === "primary"
-      ? "bg-primary text-primary-foreground hover:bg-primary/95"
+      ? "bg-primary text-primary-foreground"
       : tone === "warn"
-      ? "bg-amber-500 text-white hover:bg-amber-600"
-      : "border border-border bg-card text-foreground hover:bg-muted/50";
+      ? "bg-amber-500 text-white"
+      : "border border-border bg-card text-foreground";
   return (
     <button
       type="button"
       disabled={disabled}
-      onClick={onClick}
       className={`inline-flex h-10 items-center justify-center rounded-lg px-4 text-xs font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50 ${style}`}
     >
       {label}

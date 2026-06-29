@@ -9,6 +9,9 @@ import {
   type DriversOverviewStats,
   type VehicleSlug,
 } from "@/lib/drivers";
+import type { VehicleSlug as DriverFormSlug } from "@/lib/driver-registration";
+import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
+import { getLocalApiDrivers } from "@/lib/local-drivers";
 import { AdminPageHeader, StatCard } from "../_components";
 import { AddDriverButton } from "./add-driver-button";
 
@@ -83,6 +86,19 @@ const byCategory: Record<VehicleSlug, CategoryView> = {
       { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
     ],
   },
+  rifani: {
+    eyebrow: "Operations · Rifani",
+    title: "Rifani drivers",
+    subtitle: "Manage Rifani three-wheel drivers providing affordable short-distance transport.",
+    addLabel: "Add Rifani driver",
+    defaultVehicle: "rifani",
+    cards: (s) => [
+      { label: "Total Rifani Drivers", value: String(s.total), hint: "registered Rifani drivers" },
+      { label: "On Duty", value: String(s.online), hint: "online and available" },
+      { label: "On Trip", value: String(s.onTrip), hint: "trips in progress" },
+      { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
+    ],
+  },
   fuso: {
     eyebrow: "Operations · Fuso",
     title: "Heavy Fuso drivers",
@@ -139,11 +155,17 @@ export function DriversOverview() {
 
         const res = await getDriversOverview(params);
         if (cancelled) return;
+        const extras = [
+          ...MOCK_API_DRIVERS,
+          ...getLocalApiDrivers(),
+        ].filter((d) => !vehicleType || d.transport_type === vehicleType);
+        const isPending = (d: { approval_status?: string }) =>
+          ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
         setStats({
-          total: res.total ?? 0,
+          total: (res.total ?? 0) + extras.length,
           online: res.online ?? 0,
           onTrip: res.on_trip ?? 0,
-          pending: res.pending ?? 0,
+          pending: (res.pending ?? 0) + extras.filter(isPending).length,
           suspended: res.suspended ?? 0,
         });
       } catch (err) {
@@ -161,6 +183,38 @@ export function DriversOverview() {
     };
   }, [slug]);
 
+  useEffect(() => {
+    const handle = () => {
+      let cancelled = false;
+      void (async () => {
+        try {
+          const vehicleType = slug ? vehicleTypeFromSlug(slug) : undefined;
+          const params: Record<string, string> = {};
+          if (vehicleType) params.vehicle_type = vehicleType;
+          const res = await getDriversOverview(params);
+          if (cancelled) return;
+          const extras = [...MOCK_API_DRIVERS, ...getLocalApiDrivers()].filter(
+            (d) => !vehicleType || d.transport_type === vehicleType,
+          );
+          const isPending = (d: { approval_status?: string }) =>
+            ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
+          setStats({
+            total: (res.total ?? 0) + extras.length,
+            online: res.online ?? 0,
+            onTrip: res.on_trip ?? 0,
+            pending: (res.pending ?? 0) + extras.filter(isPending).length,
+            suspended: res.suspended ?? 0,
+          });
+        } catch {
+          /* ignore — keep previous stats */
+        }
+      })();
+      return () => { cancelled = true; };
+    };
+    window.addEventListener("localDriversUpdated", handle);
+    return () => window.removeEventListener("localDriversUpdated", handle);
+  }, [slug]);
+
   const cards = view.cards(stats);
 
   return (
@@ -175,7 +229,7 @@ export function DriversOverview() {
             label={view.addLabel}
             defaultVehicle={
               slug
-                ? (slug as "moto" | "cab" | "hilux" | "fuso")
+                ? (slug as DriverFormSlug)
                 : undefined
             }
           />

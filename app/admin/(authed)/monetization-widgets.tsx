@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { hasPermission } from "@/lib/admin-permissions";
-import { getAdminCampaigns } from "@/lib/api";
 import {
   MOCK_CAMPAIGNS,
   MOCK_ENTITLEMENTS,
@@ -254,43 +252,13 @@ export function LowBalanceDriversWidget() {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 export function ActiveCampaignsWidget() {
-  const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getAdminCampaigns()
-      .then((res) => {
-        const mapped = (res || []).map((c) => {
-          let audience = "all";
-          if (c.type === "FIRST_PURCHASE") {
-            audience = "first-purchase";
-          } else if (c.type === "VEHICLE_TYPE" || c.type === "PACKAGE") {
-            audience = "vehicle-type";
-          }
-          return {
-            id: c.id,
-            name: c.name,
-            status: c.status.toLowerCase(),
-            audience,
-          };
-        });
-        setCampaigns(mapped);
-      })
-      .catch((err) => console.error("Failed to load campaigns for widget:", err))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const active = campaigns.filter((c) => c.status === "active");
-  const scheduled = campaigns.filter((c) => c.status === "scheduled");
-  const featured = [...active, ...scheduled].slice(0, 4);
+  const active = MOCK_CAMPAIGNS.filter((c) => c.status === "active");
+  const scheduled = MOCK_CAMPAIGNS.filter((c) => c.status === "scheduled");
+  const featured: Campaign[] = [...active, ...scheduled].slice(0, 4);
 
   return (
-    <WidgetShell title="Campaigns" pill={loading ? "..." : `${active.length} live`} growBody>
-      {loading ? (
-        <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
-          Loading...
-        </div>
-      ) : featured.length === 0 ? (
+    <WidgetShell title="Campaigns" pill={`${active.length} live`} growBody>
+      {featured.length === 0 ? (
         <EmptyState label="No active or scheduled campaigns." />
       ) : (
         <ul className="-mx-1 space-y-1">
@@ -302,7 +270,7 @@ export function ActiveCampaignsWidget() {
                     {c.name}
                   </p>
                   <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    {audienceLabel(c as any)}
+                    {audienceLabel(c)}
                   </p>
                 </div>
                 <CampaignBadge status={c.status} />

@@ -103,7 +103,7 @@ export function ContactForm() {
         <button
           type="button"
           onClick={resetForm}
-          className="mt-6 inline-flex h-10 items-center rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-alt"
+          className="mt-6 inline-flex h-11 items-center rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-alt"
         >
           Send another
         </button>
@@ -114,7 +114,7 @@ export function ContactForm() {
   // Shared input class — underline-only, transparent bg, focuses by changing
   // the bottom border to primary. Errors switch to red-400.
   const inputClass = (hasError: boolean) =>
-    `block w-full bg-transparent border-0 border-b px-0 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus:border-primary ${
+    `block min-h-[44px] w-full bg-transparent border-0 border-b px-0 py-3 text-base text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus:border-primary sm:text-sm ${
       hasError ? "border-red-300" : "border-border"
     }`;
 
@@ -176,7 +176,7 @@ export function ContactForm() {
         <button
           type="submit"
           disabled={state === "sending"}
-          className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-10 text-[11px] font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 sm:w-auto"
+          className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-10 text-[11px] font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-primary sm:w-auto"
         >
           {state === "sending" ? (
             <>

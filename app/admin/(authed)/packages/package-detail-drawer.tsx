@@ -2,15 +2,7 @@
 
 import { useEffect } from "react";
 import { StatusPill } from "../_components";
-export function versionStatusTone(status: string): "success" | "warn" | "info" | "neutral" {
-  const tones: Record<string, "success" | "warn" | "info" | "neutral"> = {
-    active: "success",
-    scheduled: "info",
-    draft: "warn",
-    archived: "neutral",
-  };
-  return tones[status] || "neutral";
-}
+import { versionStatusTone } from "./packages-console";
 import {
   VEHICLE_LABELS,
   formatDate,

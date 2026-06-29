@@ -260,8 +260,8 @@ function Step01() {
           <span className="h-px w-8 bg-primary" />
           Step 01
         </p>
-        <h3 className="mt-4 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-          Book in <span className="text-primary">seconds.</span>
+        <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
+          Book in seconds.
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
           Open the app, pick a moto, cab, hilux, or fuso, tap a destination.
@@ -394,8 +394,8 @@ function Step02() {
           <span className="h-px w-8 bg-primary" />
           Step 02
         </p>
-        <h3 className="mt-4 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-          First to accept, <span className="text-primary">yours.</span>
+        <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
+          First to accept, yours.
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
           Your request goes out to every nearby driver at once. The first one
@@ -565,8 +565,8 @@ function Step03() {
           <span className="h-px w-8 bg-primary" />
           Step 03
         </p>
-        <h3 className="mt-4 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-          Agree on the <span className="text-primary">fare.</span>
+        <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
+          Agree on the fare.
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
           See the suggested price up front. Send a counter-offer if it doesn&apos;t
@@ -778,8 +778,8 @@ function Step04() {
           <span className="h-px w-8 bg-primary" />
           Step 04
         </p>
-        <h3 className="mt-4 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-          Track the whole <span className="text-primary">trip.</span>
+        <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
+          Track the whole trip.
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
           Watch your driver approach in real time. Share the live trip with
@@ -917,8 +917,8 @@ function Step05() {
           <span className="h-px w-8 bg-primary" />
           Step 05
         </p>
-        <h3 className="mt-4 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-          Pay and <span className="text-primary">rate.</span>
+        <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
+          Pay and rate.
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
           Wrap up with MoMo, Airtel, or cash to your driver. Rate the trip to
@@ -952,18 +952,19 @@ export default function HowItWorks() {
   }, []);
 
   return (
-    <section id="how-it-works" className="relative py-12 lg:py-16">
+    <section id="how-it-works" className="relative py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-6">
         {/* Intro */}
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+          <div className="inline-flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="h-px w-8 bg-foreground/30" />
             How it works
-          </p>
-          <h2 className="mt-3 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-            From request to rating,{" "}
-            <span className="text-primary">in 5 steps.</span>
+            <span className="h-px w-8 bg-foreground/30" />
+          </div>
+          <h2 className="mt-5 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[3.25rem]">
+            From request to rating, in 5 steps.
           </h2>
-          <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
+          <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-[1.0625rem]">
             Book, agree on a fair fare, ride, pay, rate. Every step on your
             terms.
           </p>
@@ -983,7 +984,7 @@ export default function HowItWorks() {
                   href={`#${s.id}`}
                   aria-label={`Jump to step ${i + 1}`}
                   aria-current={isActive ? "step" : undefined}
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-bold tabular-nums transition-colors sm:h-10 sm:w-10 sm:text-xs ${
+                  className={`flex h-11 w-11 items-center justify-center rounded-full text-xs font-bold tabular-nums transition-colors ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-md"
                       : "text-muted-foreground hover:bg-surface hover:text-foreground"
@@ -996,7 +997,7 @@ export default function HowItWorks() {
           </nav>
         </div>
 
-        <div className="mt-12 space-y-12 lg:space-y-16">
+        <div className="mt-16 space-y-20 lg:mt-20 lg:space-y-28">
           <Step01 />
           <Step02 />
           <Step03 />

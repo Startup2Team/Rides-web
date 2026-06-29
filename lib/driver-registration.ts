@@ -1,58 +1,159 @@
 /** Document API types — aligned with mobile driver onboarding + backend admin API. */
 
-export type DocKey = "license" | "insurance" | "authorization";
+export type DocKey = "national_id" | "license" | "insurance" | "authorization";
 
 export type DocFaces = [File | null, File | null];
 
 export const DOC_LABELS: Record<
   DocKey,
-  { label: string; hint: string; frontRequired: boolean }
+  { label: string; hint: string; frontRequired: boolean; backRequired: boolean; twoFaces: boolean }
 > = {
+  national_id: {
+    label: "National ID",
+    hint: "Both front and back faces required — JPEG, PNG or PDF",
+    frontRequired: true,
+    backRequired: true,
+    twoFaces: true,
+  },
   license: {
     label: "Driver's licence",
-    hint: "Front and back faces — JPEG, PNG or PDF",
+    hint: "Both front and back faces required — JPEG, PNG or PDF",
     frontRequired: true,
+    backRequired: true,
+    twoFaces: true,
   },
   insurance: {
     label: "Vehicle insurance document",
-    hint: "Front face required — JPEG, PNG or PDF",
+    hint: "Single-face document — JPEG, PNG or PDF",
     frontRequired: true,
+    backRequired: false,
+    twoFaces: false,
   },
   authorization: {
     label: "Vehicle authorization / inspection certificate",
-    hint: "Front face required — JPEG, PNG or PDF",
+    hint: "Single-face document — JPEG, PNG or PDF",
     frontRequired: true,
+    backRequired: false,
+    twoFaces: false,
   },
 };
 
-export const DOC_API_TYPE: Record<DocKey, [string, string]> = {
+export const DOC_API_TYPE: Record<DocKey, string[]> = {
+  national_id: ["NATIONAL_ID_FRONT", "NATIONAL_ID_BACK"],
   license: ["LICENCE_FRONT", "LICENCE_BACK"],
-  insurance: ["VEHICLE_INSURANCE", "VEHICLE_INSURANCE_BACK"],
-  authorization: ["VEHICLE_AUTHORIZATION", "VEHICLE_AUTHORIZATION_BACK"],
+  insurance: ["VEHICLE_INSURANCE"],
+  authorization: ["VEHICLE_AUTHORIZATION"],
 };
 
-export type VehicleSlug = "moto" | "cab" | "hilux" | "fuso";
+export type VehicleSlug = "moto" | "rifani" | "cab" | "hilux" | "fuso";
 
-export const RWANDA_PLATE_PATTERNS = [
-  { regex: /^R[A-Z]{2}\s\d{3}\s[A-Z]$/, label: "Private: RAA 000 A" },
-  { regex: /^RAC\s\d{3}\s[A-Z]$/, label: "Commercial: RAC 000 A" },
-  { regex: /^RAD\s\d{3}\s[A-Z]$/, label: "Motorcycle: RAD 000 A" },
-];
+// Moto & Rifani : RX XXX X  — R + 1 letter + 3 digits + 1 letter  (e.g. RA 042 B)
+const PLATE_MOTO = /^R[A-Z] \d{3} [A-Z]$/;
+// Cab / Hilux / Fuso : RXX XXX X  — R + 2 letters + 3 digits + 1 letter  (e.g. RAC 118 G)
+const PLATE_STD  = /^R[A-Z]{2} \d{3} [A-Z]$/;
 
-export function validatePlate(plate: string): string | null {
+export function validatePlate(plate: string, vehicleSlug?: VehicleSlug): string | null {
   const cleaned = plate.trim().toUpperCase();
   if (!cleaned) return null;
-  if (RWANDA_PLATE_PATTERNS.some((p) => p.regex.test(cleaned))) return null;
-  if (cleaned.length >= 5) {
-    return "Format not matched — verify Rwanda plate standards (RAD/RAC/RAA 000 A).";
+  const isMotoLike = vehicleSlug === "moto" || vehicleSlug === "rifani";
+  if (isMotoLike ? PLATE_MOTO.test(cleaned) : PLATE_STD.test(cleaned)) return null;
+  if (cleaned.length >= 4) {
+    return isMotoLike
+      ? "Format: RX XXX X — R + 1 letter + 3 digits + 1 letter (e.g. RA 042 B)"
+      : "Format: RXX XXX X — R + 2 letters + 3 digits + 1 letter (e.g. RAC 118 G)";
   }
   return null;
 }
 
 export function minAgeDob(): string {
   const d = new Date();
-  d.setFullYear(d.getFullYear() - 16);
+  d.setFullYear(d.getFullYear() - 18);
   return d.toISOString().slice(0, 10);
+}
+
+export function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Auto-format a Rwanda NID as the user types.
+ * Groups: X XXXXX XXXXXXX X XX  (1·5·7·1·2 = 16 digits)
+ * Only digits are allowed; non-digit characters are stripped.
+ */
+export function formatRwandaNationalId(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 16);
+  const parts = [d.slice(0, 1), d.slice(1, 6), d.slice(6, 13), d.slice(13, 14), d.slice(14, 16)];
+  return parts.filter(Boolean).join(" ");
+}
+
+/**
+ * Auto-format a Rwanda plate number as the user types.
+ * Moto / Rifani  → RX XXX X  (2 letters · 3 digits · 1 letter = 6 alphanum chars)
+ * Others         → RXX XXX X (3 letters · 3 digits · 1 letter = 7 alphanum chars)
+ */
+export function formatRwandaPlate(raw: string, vehicleSlug?: VehicleSlug): string {
+  const s = raw.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+  const isMotoLike = vehicleSlug === "moto" || vehicleSlug === "rifani";
+  const prefixLen = isMotoLike ? 2 : 3;
+  const chars = s.slice(0, prefixLen + 4); // prefix + 3 digits + 1 letter
+  const prefix = chars.slice(0, prefixLen);
+  const digits = chars.slice(prefixLen, prefixLen + 3);
+  const suffix = chars.slice(prefixLen + 3, prefixLen + 4);
+  let out = prefix;
+  if (digits) out += " " + digits;
+  if (suffix) out += " " + suffix;
+  return out;
+}
+
+/** Plate placeholder showing the expected format for the given vehicle type. */
+export function platePlaceholder(vehicleSlug?: VehicleSlug): string {
+  return vehicleSlug === "moto" || vehicleSlug === "rifani" ? "RA 000 B" : "RAC 000 A";
+}
+
+/** Rwanda NID is exactly 16 digits (spaces allowed, stripped before check). */
+export function validateRwandaNationalId(raw: string): string | null {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length !== 16) {
+    return `National ID must be 16 digits — got ${digits.length}`;
+  }
+  return null;
+}
+
+/** Full name: at least two words, letters only (no digits or special chars). */
+export function validateFullName(raw: string): string | null {
+  const name = raw.trim();
+  if (name.length < 3) return "Name is too short";
+  if (!/^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$/.test(name)) return "Name must contain letters only";
+  if (name.split(/\s+/).filter(Boolean).length < 2) return "Enter first and last name";
+  return null;
+}
+
+/**
+ * Rwanda driving licence: DL- prefix + exactly 16 alphanumeric chars (19 total).
+ */
+export function validateLicenseNumber(raw: string): string | null {
+  const v = raw.trim().toUpperCase();
+  if (!v.startsWith("DL-")) return 'Licence number must start with "DL-"';
+  const num = v.slice(3);
+  if (num.length !== 16) return `16 characters required after "DL-" — got ${num.length}`;
+  if (!/^[A-Z0-9]+$/.test(num)) return "Only letters and digits allowed after the DL- prefix";
+  return null;
+}
+
+/** Passenger seats: 1–20. */
+export function validatePassengerSeats(raw: string): string | null {
+  const n = parseInt(raw, 10);
+  if (isNaN(n) || n < 1) return "Enter at least 1 seat";
+  if (n > 20) return "Maximum 20 passenger seats";
+  return null;
+}
+
+/** Load capacity in kg: 100 kg – 30 000 kg. */
+export function validateLoadCapacity(raw: string): string | null {
+  const n = parseInt(raw, 10);
+  if (isNaN(n) || n < 100) return "Enter at least 100 kg";
+  if (n > 30000) return "Maximum load capacity is 30 000 kg";
+  return null;
 }
 
 const RWANDA_MOBILE_LENGTH = 10;
