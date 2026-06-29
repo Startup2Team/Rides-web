@@ -83,13 +83,15 @@ function StatBox({
   label,
   value,
   sub,
+  className = "",
 }: {
   label: string;
   value: React.ReactNode;
   sub?: string;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-surface/40 p-3">
+    <div className={`flex flex-col rounded-xl border border-border bg-surface/40 p-3 ${className}`}>
       <span className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
@@ -219,32 +221,7 @@ export default function CustomerProfilePage() {
       ? Math.round(detail.total_spend / detail.total_rides)
       : 0;
 
-  /* derive unique drivers who served this customer */
-  const driverMap = new Map<
-    string,
-    { id: string; name: string; phone: string; plate: string; vehicleType: string; tripCount: number; lastTrip: string }
-  >();
-  for (const t of detail.recent_trips ?? []) {
-    if (!t.driver_id) continue;
-    const existing = driverMap.get(t.driver_id);
-    if (existing) {
-      existing.tripCount++;
-      if (t.created_at > existing.lastTrip) existing.lastTrip = t.created_at;
-    } else {
-      driverMap.set(t.driver_id, {
-        id: t.driver_id,
-        name: t.driver_name ?? "Unknown",
-        phone: t.driver_phone ?? "—",
-        plate: t.vehicle_plate ?? "—",
-        vehicleType: t.transport_type,
-        tripCount: 1,
-        lastTrip: t.created_at,
-      });
-    }
-  }
-  const uniqueDrivers = Array.from(driverMap.values()).sort(
-    (a, b) => b.tripCount - a.tripCount,
-  );
+
 
   return (
     <div className="space-y-6">
@@ -306,51 +283,6 @@ export default function CustomerProfilePage() {
             )}
           </section>
 
-          {/* Drivers who served this customer */}
-          <section className="rounded-2xl border border-border bg-card">
-            <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
-              <h2 className="text-sm font-semibold text-foreground">Drivers in our system</h2>
-              <span className="text-[11px] text-muted-foreground">
-                {uniqueDrivers.length} unique driver{uniqueDrivers.length !== 1 ? "s" : ""}
-              </span>
-            </div>
-
-            {uniqueDrivers.length === 0 ? (
-              <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-                No driver data available.
-              </p>
-            ) : (
-              <div className="divide-y divide-border">
-                {uniqueDrivers.map((d) => (
-                  <div key={d.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar name={d.name} tone="neutral" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{d.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{d.phone}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                      <div className="text-center">
-                        <p className="text-sm font-bold text-foreground">{d.tripCount}</p>
-                        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">trips</p>
-                      </div>
-                      <div className="text-right min-w-0">
-                        <p className="text-[11px] font-medium text-foreground">{d.plate}</p>
-                        <VehicleBadge type={d.vehicleType} />
-                      </div>
-                      <Link
-                        href={`/admin/drivers/${d.id}`}
-                        className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
-                      >
-                        Profile
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
         </div>
 
         {/* ── sidebar ─────────────────────────────────────────────────────── */}
@@ -403,6 +335,11 @@ export default function CustomerProfilePage() {
               value={detail.total_rides}
             />
             <StatBox
+              label="Avg fare"
+              value={avgFare ? `${Math.round(avgFare / 1000)}K` : "—"}
+              sub={avgFare ? "RWF" : undefined}
+            />
+            <StatBox
               label="Total spend"
               value={
                 detail.total_spend
@@ -410,22 +347,7 @@ export default function CustomerProfilePage() {
                   : "—"
               }
               sub={detail.total_spend ? "RWF" : undefined}
-            />
-            <StatBox
-              label="Avg fare"
-              value={avgFare ? `${Math.round(avgFare / 1000)}K` : "—"}
-              sub={avgFare ? "RWF" : undefined}
-            />
-            <StatBox
-              label="Rating"
-              value={
-                detail.rating ? (
-                  <>
-                    {detail.rating.toFixed(1)}{" "}
-                    <span className="text-amber-500 text-sm">★</span>
-                  </>
-                ) : "—"
-              }
+              className="col-span-2"
             />
           </div>
 

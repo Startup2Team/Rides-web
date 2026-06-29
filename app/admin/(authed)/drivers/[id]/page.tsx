@@ -11,7 +11,8 @@ import {
 } from "@/lib/api";
 import { mapDriverDetailToVerify } from "@/lib/drivers";
 import { isMockDriverId, MOCK_DRIVERS } from "@/lib/mock-drivers";
-import { isLocalDriverId, getLocalDriverDetail } from "@/lib/local-drivers";
+import { isLocalDriverId, getLocalDriverDetail, saveLocalDriver } from "@/lib/local-drivers";
+import { useAuth } from "@/context/auth-context";
 import type { VerifyDriver, ReviewHistoryEntry } from "../verify-driver-modal";
 
 type DocKey = "national_id" | "license" | "insurance" | "authorization";
@@ -24,12 +25,12 @@ const DOCS: { key: DocKey; label: string }[] = [
 ];
 
 const REJECTION_REASONS = [
-  "Image is blurry or unreadable",
+  "Image is blurry, dark, or partially visible",
   "Document has expired",
-  "Personal information does not match",
-  "Wrong document type submitted",
-  "Document is cut off or incomplete",
-  "Signature or stamp is missing",
+  "Wrong document uploaded",
+  "Document cannot be fully verified",
+  "Vehicle information does not match",
+  "Driving license category is not eligible",
   "Other",
 ] as const;
 
@@ -133,18 +134,22 @@ function decisionMeta(decision: ReviewHistoryEntry["decision"]) {
 }
 
 function ReviewHistorySection({ history }: { history: ReviewHistoryEntry[] }) {
-  // Render nothing if no prior decisions — keeps the page clean for first-time reviews.
-  if (!history || history.length === 0) return null;
-
-  // Newest first — defensively re-sort in case the backend hasn't.
-  const sorted = [...history].sort(
-    (a, b) => new Date(b.decidedAt).getTime() - new Date(a.decidedAt).getTime(),
-  );
+  const hasHistory = history && history.length > 0;
+  const sorted = hasHistory
+    ? [...history].sort((a, b) => new Date(b.decidedAt).getTime() - new Date(a.decidedAt).getTime())
+    : [];
   const latest = sorted[0];
+
+  const [expanded, setExpanded] = useState(() => {
+    if (!latest) return false;
+    return latest.decision !== "approved";
+  });
+
+  // Render nothing if no prior decisions — keeps the page clean for first-time reviews.
+  if (!hasHistory) return null;
+
   const latestMeta = decisionMeta(latest.decision);
   const previousCount = sorted.length - 1;
-
-  const [expanded, setExpanded] = useState(latest.decision !== "approved");
 
   return (
     <section
@@ -462,6 +467,7 @@ function DocumentPreview({ kind, driver }: { kind: DocKey; driver: VerifyDriver 
 export default function DriverReviewPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
+  const { user } = useAuth();
 
   const [driver, setDriver] = useState<VerifyDriver | null>(null);
   const [loading, setLoading] = useState(true);
@@ -480,6 +486,7 @@ export default function DriverReviewPage() {
   });
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     if (isMock) {
       // Simulate a brief network delay so the loading state is visible.
@@ -534,8 +541,24 @@ export default function DriverReviewPage() {
     if (!driver) return;
     setActionLoading(true);
     try {
-      if (!isMock && !isLocal) await approveDriver(driver.id);
-      setToast(isMock || isLocal ? "[Local] Driver approved — no real API call made." : "Driver approved successfully!");
+      if (!isMock && !isLocal) {
+        await approveDriver(driver.id);
+      } else if (isLocal) {
+        const detail = getLocalDriverDetail(driver.id);
+        if (detail) {
+          detail.approval_status = "approved";
+          const historyEntry = {
+            id: Math.random().toString(36).substring(2, 9),
+            decided_at: new Date().toISOString(),
+            decided_by: user?.name || "Admin (Mock)",
+            decision: "approved" as const,
+          };
+          detail.review_history = [historyEntry, ...(detail.review_history ?? [])];
+          saveLocalDriver(detail);
+          window.dispatchEvent(new Event("localDriversUpdated"));
+        }
+      }
+      setToast(isMock ? "[Local] Driver approved — no real API call made." : "Driver approved successfully!");
       setTimeout(() => router.push("/admin/drivers"), 1500);
     } catch (err) {
       setToast(err instanceof Error ? err.message : "Failed to approve driver");
@@ -560,8 +583,52 @@ export default function DriverReviewPage() {
       })
       .join("; ");
     try {
-      if (!isMock && !isLocal) await rejectDriver(driver.id, reasons || "Application rejected by admin");
-      setToast(isMock || isLocal ? "[Local] Application rejected — no real API call made." : "Driver application rejected");
+      if (!isMock && !isLocal) {
+        await rejectDriver(driver.id, reasons || "Application rejected by admin");
+      } else if (isLocal) {
+        const detail = getLocalDriverDetail(driver.id);
+        if (detail) {
+          detail.approval_status = "rejected";
+          const documentDecisions = DOCS.map((d) => {
+            const dec = decisions[d.key];
+            let decisionVal: "accepted" | "rejected" | "more_info" = "accepted";
+            if (dec.front.status === "rejected" || dec.back.status === "rejected") {
+              decisionVal = "rejected";
+            }
+            return {
+              documentType: d.label,
+              decision: decisionVal,
+              comment: `${faceText(dec.front)}${DOC_LABELS[d.key].twoFaces ? ` / ${faceText(dec.back)}` : ""}`,
+            };
+          });
+          const historyEntry = {
+            id: Math.random().toString(36).substring(2, 9),
+            decided_at: new Date().toISOString(),
+            decided_by: user?.name || "Admin (Mock)",
+            decision: "rejected" as const,
+            reason: reasons || "Application rejected by admin",
+            documentDecisions,
+          };
+          detail.review_history = [
+            {
+              id: historyEntry.id,
+              decided_at: historyEntry.decided_at,
+              decided_by: historyEntry.decided_by,
+              decision: historyEntry.decision,
+              reason: historyEntry.reason,
+              document_decisions: historyEntry.documentDecisions.map((dd) => ({
+                document_type: dd.documentType,
+                decision: dd.decision,
+                comment: dd.comment,
+              })),
+            },
+            ...(detail.review_history ?? []),
+          ];
+          saveLocalDriver(detail);
+          window.dispatchEvent(new Event("localDriversUpdated"));
+        }
+      }
+      setToast(isMock ? "[Local] Application rejected — no real API call made." : "Driver application rejected");
       setTimeout(() => router.push("/admin/drivers"), 1500);
     } catch (err) {
       setToast(err instanceof Error ? err.message : "Failed to reject application");
@@ -654,7 +721,7 @@ export default function DriverReviewPage() {
         </Link>
       </div>
 
-      {!isLocal && driver.reviewHistory && driver.reviewHistory.length > 0 ? (
+      {driver.reviewHistory && driver.reviewHistory.length > 0 ? (
         <ReviewHistorySection history={driver.reviewHistory} />
       ) : null}
 
@@ -769,11 +836,11 @@ export default function DriverReviewPage() {
 
         {/* Sidebar Info — sticky so it stays visible while scrolling docs */}
         <div className="lg:col-span-4">
-          <div className="sticky top-6 rounded-2xl border border-border bg-card p-5 space-y-5">
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">Driver and Vehicle Info</h2>
+          <div className="sticky top-6 rounded-2xl border border-border bg-card p-4 space-y-3.5">
+            <h2 className="text-xs font-bold tracking-tight text-foreground">Driver and Vehicle Info</h2>
 
             {/* Personal */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <InfoRow label="Phone number" value={driver.kyc.phone} />
               <InfoRow label="Date of birth / Age" value={`${driver.kyc.dob} (Age ${driver.kyc.age})`} />
               <InfoRow label="Residential location" value={driver.kyc.location} />
@@ -784,16 +851,16 @@ export default function DriverReviewPage() {
             <div className="border-t border-border" />
 
             {/* National ID */}
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-primary">National ID</p>
+            <div className="space-y-1">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-primary">National ID</p>
               <InfoRow label="ID number" value={driver.kyc.nationalIdNumber || "—"} mono />
             </div>
 
             <div className="border-t border-border" />
 
-            {/* Driver's Licence */}
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Driver's Licence</p>
+            {/* Driver&apos;s Licence */}
+            <div className="space-y-1">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-primary">Driver&apos;s Licence</p>
               <InfoRow label="Licence number" value={driver.kyc.licenseNumber} mono />
               <InfoRow label="Issued" value={driver.kyc.licenseIssuedDate || "—"} />
               <InfoRow label="Expires" value={driver.kyc.licenseExpiryDate || "—"} />
@@ -802,8 +869,8 @@ export default function DriverReviewPage() {
             <div className="border-t border-border" />
 
             {/* Vehicle Insurance */}
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Vehicle Insurance</p>
+            <div className="space-y-1">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-primary">Vehicle Insurance</p>
               <InfoRow label="Issued" value={driver.kyc.insuranceIssuedDate || "—"} />
               <InfoRow label="Expires" value={driver.kyc.insuranceExpiryDate || "—"} />
             </div>
@@ -811,8 +878,8 @@ export default function DriverReviewPage() {
             <div className="border-t border-border" />
 
             {/* Vehicle Authorization */}
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Vehicle Authorization</p>
+            <div className="space-y-1">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-primary">Vehicle Authorization</p>
               <InfoRow label="Issued" value={driver.kyc.authorizationIssuedDate || "—"} />
               <InfoRow label="Expires" value={driver.kyc.authorizationExpiryDate || "—"} />
             </div>

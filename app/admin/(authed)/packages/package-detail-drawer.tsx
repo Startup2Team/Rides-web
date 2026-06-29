@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { StatusPill } from "../_components";
-import { versionStatusTone } from "./packages-console";
 import {
   VEHICLE_LABELS,
   formatDate,
@@ -329,4 +328,19 @@ function statusLabel(status: PackageVersion["status"]): string {
     draft: "Draft",
     archived: "Archived",
   }[status];
+}
+
+function versionStatusTone(status: PackageVersion["status"]): "success" | "warn" | "danger" | "neutral" | "info" {
+  switch (status) {
+    case "active":
+      return "success";
+    case "scheduled":
+      return "info";
+    case "draft":
+      return "neutral";
+    case "archived":
+      return "danger";
+    default:
+      return "neutral";
+  }
 }

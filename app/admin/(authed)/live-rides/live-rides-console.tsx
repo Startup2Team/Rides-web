@@ -55,7 +55,7 @@ function mapApiRide(r: ApiRide): Ride {
   const driverName = r.driver?.name ?? null;
   return {
     id: r.id,
-    customer: { name: custName, phone: r.customer?.phone ?? "", rating: 0 },
+    customer: { name: custName, phone: r.customer?.phone ?? "" },
     driver: driverName
       ? {
           name: driverName,
