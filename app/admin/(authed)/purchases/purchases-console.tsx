@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, StatCard, StatusPill, Avatar } from "../_components";
 import {
   MOCK_PACKAGES,
-  MOCK_PURCHASES,
   VEHICLE_LABELS,
   VEHICLE_ORDER,
   formatDateTime,
@@ -13,6 +12,7 @@ import {
   type PurchaseStatus,
   type VehicleType,
 } from "@/lib/packages-mock";
+import { getAdminPurchases } from "@/lib/api";
 
 const STATUS_TONE: Record<PurchaseStatus, "success" | "warn" | "danger" | "neutral"> = {
   paid: "success",
@@ -27,11 +27,81 @@ type VehicleFilter = "all" | VehicleType;
 type PackageFilter = "all" | string;
 
 export function PurchasesConsole() {
-  const [purchases] = useState<PurchaseSnapshot[]>(MOCK_PURCHASES);
+  const [purchases, setPurchases] = useState<PurchaseSnapshot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusFilter>("all");
   const [vehicle, setVehicle] = useState<VehicleFilter>("all");
   const [pkgFilter, setPkgFilter] = useState<PackageFilter>("all");
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getAdminPurchases()
+      .then((data) => {
+        if (!active) return;
+        const mapped = data.map((p) => {
+          let vt: VehicleType = "moto";
+          if (p.vehicle_type_code === "CAB_TAXI") vt = "cab";
+          else if (p.vehicle_type_code === "LIGHT_HILUX") vt = "hilux";
+          else if (p.vehicle_type_code === "HEAVY_FUSO") vt = "fuso";
+
+          let provider: "mtn-momo" | "airtel-money" | null = null;
+          if (p.payment_provider === "MTN") provider = "mtn-momo";
+          else if (p.payment_provider === "AIRTEL") provider = "airtel-money";
+
+          return {
+            id: p.id,
+            driverId: p.driver_id,
+            driverName: p.driver_name,
+            driverPhone: p.driver_phone,
+            vehicleId: p.vehicle_id || "",
+            vehicleType: vt,
+            vehiclePlate: p.vehicle_plate,
+            packageId: p.package_id,
+            packageName: p.package_name,
+            packageVersion: p.package_version,
+            campaignId: p.campaign_id || null,
+            campaignName: p.campaign_name || null,
+            pricePaid: p.price_paid_rwf,
+            ridesGranted: p.rides_granted,
+            bonusRidesGranted: p.bonus_rides_granted,
+            status: p.status.toLowerCase() as PurchaseStatus,
+            paymentProvider: provider,
+            paymentReference: p.payment_ref || null,
+            createdAt: p.created_at,
+            paidAt: p.paid_at || null,
+          };
+        });
+        setPurchases(mapped);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err.message || "Failed to load purchases");
+        setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-sm text-muted-foreground animate-pulse">Loading purchases...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+        <h3 className="font-semibold">Error Loading Purchases</h3>
+        <p className="mt-1">{error}</p>
+      </div>
+    );
+  }
 
   const filtered = useMemo(() => {
     return purchases.filter((p) => {

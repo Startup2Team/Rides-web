@@ -1238,6 +1238,33 @@ export const togglePackage = (id: string, isActive: boolean) =>
 export const deletePackage = (id: string) =>
   request<{ status: string }>(`/admin/packages/${id}`, { method: "DELETE" });
 
+export type Purchase = {
+  id: string;
+  driver_id: string;
+  driver_name: string;
+  driver_phone: string;
+  vehicle_id?: string;
+  vehicle_type_code: string;
+  vehicle_plate: string;
+  package_id: string;
+  package_name: string;
+  package_version: number;
+  campaign_id?: string;
+  campaign_code?: string;
+  campaign_name?: string;
+  price_paid_rwf: number;
+  rides_granted: number;
+  bonus_rides_granted: number;
+  status: string;
+  payment_provider?: string;
+  payment_ref: string;
+  created_at: string;
+  paid_at?: string;
+};
+
+export const getAdminPurchases = () =>
+  request<Purchase[]>("/admin/packages/purchases");
+
 // ── Audit Logs ────────────────────────────────────────────────────────────
 
 export type AuditLogEntry = {
