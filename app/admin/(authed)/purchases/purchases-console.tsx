@@ -86,23 +86,6 @@ export function PurchasesConsole() {
     };
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-sm text-muted-foreground animate-pulse">Loading purchases...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-        <h3 className="font-semibold">Error Loading Purchases</h3>
-        <p className="mt-1">{error}</p>
-      </div>
-    );
-  }
-
   const filtered = useMemo(() => {
     return purchases.filter((p) => {
       if (status !== "all" && p.status !== status) return false;
@@ -126,7 +109,23 @@ export function PurchasesConsole() {
     });
   }, [purchases, status, vehicle, pkgFilter, query]);
 
-  /* Stats */
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-sm text-muted-foreground animate-pulse">Loading purchases...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+        <h3 className="font-semibold">Error Loading Purchases</h3>
+        <p className="mt-1">{error}</p>
+      </div>
+    );
+  }
   const totalPaid = purchases.filter((p) => p.status === "paid");
   const revenue = totalPaid.reduce((s, p) => s + p.pricePaid, 0);
   const pendingCount = purchases.filter((p) => p.status === "pending").length;

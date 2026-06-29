@@ -1263,7 +1263,7 @@ export type Purchase = {
 };
 
 export const getAdminPurchases = () =>
-  request<Purchase[]>("/admin/packages/purchases");
+  request<Purchase[]>("/admin/packages-purchases");
 
 // ── Audit Logs ────────────────────────────────────────────────────────────
 
