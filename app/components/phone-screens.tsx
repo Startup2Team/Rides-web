@@ -37,80 +37,36 @@ function StatusBar({ time = "9:41" }: { time?: string }) {
 /* ────────────────────────────────────────────────────────────────────────── */
 
 export function RiderScreen() {
-  const vehicles = [
-    { name: "Moto", eta: "2 min", price: "800", icon: "🛵" },
-    { name: "Cab", eta: "4 min", price: "2,400", icon: "🚗" },
-    { name: "Hilux", eta: "5 min", price: "4,500", icon: "🛻" },
-  ];
-
   return (
-    <div className="absolute inset-0 flex flex-col bg-white">
-      <StatusBar />
-
-      {/* Top: greeting + search — pushed below Dynamic Island */}
-      <div className="px-3 pt-[28px]">
-        <p className="text-[7px] uppercase tracking-[0.18em] text-zinc-400">
-          Good morning
-        </p>
-        <h2 className="mt-0.5 text-[13px] font-bold leading-none text-zinc-900">
-          Where to?
-        </h2>
-
-        {/* Search input */}
-        <div className="mt-2 flex items-center gap-1.5 rounded-[10px] border border-zinc-200 bg-zinc-50 px-2 py-[7px]">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-2.5 w-2.5 text-blue-500" aria-hidden>
-            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          <span className="text-[8px] text-zinc-500">Pick a destination</span>
-        </div>
-      </div>
-
-      {/* Vehicles list */}
-      <div className="mt-2.5 flex-1 px-3">
-        <p className="text-[7px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-          Available now
-        </p>
-        <div className="mt-1.5 space-y-1">
-          {vehicles.map((v, i) => (
-            <div
-              key={v.name}
-              className={`flex items-center justify-between rounded-[10px] px-2 py-1.5 ${
-                i === 0
-                  ? "bg-blue-50 ring-1 ring-blue-500/40"
-                  : "bg-zinc-50 ring-1 ring-zinc-100"
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                <div className="flex h-5 w-5 items-center justify-center rounded-md bg-white text-[10px]">
-                  {v.icon}
-                </div>
-                <div>
-                  <p className="text-[8px] font-semibold leading-tight text-zinc-900">
-                    {v.name}
-                  </p>
-                  <p className="text-[6.5px] leading-tight text-zinc-500">
-                    {v.eta} away
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-[7.5px] font-bold leading-tight text-zinc-900">
-                  RWF {v.price}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* CTA */}
-      <div className="px-3 pb-3">
-        <button className="block w-full rounded-[10px] bg-blue-500 py-2 text-[9px] font-semibold tracking-tight text-white shadow-sm">
-          Confirm ride
-        </button>
-        {/* Home indicator */}
-        <div className="mx-auto mt-1.5 h-[3px] w-12 rounded-full bg-zinc-900" />
+    <div className="absolute inset-0 overflow-hidden bg-white">
+      <style>{`
+        @keyframes splash-zoom {
+          0%   { transform: scale(1);   opacity: 1; }
+          60%  { transform: scale(1.5); opacity: 0; }
+          61%  { transform: scale(1);   opacity: 0; }
+          75%  { transform: scale(1);   opacity: 1; }
+          100% { transform: scale(1);   opacity: 1; }
+        }
+        .splash-img {
+          animation: splash-zoom 3.5s ease-in-out infinite;
+          transform-origin: center center;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .splash-img { animation: none; opacity: 1; transform: none; }
+        }
+      `}</style>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/images/drivers-fleet-africa.png"
+        alt=""
+        aria-hidden
+        className="splash-img absolute inset-0 h-full w-full object-contain"
+      />
+      {/* Static branding text at the bottom */}
+      <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center pointer-events-none">
+        <span className="text-[15px] font-black tracking-[-0.04em] text-zinc-900">
+          <span className="text-[#007aff]">R</span>id<span className="text-emerald-500">es</span>
+        </span>
       </div>
     </div>
   );
@@ -122,112 +78,74 @@ export function RiderScreen() {
 
 export function DriverScreen() {
   return (
-    <div className="absolute inset-0 flex flex-col bg-white">
-      <StatusBar />
+    <div className="absolute inset-0 flex flex-col overflow-hidden">
+      {/* Wallpaper */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: "url('/images/wallpaper.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
 
-      {/* Map preview — top portion */}
-      <div className="relative mt-1 mx-3 h-[80px] overflow-hidden rounded-[10px] bg-zinc-100">
-        {/* Stylized map streets */}
-        <svg viewBox="0 0 160 80" className="absolute inset-0 h-full w-full" aria-hidden>
-          <g stroke="#d4d4d8" fill="none" strokeWidth="2" strokeLinecap="round">
-            <path d="M -10 30 C 30 20 60 35 100 28 S 170 32 180 30" />
-            <path d="M -10 55 C 40 60 80 50 120 55 S 170 60 180 55" />
-            <path d="M 40 -10 L 50 90" />
-            <path d="M 110 -10 L 100 90" />
-            <path d="M 20 30 L 30 55" strokeWidth="1.2" />
-            <path d="M 130 30 L 140 55" strokeWidth="1.2" />
-          </g>
-          {/* Pickup pin */}
-          <circle cx="60" cy="32" r="4" fill="#3b82f6" />
-          <circle cx="60" cy="32" r="2" fill="#fff" />
-          {/* Destination pin */}
-          <circle cx="120" cy="55" r="4" fill="#0f172a" />
-          <circle cx="120" cy="55" r="2" fill="#fff" />
-          {/* Route line */}
-          <path
-            d="M 60 32 L 80 35 L 90 50 L 120 55"
-            stroke="#3b82f6"
-            strokeWidth="1.8"
-            strokeDasharray="3 2"
-            fill="none"
-            strokeLinecap="round"
-          />
-        </svg>
+      {/* Date + time */}
+      <div className="relative z-10 mt-8 flex flex-col items-center">
+        <p className="text-[9px] font-medium text-white" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+          Wednesday, 25 June
+        </p>
+        <p className="mt-0.5 text-[52px] font-light leading-none tracking-[-0.03em] text-white" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.4)" }}>
+          9:41
+        </p>
       </div>
 
-      {/* New request label */}
-      <div className="mt-2 flex items-center justify-between px-3">
-        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-[2px] text-[6.5px] font-bold uppercase tracking-[0.12em] text-blue-600">
-          <span className="block h-1 w-1 rounded-full bg-blue-500" />
-          New request
-        </span>
-        <span className="text-[6.5px] font-semibold text-zinc-500">12s</span>
-      </div>
-
-      {/* Rider + fare */}
-      <div className="mt-2 px-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 text-[8px] font-bold text-zinc-700">
-              AM
-            </div>
-            <div>
-              <p className="text-[9px] font-semibold leading-tight text-zinc-900">
-                Aïsha M.
+      {/* Notification card */}
+      <div className="relative z-10 mx-2.5 mt-auto mb-2">
+        <div
+          className="rounded-2xl px-3 py-2.5"
+          style={{ background: "rgba(20,20,30,0.52)", backdropFilter: "blur(20px)", border: "0.5px solid rgba(255,255,255,0.18)" }}
+        >
+          <div className="flex items-start gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/ridelogo-primary.png" alt="Rides" className="mt-0.5 h-6 w-6 shrink-0 rounded-[7px] object-cover" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[7px] font-semibold text-white/70">Rides</span>
+                <span className="text-[6.5px] text-white/45">just now</span>
+              </div>
+              <p className="mt-0.5 text-[8px] font-semibold leading-tight text-white">
+                Your driver is here!
               </p>
-              <p className="text-[6.5px] leading-tight text-zinc-500">
-                ★ 4.92 · 1.2 km away
+              <p className="mt-0.5 text-[7px] leading-snug text-white/65">
+                Jean is waiting outside. Make it quick!
               </p>
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-[6px] uppercase tracking-[0.12em] text-zinc-400">
-              Fare
-            </p>
-            <p className="text-[13px] font-bold leading-none text-zinc-900">
-              RWF 2,400
-            </p>
           </div>
         </div>
       </div>
 
-      {/* Pickup / destination */}
-      <div className="mx-3 mt-2 rounded-[10px] bg-zinc-50 p-2 ring-1 ring-zinc-100">
-        <div className="flex items-start gap-1.5">
-          <div className="mt-0.5 flex flex-col items-center">
-            <span className="block h-1.5 w-1.5 rounded-full bg-blue-500" />
-            <span className="my-0.5 block h-3 w-px bg-zinc-300" />
-            <span className="block h-1.5 w-1.5 rounded-full bg-zinc-900" />
-          </div>
-          <div className="flex-1">
-            <p className="text-[6.5px] uppercase tracking-[0.12em] text-zinc-400">
-              Pickup
-            </p>
-            <p className="text-[8px] font-semibold leading-tight text-zinc-900">
-              Kimironko Market
-            </p>
-            <p className="mt-1.5 text-[6.5px] uppercase tracking-[0.12em] text-zinc-400">
-              Drop-off
-            </p>
-            <p className="text-[8px] font-semibold leading-tight text-zinc-900">
-              Kigali Convention
-            </p>
-          </div>
+      {/* Bottom quick-action icons */}
+      <div className="relative z-10 mb-4 flex items-center justify-between px-7">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(12px)" }}>
+          <svg viewBox="0 0 24 24" fill="white" className="h-4 w-4" aria-hidden>
+            <path d="M9.5 2h5a1 1 0 0 1 1 1v1H8.5V3a1 1 0 0 1 1-1z" />
+            <path d="M8.5 4h7l1 5H7.5l1-5z" />
+            <rect x="9.5" y="9" width="5" height="11" rx="2.5" />
+          </svg>
         </div>
-      </div>
-
-      {/* CTAs */}
-      <div className="mt-auto flex gap-1.5 px-3 pb-3">
-        <button className="flex-1 rounded-[10px] border border-zinc-200 bg-white py-2 text-[9px] font-semibold text-zinc-700">
-          Decline
-        </button>
-        <button className="flex-[1.4] rounded-[10px] bg-blue-500 py-2 text-[9px] font-semibold text-white shadow-sm">
-          Accept · RWF 2,400
-        </button>
+        <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(12px)" }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+            <circle cx="12" cy="13" r="4" />
+          </svg>
+        </div>
       </div>
 
       {/* Home indicator */}
-      <div className="mx-auto -mt-1 mb-2 h-[3px] w-12 rounded-full bg-zinc-900" />
+      <div className="relative z-10 mb-1.5 flex justify-center">
+        <div className="h-[3px] w-20 rounded-full bg-white/50" />
+      </div>
     </div>
   );
 }

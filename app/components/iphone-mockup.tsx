@@ -11,6 +11,7 @@ type IphoneMockupProps = {
    * so the two top bars don't collide.
    */
   hideIsland?: boolean;
+  flat?: boolean;
   children?: ReactNode;
 };
 
@@ -26,12 +27,13 @@ export function IphoneMockup({
   floatDelay = "0s",
   className = "",
   hideIsland = false,
+  flat = false,
   children,
 }: IphoneMockupProps) {
   return (
     <div
-      className={`relative iphone-float ${className}`}
-      style={{
+      className={`relative ${flat ? "" : "iphone-float"} ${className}`}
+      style={flat ? undefined : {
         transform: `perspective(1400px) rotateY(${tiltDeg}deg) rotateX(7deg)`,
         transformStyle: "preserve-3d",
         animationDelay: floatDelay,
