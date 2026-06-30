@@ -265,6 +265,15 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
       }
 
       const status = j.data?.status;
+
+      // 2FA optional: signed in directly (no 2FA enabled) → go to the dashboard.
+      if (status === "success") {
+        const dest = await resolvePostLoginRedirect(nextPath);
+        router.replace(dest);
+        router.refresh();
+        return;
+      }
+
       const token = j.data?.challenge_token ?? "";
 
       if (!token || (status !== "totp_required" && status !== "totp_setup_required")) {

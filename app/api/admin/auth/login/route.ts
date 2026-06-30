@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminAuthUrl } from "@/lib/admin-backend-url";
+import { applyAdminTokenCookies } from "../set-token-cookies";
 import type { ApiEnvelope } from "@/lib/api-envelope";
 
 type BackendLoginData = {
@@ -46,18 +47,21 @@ export async function POST(request: Request) {
   }
 
   // Backend returns either:
-  //   { access_token, two_factor_required: false }  — 2FA not set up yet → force setup
-  //   { pre_auth_token, two_factor_required: true }  — 2FA exists → need verification
+  //   { pre_auth_token, two_factor_required: true }  — 2FA enabled → need verification
+  //   { access_token,   two_factor_required: false } — 2FA not enabled → already signed in
   if (data.two_factor_required === true && data.pre_auth_token) {
     return NextResponse.json({
       data: { status: "totp_required", challenge_token: data.pre_auth_token },
     });
   }
 
+  // 2FA is OPTIONAL: when it's not enabled the backend already returns a valid
+  // access_token, so just sign the admin in. They can enable 2FA later from
+  // their account settings. (We no longer force enrollment at login.)
   if (data.two_factor_required === false && data.access_token) {
-    return NextResponse.json({
-      data: { status: "totp_setup_required", challenge_token: data.access_token },
-    });
+    const response = NextResponse.json({ data: { status: "success" } });
+    applyAdminTokenCookies(response, data.access_token);
+    return response;
   }
 
   return NextResponse.json({ error: { code: "SERVER_ERROR", message: "Unexpected login response" } }, { status: 502 });
