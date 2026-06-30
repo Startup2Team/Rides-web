@@ -307,12 +307,20 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
 
     const path = step === "totp_setup" ? "/api/admin/auth/enable-totp" : "/api/admin/auth/verify-totp";
 
+    // On setup, send the exact secret whose QR the user just scanned. Without it
+    // the enable-totp route re-fetches /2fa/setup and gets a DIFFERENT secret, so
+    // the code never matches ("authenticator code does not match").
+    const verifyBody =
+      step === "totp_setup"
+        ? { challenge_token: challengeToken, totp_code: totpDigits, secret: setupSecret }
+        : { challenge_token: challengeToken, totp_code: totpDigits };
+
     setBusy(true);
     try {
       const r = await fetch(path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challenge_token: challengeToken, totp_code: totpDigits }),
+        body: JSON.stringify(verifyBody),
       });
 
       const j = (await r.json()) as ApiEnvelope<unknown>;
