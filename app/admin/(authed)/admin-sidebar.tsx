@@ -176,6 +176,7 @@ const groups: {
     items: [
       { label: "System Settings", href: "/admin/settings", icon: icons.settings },
       { label: "Admins & Roles", href: "/admin/team", icon: icons.team },
+      { label: "API Docs", href: "/admin/api-docs", icon: icons.reports },
     ],
   },
 ];
