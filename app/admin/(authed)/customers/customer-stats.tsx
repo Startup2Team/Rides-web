@@ -5,7 +5,7 @@ import { StatCard } from "../_components";
 import { getCustomersOverview, type CustomerOverview } from "@/lib/api";
 import { MOCK_API_CUSTOMERS } from "@/lib/mock-customers";
 
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+import { useDevMocks } from "@/lib/backend-config";
 
 function mockOverview(): CustomerOverview {
   const active = MOCK_API_CUSTOMERS.filter((c) => !c.is_suspended).length;
@@ -20,11 +20,11 @@ function mockOverview(): CustomerOverview {
 
 export function CustomerStats() {
   const [data, setData] = useState<CustomerOverview | null>(
-    NO_BACKEND ? mockOverview() : null,
+    useDevMocks ? mockOverview() : null,
   );
 
   useEffect(() => {
-    if (NO_BACKEND) return;
+    if (useDevMocks) return;
     getCustomersOverview()
       .then((res) => {
         setData({

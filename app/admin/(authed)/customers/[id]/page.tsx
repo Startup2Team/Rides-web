@@ -16,7 +16,7 @@ import {
   MOCK_CUSTOMERS,
 } from "@/lib/mock-customers";
 
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+import { useDevMocks } from "@/lib/backend-config";
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 
@@ -150,7 +150,7 @@ export default function CustomerProfilePage() {
 
   useEffect(() => {
     if (!id) return;
-    if (NO_BACKEND || isMockCustomerId(id)) {
+    if (useDevMocks || isMockCustomerId(id)) {
       const mock = isMockCustomerId(id) ? MOCK_CUSTOMERS[id] : null;
       setDetail(mock);
       setLoading(false);
@@ -172,7 +172,7 @@ export default function CustomerProfilePage() {
     if (!detail) return;
     setActing(true);
     try {
-      if (!NO_BACKEND) await suspendCustomer(detail.id, 24);
+      if (!useDevMocks) await suspendCustomer(detail.id, 24);
       setDetail((d) => d ? { ...d, is_suspended: true } : d);
       setToast("Customer suspended");
     } finally {
@@ -184,7 +184,7 @@ export default function CustomerProfilePage() {
     if (!detail) return;
     setActing(true);
     try {
-      if (!NO_BACKEND) await reinstateCustomer(detail.id);
+      if (!useDevMocks) await reinstateCustomer(detail.id);
       setDetail((d) => d ? { ...d, is_suspended: false } : d);
       setToast("Customer reinstated");
     } finally {

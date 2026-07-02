@@ -15,7 +15,7 @@ import {
 } from "@/lib/api";
 import { MOCK_API_CUSTOMERS } from "@/lib/mock-customers";
 
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+import { useDevMocks } from "@/lib/backend-config";
 
 function mapApiCustomer(c: ApiCustomer): Customer {
   return {
@@ -383,7 +383,7 @@ export function CustomersTable() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   useEffect(() => {
-    if (NO_BACKEND) {
+    if (useDevMocks) {
       setCustomers(MOCK_API_CUSTOMERS.map(mapApiCustomer));
       setLoading(false);
       return;
