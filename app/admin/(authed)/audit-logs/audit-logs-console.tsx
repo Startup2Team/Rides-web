@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, StatCard } from "../_components";
+import { getAuditLogs, type AuditLogEntry } from "@/lib/api";
+import { useDevMocks } from "@/lib/backend-config";
 import {
   MOCK_AUDIT,
   formatDateTime,
@@ -59,10 +61,32 @@ const ACTION_TONE: Record<AuditAction, string> = {
 };
 
 export function AuditLogsConsole() {
-  const [entries] = useState<AuditEntry[]>(MOCK_AUDIT);
+  const [entries, setEntries] = useState<AuditEntry[]>(useDevMocks ? MOCK_AUDIT : []);
+  const [loading, setLoading] = useState(!useDevMocks);
+  const [error, setError] = useState<string | null>(null);
   const [targetFilter, setTargetFilter] = useState<TargetFilter>("all");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (useDevMocks) return;
+    let active = true;
+    getAuditLogs({ limit: 200, offset: 0 })
+      .then((res) => {
+        if (!active) return;
+        setEntries(res.entries.map(mapAuditEntry));
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Failed to load audit logs");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     return entries
@@ -98,6 +122,15 @@ export function AuditLogsConsole() {
 
   return (
     <div className="space-y-6">
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+      ) : null}
+      {loading ? (
+        <div className="flex h-64 items-center justify-center">
+          <p className="text-sm text-muted-foreground animate-pulse">Loading audit logs...</p>
+        </div>
+      ) : (
+      <>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Total entries" value={String(entries.length)} tone="primary" />
         <StatCard label="Last 24 hours" value={String(last24h)} />
@@ -161,7 +194,7 @@ export function AuditLogsConsole() {
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${ACTION_TONE[entry.action]}`}
                       >
-                        {ACTION_LABEL[entry.action]}
+                        {ACTION_LABEL[entry.action as AuditAction] ?? entry.action}
                       </span>
                       <span className="text-xs font-medium text-foreground">
                         {entry.targetLabel}
@@ -198,6 +231,8 @@ export function AuditLogsConsole() {
       {openEntry ? (
         <AuditDetailDrawer entry={openEntry} onClose={() => setOpenId(null)} />
       ) : null}
+      </>
+      )}
     </div>
   );
 }
@@ -228,7 +263,7 @@ function AuditDetailDrawer({
             <span
               className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${ACTION_TONE[entry.action]}`}
             >
-              {ACTION_LABEL[entry.action]}
+              {ACTION_LABEL[entry.action as AuditAction] ?? entry.action}
             </span>
             <h2 className="mt-3 text-lg font-bold tracking-tight text-foreground">
               {entry.targetLabel}
@@ -356,4 +391,28 @@ function chipClass(active: boolean) {
       ? "bg-primary text-primary-foreground"
       : "bg-muted text-muted-foreground hover:bg-muted/70"
   }`;
+}
+
+function mapTargetType(t?: string): AuditEntry["targetType"] {
+  const key = (t ?? "").toLowerCase();
+  if (key.includes("campaign")) return "campaign";
+  if (key.includes("entitlement")) return "entitlement";
+  if (key.includes("purchase")) return "purchase";
+  return "package";
+}
+
+function mapAuditEntry(e: AuditLogEntry): AuditEntry {
+  return {
+    id: String(e.id),
+    actor: e.admin_name ?? "Admin",
+    actorRole: e.admin_role ?? "",
+    action: e.action as AuditAction,
+    targetType: mapTargetType(e.target_type),
+    targetId: e.target_id ?? "",
+    targetLabel: e.detail ?? e.target_id ?? "",
+    before: null,
+    after: e.metadata ?? null,
+    reason: e.detail,
+    createdAt: e.occurred_at,
+  };
 }

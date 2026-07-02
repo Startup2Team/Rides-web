@@ -15,6 +15,7 @@ import {
   createScheduledReport,
   toggleScheduledReport,
   deleteReport as apiDeleteReport,
+  downloadAdminReportFile,
   type BackendReport,
   type BackendScheduled,
 } from "@/lib/api";
@@ -497,8 +498,11 @@ export function ReportsConsole() {
                           {r.status === "Ready" ? (
                             <button
                               type="button"
-                              onClick={() => {
-                                downloadReport({ templateId: r.templateId, format: r.format, filename: r.id });
+                              onClick={async () => {
+                                const fromApi = await downloadAdminReportFile(r.id, r.id).catch(() => false);
+                                if (!fromApi) {
+                                  downloadReport({ templateId: r.templateId, format: r.format, filename: r.id });
+                                }
                                 setToast(`Downloaded ${r.id}`);
                               }}
                               className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"

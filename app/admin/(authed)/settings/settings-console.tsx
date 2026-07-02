@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { getSettings, updateCommissionSettings, updateNegotiationSettings, updateFareSettings } from "@/lib/api";
+import { getSettings, updateCommissionSettings, updateNegotiationSettings, updateFareSettings, updateIntegrationsSettings, updateNotificationsSettings, updateRegion } from "@/lib/api";
 import { Card } from "../_components";
 
 type Tab = "commission" | "negotiation" | "fares" | "regions" | "integrations" | "notifications";
@@ -278,11 +278,29 @@ export function SettingsConsole() {
             disabled={!dirty}
             onClick={async () => {
               try {
-                await Promise.all([
-                  updateCommissionSettings(state.commission),
-                  updateNegotiationSettings(state.negotiation),
-                  updateFareSettings(state.fares),
-                ]);
+                const tasks: Promise<unknown>[] = [];
+                if (JSON.stringify(state.commission) !== JSON.stringify(savedState.commission)) {
+                  tasks.push(updateCommissionSettings(state.commission));
+                }
+                if (JSON.stringify(state.negotiation) !== JSON.stringify(savedState.negotiation)) {
+                  tasks.push(updateNegotiationSettings(state.negotiation));
+                }
+                if (JSON.stringify(state.fares) !== JSON.stringify(savedState.fares)) {
+                  tasks.push(updateFareSettings(state.fares));
+                }
+                if (JSON.stringify(state.integrations) !== JSON.stringify(savedState.integrations)) {
+                  tasks.push(updateIntegrationsSettings(state.integrations));
+                }
+                if (JSON.stringify(state.notifications) !== JSON.stringify(savedState.notifications)) {
+                  tasks.push(updateNotificationsSettings(state.notifications));
+                }
+                for (const region of state.regions) {
+                  const prev = savedState.regions.find((r) => r.id === region.id);
+                  if (prev && prev.status !== region.status) {
+                    tasks.push(updateRegion(region.id, { status: region.status }));
+                  }
+                }
+                await Promise.all(tasks);
               } catch { /* ignore individual failures */ }
               setSavedState(state);
               setToast("Settings saved");
