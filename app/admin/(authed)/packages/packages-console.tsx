@@ -1,24 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-// ── Subscriber types (swap mock for real API later) ───────────────────────────
-type Subscriber = {
-  id: string;
-  name: string;
-  phone: string;
-  purchased_at: string;
-  expires_at: string;
-  rides_remaining: number;
-  rides_total: number;
-};
-
-const MOCK_SUBSCRIBERS: Subscriber[] = [
-  { id: "1", name: "Jean Baptiste", phone: "+250 788 123 456", purchased_at: "2026-06-01", expires_at: "2026-07-01", rides_remaining: 7, rides_total: 10 },
-  { id: "2", name: "Amina Uwase", phone: "+250 722 654 321", purchased_at: "2026-06-05", expires_at: "2026-07-05", rides_remaining: 3, rides_total: 10 },
-  { id: "3", name: "Patrick Nkurunziza", phone: "+250 733 987 654", purchased_at: "2026-06-10", expires_at: "2026-07-10", rides_remaining: 10, rides_total: 10 },
-  { id: "4", name: "Claudine Mukamana", phone: "+250 788 555 777", purchased_at: "2026-06-15", expires_at: "2026-07-15", rides_remaining: 0, rides_total: 10 },
-];
+import { useCallback, useEffect, useState } from "react";
+import {
+  createPackage,
+  deletePackage,
+  getAdminPackages,
+  getPackageSubscribers,
+  togglePackage,
+  updatePackage,
+  type Package as ApiPackage,
+  type PackageSubscriber,
+} from "@/lib/api";
+import { useDevMocks } from "@/lib/backend-config";
 
 const STORAGE_KEY = "rides_admin_packages";
 
@@ -30,21 +23,9 @@ const VEHICLE_TYPES = [
   { code: "TUK_TUK", name: "Tuk Tuk" },
 ];
 
-type Package = {
-  id: string;
-  name: string;
-  vehicle_type_code: string;
-  ride_count: number;
-  bonus_rides: number;
-  validity_days: number;
-  price_rwf: number;
-  is_promotional: boolean;
-  is_active: boolean;
-  created_at: string;
-  subscribers: number;
-};
+type Package = ApiPackage & { subscribers: number };
 
-function load(): Package[] {
+function loadLocal(): Package[] {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
   } catch {
@@ -69,6 +50,10 @@ const BLANK_FORM = {
 export function PackagesConsole() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [subscribers, setSubscribers] = useState<PackageSubscriber[]>([]);
+  const [subsLoading, setSubsLoading] = useState(false);
 
   // Modal states
   const [createOpen, setCreateOpen] = useState(false);
@@ -91,66 +76,173 @@ export function PackagesConsole() {
     priceRWF: 1000 as number | "",
   });
 
-  useEffect(() => {
-    setPackages(load());
-    setReady(true);
+  const reload = useCallback(async () => {
+    if (useDevMocks) {
+      setPackages(loadLocal());
+      setReady(true);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getAdminPackages();
+      setPackages(data.map((p) => ({ ...p, subscribers: 0 })));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load packages");
+      setPackages([]);
+    } finally {
+      setLoading(false);
+      setReady(true);
+    }
   }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  useEffect(() => {
+    if (!subDrawerPkg || useDevMocks) {
+      setSubscribers([]);
+      return;
+    }
+    let active = true;
+    setSubsLoading(true);
+    getPackageSubscribers(subDrawerPkg.id)
+      .then((rows) => {
+        if (!active) return;
+        setSubscribers(rows);
+        setPackages((prev) =>
+          prev.map((p) =>
+            p.id === subDrawerPkg.id ? { ...p, subscribers: rows.length } : p,
+          ),
+        );
+      })
+      .catch(() => {
+        if (active) setSubscribers([]);
+      })
+      .finally(() => {
+        if (active) setSubsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [subDrawerPkg]);
 
   const persist = (updated: Package[]) => {
     setPackages(updated);
     save(updated);
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const pkg: Package = {
-      id: crypto.randomUUID(),
-      name: form.name,
-      vehicle_type_code: form.vehicleTypeCode,
-      ride_count: Number(form.rideCount) || 1,
-      bonus_rides: Number(form.bonusRides) || 0,
-      validity_days: Number(form.validityDays) || 30,
-      price_rwf: Number(form.priceRWF) || 0,
-      is_promotional: form.isPromotional,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      subscribers: 0,
-    };
-    persist([...packages, pkg]);
-    setForm(BLANK_FORM);
-    setCreateOpen(false);
+    if (useDevMocks) {
+      const pkg: Package = {
+        id: crypto.randomUUID(),
+        name: form.name,
+        vehicle_type_id: "",
+        vehicle_type_code: form.vehicleTypeCode,
+        ride_count: Number(form.rideCount) || 1,
+        bonus_rides: Number(form.bonusRides) || 0,
+        validity_days: Number(form.validityDays) || 30,
+        price_rwf: Number(form.priceRWF) || 0,
+        is_promotional: form.isPromotional,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        subscribers: 0,
+      };
+      persist([...packages, pkg]);
+      setForm(BLANK_FORM);
+      setCreateOpen(false);
+      return;
+    }
+    try {
+      await createPackage({
+        name: form.name,
+        vehicle_type_code: form.vehicleTypeCode,
+        ride_count: Number(form.rideCount) || 1,
+        bonus_rides: Number(form.bonusRides) || 0,
+        validity_days: Number(form.validityDays) || 30,
+        price_rwf: Number(form.priceRWF) || 0,
+        is_promotional: form.isPromotional,
+      });
+      setForm(BLANK_FORM);
+      setCreateOpen(false);
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create package");
+    }
   };
 
-  const handleEdit = (e: React.FormEvent) => {
+  const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selected) return;
-    persist(
-      packages.map((p) =>
-        p.id === selected.id
-          ? {
-              ...p,
-              name: editForm.name,
-              ride_count: Number(editForm.rideCount) || 1,
-              bonus_rides: Number(editForm.bonusRides) || 0,
-              validity_days: Number(editForm.validityDays) || 30,
-              price_rwf: Number(editForm.priceRWF) || 0,
-            }
-          : p,
-      ),
-    );
-    setEditOpen(false);
-    setSelected(null);
+    if (useDevMocks) {
+      persist(
+        packages.map((p) =>
+          p.id === selected.id
+            ? {
+                ...p,
+                name: editForm.name,
+                ride_count: Number(editForm.rideCount) || 1,
+                bonus_rides: Number(editForm.bonusRides) || 0,
+                validity_days: Number(editForm.validityDays) || 30,
+                price_rwf: Number(editForm.priceRWF) || 0,
+              }
+            : p,
+        ),
+      );
+      setEditOpen(false);
+      setSelected(null);
+      return;
+    }
+    try {
+      await updatePackage(selected.id, {
+        name: editForm.name,
+        ride_count: Number(editForm.rideCount) || 1,
+        bonus_rides: Number(editForm.bonusRides) || 0,
+        validity_days: Number(editForm.validityDays) || 30,
+        price_rwf: Number(editForm.priceRWF) || 0,
+      });
+      setEditOpen(false);
+      setSelected(null);
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update package");
+    }
   };
 
-  const handleToggle = (id: string) => {
-    persist(packages.map((p) => (p.id === id ? { ...p, is_active: !p.is_active } : p)));
+  const handleToggle = async (id: string) => {
+    const pkg = packages.find((p) => p.id === id);
+    if (!pkg) return;
+    if (useDevMocks) {
+      persist(packages.map((p) => (p.id === id ? { ...p, is_active: !p.is_active } : p)));
+      return;
+    }
+    try {
+      await togglePackage(id, !pkg.is_active);
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to toggle package");
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selected) return;
-    persist(packages.filter((p) => p.id !== selected.id));
-    setDeleteOpen(false);
-    setSelected(null);
+    if (useDevMocks) {
+      persist(packages.filter((p) => p.id !== selected.id));
+      setDeleteOpen(false);
+      setSelected(null);
+      return;
+    }
+    try {
+      await deletePackage(selected.id);
+      setDeleteOpen(false);
+      setSelected(null);
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete package");
+    }
   };
 
   const openEdit = (pkg: Package) => {
@@ -174,10 +266,21 @@ export function PackagesConsole() {
   const inputCls = "w-full h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none";
   const labelCls = "text-xs font-bold text-muted-foreground uppercase tracking-wider";
 
-  if (!ready) return null;
+  if (!ready || loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-sm text-muted-foreground animate-pulse">Loading packages...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
       {/* Top bar */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
@@ -410,9 +513,9 @@ export function PackagesConsole() {
 
       {/* ── Subscribers Drawer ── */}
       {subDrawerPkg && (() => {
-        const active   = MOCK_SUBSCRIBERS.filter(s => new Date(s.expires_at) >= new Date() && s.rides_remaining > 0);
-        const expired  = MOCK_SUBSCRIBERS.filter(s => new Date(s.expires_at) < new Date());
-        const usedUp   = MOCK_SUBSCRIBERS.filter(s => s.rides_remaining === 0 && new Date(s.expires_at) >= new Date());
+        const active   = subscribers.filter(s => (!s.expires_at || new Date(s.expires_at) >= new Date()) && s.rides_remaining > 0);
+        const expired  = subscribers.filter(s => s.expires_at && new Date(s.expires_at) < new Date());
+        const usedUp   = subscribers.filter(s => s.rides_remaining === 0 && (!s.expires_at || new Date(s.expires_at) >= new Date()));
         const avatarColors = ["bg-violet-500","bg-sky-500","bg-emerald-500","bg-rose-500","bg-amber-500","bg-indigo-500"];
         return (
           <>
@@ -452,7 +555,9 @@ export function PackagesConsole() {
 
               {/* List */}
               <div className="flex-1 overflow-y-auto px-6 py-4">
-                {MOCK_SUBSCRIBERS.length === 0 ? (
+                {subsLoading ? (
+                  <p className="py-24 text-center text-sm text-muted-foreground animate-pulse">Loading subscribers...</p>
+                ) : subscribers.length === 0 ? (
                   <div className="flex flex-col items-center gap-3 py-24 text-center">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7 text-muted-foreground/50" aria-hidden>
@@ -464,9 +569,9 @@ export function PackagesConsole() {
                   </div>
                 ) : (
                   <ul className="space-y-2">
-                    {MOCK_SUBSCRIBERS.map((sub, i) => {
-                      const pct = Math.round((sub.rides_remaining / sub.rides_total) * 100);
-                      const isExpired  = new Date(sub.expires_at) < new Date();
+                    {subscribers.map((sub, i) => {
+                      const pct = sub.rides_total > 0 ? Math.round((sub.rides_remaining / sub.rides_total) * 100) : 0;
+                      const isExpired  = sub.expires_at ? new Date(sub.expires_at) < new Date() : false;
                       const isExhausted = sub.rides_remaining === 0;
                       const statusLabel = isExpired ? "Expired" : isExhausted ? "Used up" : "Active";
                       const statusCls   = isExpired || isExhausted

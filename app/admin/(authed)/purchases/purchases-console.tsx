@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, StatCard, StatusPill, Avatar } from "../_components";
+import { confirmAdminPurchase, getAdminPackages, getAdminPurchases } from "@/lib/api";
+import { mapApiPurchase } from "@/lib/monetization-mappers";
+import { useDevMocks } from "@/lib/backend-config";
 import {
   MOCK_PACKAGES,
   VEHICLE_LABELS,
@@ -12,7 +15,6 @@ import {
   type PurchaseStatus,
   type VehicleType,
 } from "@/lib/packages-mock";
-import { getAdminPurchases } from "@/lib/api";
 
 const STATUS_TONE: Record<PurchaseStatus, "success" | "warn" | "danger" | "neutral"> = {
   paid: "success",
@@ -34,46 +36,28 @@ export function PurchasesConsole() {
   const [vehicle, setVehicle] = useState<VehicleFilter>("all");
   const [pkgFilter, setPkgFilter] = useState<PackageFilter>("all");
   const [query, setQuery] = useState("");
+  const [packageOptions, setPackageOptions] = useState<{ id: string; name: string }[]>(
+    useDevMocks ? MOCK_PACKAGES.map((p) => ({ id: p.id, name: p.name })) : [],
+  );
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+  const reloadPurchases = () =>
+    getAdminPurchases()
+      .then((data) => setPurchases(data.map(mapApiPurchase)))
+      .catch((err) => setError(err.message || "Failed to load purchases"));
 
   useEffect(() => {
     let active = true;
-    getAdminPurchases()
-      .then((data) => {
+    Promise.all([
+      getAdminPurchases(),
+      useDevMocks ? Promise.resolve(null) : getAdminPackages().catch(() => []),
+    ])
+      .then(([purchaseData, packagesData]) => {
         if (!active) return;
-        const mapped = data.map((p) => {
-          let vt: VehicleType = "moto";
-          if (p.vehicle_type_code === "CAB_TAXI") vt = "cab";
-          else if (p.vehicle_type_code === "LIGHT_HILUX") vt = "hilux";
-          else if (p.vehicle_type_code === "HEAVY_FUSO") vt = "fuso";
-
-          let provider: "mtn-momo" | "airtel-money" | null = null;
-          if (p.payment_provider === "MTN") provider = "mtn-momo";
-          else if (p.payment_provider === "AIRTEL") provider = "airtel-money";
-
-          return {
-            id: p.id,
-            driverId: p.driver_id,
-            driverName: p.driver_name,
-            driverPhone: p.driver_phone,
-            vehicleId: p.vehicle_id || "",
-            vehicleType: vt,
-            vehiclePlate: p.vehicle_plate,
-            packageId: p.package_id,
-            packageName: p.package_name,
-            packageVersion: p.package_version,
-            campaignId: p.campaign_id || null,
-            campaignName: p.campaign_name || null,
-            pricePaid: p.price_paid_rwf,
-            ridesGranted: p.rides_granted,
-            bonusRidesGranted: p.bonus_rides_granted,
-            status: p.status.toLowerCase() as PurchaseStatus,
-            paymentProvider: provider,
-            paymentReference: p.payment_ref || null,
-            createdAt: p.created_at,
-            paidAt: p.paid_at || null,
-          };
-        });
-        setPurchases(mapped);
+        setPurchases(purchaseData.map(mapApiPurchase));
+        if (packagesData) {
+          setPackageOptions(packagesData.map((p) => ({ id: p.id, name: p.name })));
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -85,6 +69,18 @@ export function PurchasesConsole() {
       active = false;
     };
   }, []);
+
+  const handleConfirm = async (id: string) => {
+    setConfirmingId(id);
+    try {
+      await confirmAdminPurchase(id, true);
+      await reloadPurchases();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to confirm purchase");
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     return purchases.filter((p) => {
@@ -185,7 +181,7 @@ export function PurchasesConsole() {
               onChange={(v) => setPkgFilter(v as PackageFilter)}
               options={[
                 { value: "all", label: "All packages" },
-                ...MOCK_PACKAGES.map((p) => ({ value: p.id, label: p.name })),
+                ...packageOptions.map((p) => ({ value: p.id, label: p.name })),
               ]}
             />
           </div>
@@ -205,12 +201,13 @@ export function PurchasesConsole() {
                 <th className="px-4 py-3">Payment</th>
                 <th className="px-4 py-3 whitespace-nowrap">When</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                  <td colSpan={10} className="px-4 py-12 text-center text-sm text-muted-foreground">
                     No purchases match these filters.
                   </td>
                 </tr>
@@ -284,6 +281,20 @@ export function PurchasesConsole() {
                     <td className="px-4 py-3.5">
                       <StatusPill status={p.status.toUpperCase()} tone={STATUS_TONE[p.status]} />
                     </td>
+                    <td className="px-4 py-3.5">
+                      {p.status === "pending" ? (
+                        <button
+                          type="button"
+                          disabled={confirmingId === p.id}
+                          onClick={() => void handleConfirm(p.id)}
+                          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                        >
+                          {confirmingId === p.id ? "Confirming…" : "Confirm paid"}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -296,7 +307,6 @@ export function PurchasesConsole() {
             <p>
               {filtered.length} of {purchases.length} purchases
             </p>
-            <p>Pagination will be wired with the real API.</p>
           </div>
         ) : null}
       </Card>
