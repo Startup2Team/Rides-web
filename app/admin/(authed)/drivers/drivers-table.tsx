@@ -22,6 +22,7 @@ import {
   type DriverStatus,
 } from "@/lib/drivers";
 import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
+import { useDevMocks } from "@/lib/backend-config";
 import { getLocalApiDrivers } from "@/lib/local-drivers";
 
 type Driver = DriverRow;
@@ -376,15 +377,17 @@ export function DriversTable() {
 
       const res = await getDrivers(params);
       const apiRows = (res.drivers ?? []).map(mapApiDriver);
-      const mockRows = MOCK_API_DRIVERS
-        .filter((d) => !vehicleType || d.transport_type === vehicleType)
-        .map(mapApiDriver);
-      const localRows = getLocalApiDrivers()
-        .filter((d) => !vehicleType || d.transport_type === vehicleType)
-        .map(mapApiDriver);
-      // Deduplicate — real API takes precedence over mock/local if IDs ever collide.
       const seenIds = new Set(apiRows.map((d) => d.id));
-      const extras = [...mockRows, ...localRows].filter((d) => !seenIds.has(d.id));
+      let extras: ReturnType<typeof mapApiDriver>[] = [];
+      if (useDevMocks) {
+        const mockRows = MOCK_API_DRIVERS
+          .filter((d) => !vehicleType || d.transport_type === vehicleType)
+          .map(mapApiDriver);
+        const localRows = getLocalApiDrivers()
+          .filter((d) => !vehicleType || d.transport_type === vehicleType)
+          .map(mapApiDriver);
+        extras = [...mockRows, ...localRows].filter((d) => !seenIds.has(d.id));
+      }
       const merged = [...apiRows, ...extras];
       setDrivers(merged);
       setTotalFromApi((res.total ?? apiRows.length) + extras.length);

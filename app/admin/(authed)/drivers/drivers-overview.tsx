@@ -11,6 +11,7 @@ import {
 } from "@/lib/drivers";
 import type { VehicleSlug as DriverFormSlug } from "@/lib/driver-registration";
 import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
+import { useDevMocks } from "@/lib/backend-config";
 import { getLocalApiDrivers } from "@/lib/local-drivers";
 import { AdminPageHeader, StatCard } from "../_components";
 import { AddDriverButton } from "./add-driver-button";
@@ -155,10 +156,12 @@ export function DriversOverview() {
 
         const res = await getDriversOverview(params);
         if (cancelled) return;
-        const extras = [
-          ...MOCK_API_DRIVERS,
-          ...getLocalApiDrivers(),
-        ].filter((d) => !vehicleType || d.transport_type === vehicleType);
+        const extras = useDevMocks
+          ? [
+              ...MOCK_API_DRIVERS,
+              ...getLocalApiDrivers(),
+            ].filter((d) => !vehicleType || d.transport_type === vehicleType)
+          : [];
         const isPending = (d: { approval_status?: string }) =>
           ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
         setStats({
@@ -193,9 +196,11 @@ export function DriversOverview() {
           if (vehicleType) params.vehicle_type = vehicleType;
           const res = await getDriversOverview(params);
           if (cancelled) return;
-          const extras = [...MOCK_API_DRIVERS, ...getLocalApiDrivers()].filter(
-            (d) => !vehicleType || d.transport_type === vehicleType,
-          );
+          const extras = useDevMocks
+            ? [...MOCK_API_DRIVERS, ...getLocalApiDrivers()].filter(
+                (d) => !vehicleType || d.transport_type === vehicleType,
+              )
+            : [];
           const isPending = (d: { approval_status?: string }) =>
             ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
           setStats({

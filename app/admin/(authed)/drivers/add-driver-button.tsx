@@ -52,7 +52,7 @@ const VEHICLE_TYPES: { value: VehicleSlug; label: string; description: string }[
 const STEPS = ["Personal Info", "Vehicle Info", "Documents", "Payment"] as const;
 
 // When no API base URL is configured, skip OTP so the form can be tested locally.
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+import { useDevMocks } from "@/lib/backend-config";
 
 type FormState = {
   fullName: string;
@@ -421,7 +421,7 @@ export function AddDriverButton({
     if (phoneErr) { setErrors((e) => ({ ...e, phone: phoneErr })); return; }
 
     // No backend — auto-verify so the form is testable without a running API.
-    if (NO_BACKEND) {
+    if (useDevMocks) {
       setOtpVerified(true);
       setOtpSent(true);
       setOtpError(null);
@@ -476,7 +476,7 @@ export function AddDriverButton({
     }
 
     // No backend — persist driver locally so the review flow can be tested end-to-end.
-    if (NO_BACKEND) {
+    if (useDevMocks) {
       const toDataUrl = (file: File): Promise<string> =>
         new Promise((res, rej) => {
           const r = new FileReader();
