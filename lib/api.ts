@@ -1,7 +1,6 @@
 import { clearToken, getToken } from "./auth";
+import { useDevMocks } from "./backend-config";
 import { MOCK_LIVE_RIDES, MOCK_LIVE_RIDE_DETAILS, MOCK_LIVE_RIDES_STATS } from "./mock-live-rides";
-
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
@@ -724,7 +723,7 @@ export const getRides = (params: Record<string, string> = {}) => {
 };
 
 export const getLiveRides = async (params: Record<string, string> = {}): Promise<RidesResponse> => {
-  if (NO_BACKEND) {
+  if (useDevMocks) {
     return {
       rides: MOCK_LIVE_RIDES,
       total: MOCK_LIVE_RIDES.length,
@@ -735,7 +734,7 @@ export const getLiveRides = async (params: Record<string, string> = {}): Promise
 };
 
 export const getLiveRidesStats = async (): Promise<LiveRidesStats> => {
-  if (NO_BACKEND) {
+  if (useDevMocks) {
     return MOCK_LIVE_RIDES_STATS;
   }
   return request<LiveRidesStats>("/admin/rides/live/stats");
@@ -744,7 +743,7 @@ export const getLiveRidesStats = async (): Promise<LiveRidesStats> => {
 export const getRide = (id: string) => request<RideDetail>(`/admin/rides/${id}`);
 
 export const getLiveRide = async (id: string): Promise<RideDetail> => {
-  if (NO_BACKEND) {
+  if (useDevMocks) {
     const detail = MOCK_LIVE_RIDE_DETAILS[id];
     if (detail) return detail;
     throw new Error("Mock live ride not found");
@@ -753,7 +752,7 @@ export const getLiveRide = async (id: string): Promise<RideDetail> => {
 };
 
 export const interveneRide = async (id: string, action: string, reason: string): Promise<void> => {
-  if (NO_BACKEND) {
+  if (useDevMocks) {
     console.log(`[Mock API] Intervened ride ${id} with action=${action}, reason=${reason}`);
     return;
   }
@@ -1394,3 +1393,127 @@ export const updateCampaign = (
 
 export const deleteCampaign = (id: string) =>
   request<{ status: string }>(`/admin/campaigns/${id}`, { method: "DELETE" });
+
+// ── Package subscribers & entitlements ─────────────────────────────────────
+
+export type PackageSubscriber = {
+  id: string;
+  name: string;
+  phone: string;
+  purchased_at: string;
+  expires_at?: string | null;
+  rides_remaining: number;
+  rides_total: number;
+};
+
+export const getPackageSubscribers = (packageId: string) =>
+  request<PackageSubscriber[]>(`/admin/packages/${packageId}/subscribers`);
+
+export type AdminEntitlementTxn = {
+  id: string;
+  entitlement_id: string;
+  kind: string;
+  rides_delta: number;
+  bonus_rides_delta: number;
+  rides_after: number;
+  bonus_rides_after: number;
+  source_ref?: string;
+  reason?: string;
+  performed_by?: string;
+  created_at: string;
+};
+
+export type AdminEntitlementRow = {
+  id: string;
+  driver_id: string;
+  driver_name: string;
+  driver_phone: string;
+  vehicle_id?: string;
+  vehicle_type: string;
+  vehicle_plate: string;
+  rides_remaining: number;
+  bonus_rides_remaining: number;
+  total_granted: number;
+  total_consumed: number;
+  transactions?: AdminEntitlementTxn[];
+  updated_at: string;
+};
+
+export const getAdminEntitlements = (includeTransactions = true) =>
+  request<AdminEntitlementRow[]>(
+    `/admin/entitlements${includeTransactions ? "?include_transactions=true" : ""}`,
+  );
+
+export const grantEntitlement = (data: {
+  entitlement_id: string;
+  rides_delta: number;
+  bonus_rides_delta: number;
+  reason: string;
+}) =>
+  request<{ status: string }>("/admin/entitlements/grant", { method: "POST", body: data });
+
+export const revokeEntitlement = (data: {
+  entitlement_id: string;
+  rides_delta: number;
+  bonus_rides_delta: number;
+  reason: string;
+}) =>
+  request<{ status: string }>("/admin/entitlements/revoke", { method: "POST", body: data });
+
+export const confirmAdminPurchase = (id: string, success = true) =>
+  request<Purchase>(`/admin/packages-purchases/${id}/confirm`, {
+    method: "POST",
+    body: { success },
+  });
+
+// ── Settings (extended) ───────────────────────────────────────────────────
+
+export const updateIntegrationsSettings = (data: Record<string, unknown>) =>
+  request<void>("/admin/settings/integrations", { method: "PUT", body: data });
+
+export const updateNotificationsSettings = (data: Record<string, unknown>) =>
+  request<void>("/admin/settings/notifications", { method: "PUT", body: data });
+
+export const createRegion = (data: { name: string; status?: string }) =>
+  request<Record<string, unknown>>("/admin/settings/regions", { method: "POST", body: data });
+
+export const updateRegion = (id: string, data: Record<string, unknown>) =>
+  request<void>(`/admin/settings/regions/${id}`, { method: "PUT", body: data });
+
+export const deleteRegion = (id: string) =>
+  request<{ message: string }>(`/admin/settings/regions/${id}`, { method: "DELETE" });
+
+// ── Reports download ────────────────────────────────────────────────────────
+
+export const getAdminReportDownload = (id: string) =>
+  request<{ file_path: string | null; format: string }>(`/admin/reports/${id}/download`);
+
+/** Fetch report file when API returns a ready file_path URL; otherwise null. */
+export async function downloadAdminReportFile(
+  reportId: string,
+  filename: string,
+): Promise<boolean> {
+  const meta = await getAdminReportDownload(reportId);
+  const path = meta.file_path;
+  if (!path) return false;
+
+  const token = getToken();
+  const url = path.startsWith("http") ? path : `${BASE_URL.replace(/\/api\/v1$/, "")}${path}`;
+  const res = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) return false;
+
+  const blob = await res.blob();
+  const ext =
+    meta.format === "CSV" ? "csv" : meta.format === "Excel" ? "xls" : "pdf";
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = `${filename}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  return true;
+}

@@ -42,7 +42,7 @@ const AuthContext = createContext<AuthContextValue>({
   refreshUser: async () => {},
 });
 
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+import { useDevMocks } from "@/lib/backend-config";
 
 const MOCK_USER: AuthUser = {
   id: "mock-admin",
@@ -54,15 +54,15 @@ const MOCK_USER: AuthUser = {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(NO_BACKEND ? MOCK_USER : null);
-  const [roleName, setRoleName] = useState<AdminRoleName | null>(NO_BACKEND ? "Super Admin" : null);
+  const [user, setUser] = useState<AuthUser | null>(useDevMocks ? MOCK_USER : null);
+  const [roleName, setRoleName] = useState<AdminRoleName | null>(useDevMocks ? "Super Admin" : null);
   const [permissions, setPermissions] = useState<Permission[]>(["*"]);
   const [readOnly, setReadOnly] = useState(false);
-  const [ready, setReady] = useState(NO_BACKEND);
+  const [ready, setReady] = useState(useDevMocks);
   const [connError, setConnError] = useState<string | null>(null);
 
   const refreshUser = useCallback(async () => {
-    if (NO_BACKEND) return;
+    if (useDevMocks) return;
     try {
       setConnError(null);
       const account = await getAccount();
