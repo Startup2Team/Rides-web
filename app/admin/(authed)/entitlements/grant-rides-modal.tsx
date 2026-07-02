@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { grantEntitlement } from "@/lib/api";
 
 /**
  * Modal for granting rides (or bonus rides) to a driver's specific vehicle
@@ -12,6 +13,7 @@ import { useEffect, useState } from "react";
 export function GrantRidesModal({
   target,
   onClose,
+  onSuccess,
 }: {
   target: {
     entitlementId: string;
@@ -19,6 +21,7 @@ export function GrantRidesModal({
     vehicleLabel: string;
   };
   onClose: () => void;
+  onSuccess?: () => void;
 }) {
   const [rides, setRides] = useState(0);
   const [bonusRides, setBonusRides] = useState(0);
@@ -49,14 +52,13 @@ export function GrantRidesModal({
     setErrorMessage(null);
     setSubmitting(true);
     try {
-      // TODO: when backend ships:
-      // await postEntitlementGrant({
-      //   entitlementId: target.entitlementId,
-      //   ridesDelta: rides,
-      //   bonusRidesDelta: bonusRides,
-      //   reason: reason.trim(),
-      // });
-      await new Promise((r) => setTimeout(r, 600));
+      await grantEntitlement({
+        entitlement_id: target.entitlementId,
+        rides_delta: rides,
+        bonus_rides_delta: bonusRides,
+        reason: reason.trim(),
+      });
+      onSuccess?.();
       onClose();
     } catch (err) {
       setErrorMessage(

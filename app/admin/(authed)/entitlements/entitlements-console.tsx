@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Avatar, Card, StatCard } from "../_components";
+import { getAdminEntitlements } from "@/lib/api";
+import { useDevMocks } from "@/lib/backend-config";
+import { mapApiEntitlement } from "@/lib/monetization-mappers";
 import {
   MOCK_ENTITLEMENTS,
   VEHICLE_LABELS,
@@ -33,10 +36,29 @@ const TXN_COLOUR: Record<EntitlementTransactionKind, string> = {
 };
 
 export function EntitlementsConsole() {
-  const [entitlements] = useState<Entitlement[]>(MOCK_ENTITLEMENTS);
+  const [entitlements, setEntitlements] = useState<Entitlement[]>(
+    useDevMocks ? MOCK_ENTITLEMENTS : [],
+  );
+  const [loading, setLoading] = useState(!useDevMocks);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [grantTarget, setGrantTarget] = useState<GrantTarget>(null);
+
+  const reload = () => {
+    if (useDevMocks) return;
+    setLoading(true);
+    getAdminEntitlements(true)
+      .then((rows) => setEntitlements(rows.map(mapApiEntitlement)))
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : "Failed to load entitlements"),
+      )
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    reload();
+  }, []);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return entitlements;
@@ -62,6 +84,15 @@ export function EntitlementsConsole() {
 
   return (
     <div className="space-y-6">
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+      ) : null}
+      {loading ? (
+        <div className="flex h-64 items-center justify-center">
+          <p className="text-sm text-muted-foreground animate-pulse">Loading entitlements...</p>
+        </div>
+      ) : (
+      <>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Active drivers" value={String(entitlements.length)} tone="primary" />
         <StatCard label="Rides remaining" value={totalRides.toLocaleString()} />
@@ -202,8 +233,11 @@ export function EntitlementsConsole() {
         <GrantRidesModal
           target={grantTarget}
           onClose={() => setGrantTarget(null)}
+          onSuccess={reload}
         />
       ) : null}
+      </>
+      )}
     </div>
   );
 }

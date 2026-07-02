@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
+import { getAdminCampaigns, getAdminEntitlements, getAdminPurchases } from "@/lib/api";
 import { hasPermission } from "@/lib/admin-permissions";
+import { useDevMocks } from "@/lib/backend-config";
+import { mapApiCampaign, mapApiEntitlement, mapApiPurchase } from "@/lib/monetization-mappers";
 import {
   MOCK_CAMPAIGNS,
   MOCK_ENTITLEMENTS,
@@ -13,6 +17,29 @@ import {
   type Campaign,
   type PurchaseSnapshot,
 } from "@/lib/packages-mock";
+
+function useMonetizationData() {
+  const [purchases, setPurchases] = useState<PurchaseSnapshot[]>(
+    useDevMocks ? MOCK_PURCHASES : [],
+  );
+  const [campaigns, setCampaigns] = useState<Campaign[]>(
+    useDevMocks ? MOCK_CAMPAIGNS : [],
+  );
+  const [entitlements, setEntitlements] = useState(
+    useDevMocks ? MOCK_ENTITLEMENTS : [],
+  );
+
+  useEffect(() => {
+    if (useDevMocks) return;
+    void Promise.all([
+      getAdminPurchases().then((rows) => setPurchases(rows.map(mapApiPurchase))),
+      getAdminCampaigns().then((rows) => setCampaigns(rows.map(mapApiCampaign))),
+      getAdminEntitlements(false).then((rows) => setEntitlements(rows.map(mapApiEntitlement))),
+    ]);
+  }, []);
+
+  return { purchases, campaigns, entitlements };
+}
 
 /* ───────────────────────────────────────────────────────────────────────── */
 /* MonetizationGrid — composite widget for dashboards.                        */
@@ -80,7 +107,8 @@ export function MonetizationGrid() {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 export function PackageRevenueWidget() {
-  const paid = MOCK_PURCHASES.filter((p) => p.status === "paid");
+  const { purchases } = useMonetizationData();
+  const paid = purchases.filter((p) => p.status === "paid");
   const totalRevenue = paid.reduce((s, p) => s + p.pricePaid, 0);
 
   // Top-selling package by revenue
@@ -143,7 +171,8 @@ export function PackageRevenueWidget() {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 export function RecentPurchasesWidget() {
-  const recent = [...MOCK_PURCHASES]
+  const { purchases } = useMonetizationData();
+  const recent = [...purchases]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
 
@@ -193,7 +222,8 @@ export function RecentPurchasesWidget() {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 export function LowBalanceDriversWidget() {
-  const lowBalance = MOCK_ENTITLEMENTS
+  const { entitlements } = useMonetizationData();
+  const lowBalance = entitlements
     .filter((e) => e.ridesRemaining + e.bonusRidesRemaining < 10)
     .sort(
       (a, b) =>
@@ -252,8 +282,9 @@ export function LowBalanceDriversWidget() {
 /* ───────────────────────────────────────────────────────────────────────── */
 
 export function ActiveCampaignsWidget() {
-  const active = MOCK_CAMPAIGNS.filter((c) => c.status === "active");
-  const scheduled = MOCK_CAMPAIGNS.filter((c) => c.status === "scheduled");
+  const { campaigns } = useMonetizationData();
+  const active = campaigns.filter((c) => c.status === "active");
+  const scheduled = campaigns.filter((c) => c.status === "scheduled");
   const featured: Campaign[] = [...active, ...scheduled].slice(0, 4);
 
   return (
