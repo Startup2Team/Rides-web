@@ -463,6 +463,9 @@ export function AccountConsole() {
             </form>
           </Card>
 
+          {/* 2FA has been removed from the admin console (login goes straight to
+              the dashboard). Card hidden; the backend also refuses 2FA setup. */}
+          <div style={{ display: "none" }} aria-hidden>
           <Card title="Two-factor authentication">
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
@@ -787,6 +790,7 @@ export function AccountConsole() {
               ) : null}
             </div>
           </Card>
+          </div>
         </div>
       ) : null}
 
