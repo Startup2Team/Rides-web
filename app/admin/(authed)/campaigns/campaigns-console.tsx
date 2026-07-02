@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, StatCard, StatusPill } from "../_components";
+import { getAdminCampaigns } from "@/lib/api";
+import { useDevMocks } from "@/lib/backend-config";
+import { mapApiCampaign } from "@/lib/monetization-mappers";
 import {
   MOCK_CAMPAIGNS,
   VEHICLE_LABELS,
@@ -32,9 +35,31 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 ];
 
 export function CampaignsConsole() {
-  const [campaigns] = useState<Campaign[]>(MOCK_CAMPAIGNS);
+  const [campaigns, setCampaigns] = useState<Campaign[]>(useDevMocks ? MOCK_CAMPAIGNS : []);
+  const [loading, setLoading] = useState(!useDevMocks);
+  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [openId, setOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (useDevMocks) return;
+    let active = true;
+    getAdminCampaigns()
+      .then((rows) => {
+        if (!active) return;
+        setCampaigns(rows.map(mapApiCampaign));
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Failed to load campaigns");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     if (statusFilter === "all") return campaigns;
@@ -56,6 +81,15 @@ export function CampaignsConsole() {
 
   return (
     <div className="space-y-6">
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+      ) : null}
+      {loading ? (
+        <div className="flex h-64 items-center justify-center">
+          <p className="text-sm text-muted-foreground animate-pulse">Loading campaigns...</p>
+        </div>
+      ) : (
+      <>
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Active campaigns" value={String(activeCount)} tone="primary" />
@@ -152,6 +186,8 @@ export function CampaignsConsole() {
       {openCampaign ? (
         <CampaignDetailDrawer campaign={openCampaign} onClose={() => setOpenId(null)} />
       ) : null}
+      </>
+      )}
     </div>
   );
 }
