@@ -1,10 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, StatCard, StatusPill, Avatar } from "../_components";
 import {
-  MOCK_PACKAGES,
-  MOCK_PURCHASES,
   VEHICLE_LABELS,
   VEHICLE_ORDER,
   formatDateTime,
@@ -13,6 +11,7 @@ import {
   type PurchaseStatus,
   type VehicleType,
 } from "@/lib/packages-mock";
+import { getAdminPurchases } from "@/lib/api";
 
 const STATUS_TONE: Record<PurchaseStatus, "success" | "warn" | "danger" | "neutral"> = {
   paid: "success",
@@ -27,11 +26,26 @@ type VehicleFilter = "all" | VehicleType;
 type PackageFilter = "all" | string;
 
 export function PurchasesConsole() {
-  const [purchases] = useState<PurchaseSnapshot[]>(MOCK_PURCHASES);
+  const [purchases, setPurchases] = useState<PurchaseSnapshot[]>([]);
   const [status, setStatus] = useState<StatusFilter>("all");
   const [vehicle, setVehicle] = useState<VehicleFilter>("all");
   const [pkgFilter, setPkgFilter] = useState<PackageFilter>("all");
   const [query, setQuery] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAdminPurchases()
+      .then(setPurchases)
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load purchases"));
+  }, []);
+
+  // Package filter options are derived from the loaded purchases (unique
+  // package id → name) so the dropdown reflects real data, not a mock catalog.
+  const packageOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const p of purchases) if (!seen.has(p.packageId)) seen.set(p.packageId, p.packageName);
+    return Array.from(seen, ([value, label]) => ({ value, label }));
+  }, [purchases]);
 
   const filtered = useMemo(() => {
     return purchases.filter((p) => {
@@ -64,6 +78,13 @@ export function PurchasesConsole() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="shrink-0 text-xs font-semibold underline-offset-2 hover:underline">Dismiss</button>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Revenue (paid)" value={formatRWF(revenue)} tone="primary" />
@@ -116,7 +137,7 @@ export function PurchasesConsole() {
               onChange={(v) => setPkgFilter(v as PackageFilter)}
               options={[
                 { value: "all", label: "All packages" },
-                ...MOCK_PACKAGES.map((p) => ({ value: p.id, label: p.name })),
+                ...packageOptions,
               ]}
             />
           </div>

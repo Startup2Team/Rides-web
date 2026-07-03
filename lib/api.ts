@@ -4,6 +4,8 @@ import type {
   Campaign as AdminCampaignView,
   CampaignAudience,
   CampaignStatus,
+  PurchaseSnapshot,
+  PurchaseStatus,
   VehicleType as MonetizationVehicleType,
 } from "./packages-mock";
 
@@ -1299,6 +1301,73 @@ function mapCampaign(c: BackendCampaign): AdminCampaignView {
 export const getAdminCampaigns = async (): Promise<AdminCampaignView[]> => {
   const list = await request<BackendCampaign[]>("/admin/campaigns");
   return (list ?? []).map(mapCampaign);
+};
+
+// ── Purchases ─────────────────────────────────────────────────────────────
+// GET /admin/packages-purchases returns AdminPurchase (snake_case, joined
+// driver + vehicle info). We map it to the console's PurchaseSnapshot view.
+type BackendPurchase = {
+  id: string;
+  driver_id: string;
+  driver_name: string | null;
+  driver_phone: string;
+  vehicle_id?: string | null;
+  vehicle_type_code: string;
+  vehicle_plate: string;
+  package_id: string;
+  package_name: string;
+  package_version: number;
+  campaign_id?: string | null;
+  campaign_code?: string | null;
+  campaign_name?: string | null;
+  price_paid_rwf: number;
+  rides_granted: number;
+  bonus_rides_granted: number;
+  status: string;
+  payment_provider?: string | null;
+  payment_ref: string;
+  created_at: string;
+  paid_at?: string | null;
+};
+
+function mapPaymentProvider(p: string | null | undefined): PurchaseSnapshot["paymentProvider"] {
+  if (!p) return null;
+  const s = p.toLowerCase();
+  if (s.includes("mtn")) return "mtn-momo";
+  if (s.includes("airtel")) return "airtel-money";
+  return null;
+}
+
+function mapPurchase(p: BackendPurchase): PurchaseSnapshot {
+  return {
+    id: p.id,
+    driverId: p.driver_id,
+    driverName: p.driver_name ?? "Unknown driver",
+    driverPhone: p.driver_phone,
+    vehicleId: p.vehicle_id ?? "",
+    // The console's VehicleType enum has no tuk-tuk; unknown codes fall back to
+    // "moto" so labels/filters still render (rare edge case).
+    vehicleType: VEHICLE_CODE_TO_VIEW[p.vehicle_type_code] ?? "moto",
+    vehiclePlate: p.vehicle_plate ?? "—",
+    packageId: p.package_id,
+    packageName: p.package_name,
+    packageVersion: p.package_version,
+    campaignId: p.campaign_id ?? null,
+    campaignName: p.campaign_name ?? p.campaign_code ?? null,
+    pricePaid: p.price_paid_rwf,
+    ridesGranted: p.rides_granted,
+    bonusRidesGranted: p.bonus_rides_granted,
+    status: (p.status ? p.status.toLowerCase() : "pending") as PurchaseStatus,
+    paymentProvider: mapPaymentProvider(p.payment_provider),
+    paymentReference: p.payment_ref,
+    createdAt: p.created_at,
+    paidAt: p.paid_at ?? null,
+  };
+}
+
+export const getAdminPurchases = async (): Promise<PurchaseSnapshot[]> => {
+  const list = await request<BackendPurchase[]>("/admin/packages-purchases");
+  return (list ?? []).map(mapPurchase);
 };
 
 // ── Audit Logs ────────────────────────────────────────────────────────────
