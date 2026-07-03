@@ -1,5 +1,11 @@
 import { clearToken, getToken } from "./auth";
 import { MOCK_LIVE_RIDES, MOCK_LIVE_RIDE_DETAILS, MOCK_LIVE_RIDES_STATS } from "./mock-live-rides";
+import type {
+  Campaign as AdminCampaignView,
+  CampaignAudience,
+  CampaignStatus,
+  VehicleType as MonetizationVehicleType,
+} from "./packages-mock";
 
 const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -1237,6 +1243,63 @@ export const togglePackage = (id: string, isActive: boolean) =>
 
 export const deletePackage = (id: string) =>
   request<{ status: string }>(`/admin/packages/${id}`, { method: "DELETE" });
+
+// ── Campaigns ─────────────────────────────────────────────────────────────
+// The backend returns AdminCampaign (snake_case, type/target model). The
+// monetization console renders the richer camelCase Campaign view, so we map
+// backend → view here. The console is read-only, so only the GET is wired.
+type BackendCampaign = {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  type: string; // GLOBAL | VEHICLE_TYPE | PACKAGE | FIRST_PURCHASE | REFERRAL
+  status: string; // DRAFT | SCHEDULED | ACTIVE | EXPIRED | ARCHIVED
+  starts_at: string | null;
+  ends_at: string | null;
+  target_vehicle_type_code: string | null;
+  target_package_id: string | null;
+  override_price_rwf: number | null;
+  override_rides: number | null;
+  override_bonus_rides: number | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+const VEHICLE_CODE_TO_VIEW: Record<string, MonetizationVehicleType> = {
+  MOTO_BIKE: "moto",
+  CAB_TAXI: "cab",
+  LIGHT_HILUX: "hilux",
+  HEAVY_FUSO: "fuso",
+};
+
+function mapCampaign(c: BackendCampaign): AdminCampaignView {
+  const audience: CampaignAudience =
+    c.type === "VEHICLE_TYPE" ? "vehicle-type" : c.type === "FIRST_PURCHASE" ? "first-purchase" : "all";
+  const vt = c.target_vehicle_type_code ? VEHICLE_CODE_TO_VIEW[c.target_vehicle_type_code] : undefined;
+  return {
+    id: c.id,
+    slug: c.code,
+    name: c.name,
+    description: c.description ?? "",
+    status: (c.status ? c.status.toLowerCase() : "draft") as CampaignStatus,
+    audience,
+    vehicleTypes: vt ? [vt] : null,
+    packageIds: c.target_package_id ? [c.target_package_id] : null,
+    priceOverride: c.override_price_rwf ?? null,
+    ridesOverride: c.override_rides ?? null,
+    bonusRidesOverride: c.override_bonus_rides ?? null,
+    startsAt: c.starts_at ?? c.created_at,
+    endsAt: c.ends_at ?? c.created_at,
+    createdAt: c.created_at,
+    createdBy: c.created_by ?? "system",
+  };
+}
+
+export const getAdminCampaigns = async (): Promise<AdminCampaignView[]> => {
+  const list = await request<BackendCampaign[]>("/admin/campaigns");
+  return (list ?? []).map(mapCampaign);
+};
 
 // ── Audit Logs ────────────────────────────────────────────────────────────
 
