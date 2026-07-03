@@ -13,9 +13,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # NEXT_PUBLIC_* is inlined into the client bundle at BUILD time, so the public
-# API URL must be passed as a build arg, not a runtime env var.
+# API URLs must be passed as build args, not runtime env vars.
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+# NEXT_PUBLIC_API_BASE_URL toggles NO_BACKEND in lib/api.ts: when set, the admin
+# calls the real backend instead of the built-in mock data.
+ARG NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
