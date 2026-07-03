@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar, Card } from "../_components";
-import { VerifyDriverModal, type VerifyDriver } from "./verify-driver-modal";
+// VerifyDriverModal removed in favor of /drivers/[id] page
 import {
   getDrivers,
   getDriver,
@@ -21,6 +21,8 @@ import {
   type DriverRow,
   type DriverStatus,
 } from "@/lib/drivers";
+import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
+import { getLocalApiDrivers } from "@/lib/local-drivers";
 
 type Driver = DriverRow;
 
@@ -31,6 +33,7 @@ const statusStyles: Record<DriverStatus, string> = {
   Offline: "bg-muted text-muted-foreground",
   Pending: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100",
   Suspended: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-100",
+  Rejected: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-100",
 };
 
 type Tab = { id: "all" | DriverStatus; label: string };
@@ -41,6 +44,7 @@ const tabs: Tab[] = [
   { id: "On trip", label: "On trip" },
   { id: "Pending", label: "Pending" },
   { id: "Suspended", label: "Suspended" },
+  { id: "Rejected", label: "Rejected" },
 ];
 
 type SortKey = "name" | "acceptance" | "rating" | "lastActive" | "applied";
@@ -342,9 +346,7 @@ export function DriversTable() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
-  const [verifyDriver, setVerifyDriver] = useState<VerifyDriver | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  // verifying state removed in favor of page navigation
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [totalFromApi, setTotalFromApi] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -373,8 +375,19 @@ export function DriversTable() {
       if (debouncedQuery) params.search = debouncedQuery;
 
       const res = await getDrivers(params);
-      setDrivers((res.drivers ?? []).map(mapApiDriver));
-      setTotalFromApi(res.total ?? res.drivers?.length ?? 0);
+      const apiRows = (res.drivers ?? []).map(mapApiDriver);
+      const mockRows = MOCK_API_DRIVERS
+        .filter((d) => !vehicleType || d.transport_type === vehicleType)
+        .map(mapApiDriver);
+      const localRows = getLocalApiDrivers()
+        .filter((d) => !vehicleType || d.transport_type === vehicleType)
+        .map(mapApiDriver);
+      // Deduplicate — real API takes precedence over mock/local if IDs ever collide.
+      const seenIds = new Set(apiRows.map((d) => d.id));
+      const extras = [...mockRows, ...localRows].filter((d) => !seenIds.has(d.id));
+      const merged = [...apiRows, ...extras];
+      setDrivers(merged);
+      setTotalFromApi((res.total ?? apiRows.length) + extras.length);
     } catch (err) {
       setDrivers([]);
       setTotalFromApi(0);
@@ -389,50 +402,12 @@ export function DriversTable() {
   }, [loadDrivers]);
 
   useEffect(() => {
-    if (!verifyingId) {
-      setVerifyDriver(null);
-      return;
-    }
-    const row = drivers.find((d) => d.id === verifyingId);
-    let cancelled = false;
-    setDetailLoading(true);
-    getDriver(verifyingId)
-      .then((detail) => {
-        if (cancelled) return;
-        setVerifyDriver(
-          mapDriverDetailToVerify(detail, row ?? undefined),
-        );
-      })
-      .catch(() => {
-        if (cancelled) return;
-        if (row) {
-          setVerifyDriver({
-            id: row.id,
-            name: row.name,
-            vehicle: row.vehicle,
-            plate: row.plate,
-            kyc: {
-              phone: row.phone ?? "",
-              dob: "—",
-              age: 0,
-              location: "—",
-              licenseNumber: "—",
-              submittedAt: row.lastActive,
-              momoProvider: "MTN MoMo",
-              momoCode: "",
-            },
-          });
-        } else {
-          setVerifyDriver(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setDetailLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [verifyingId, drivers]);
+    const handle = () => void loadDrivers();
+    window.addEventListener("localDriversUpdated", handle);
+    return () => window.removeEventListener("localDriversUpdated", handle);
+  }, [loadDrivers]);
+
+  // getDriver effect removed in favor of page navigation
 
   useEffect(() => {
     if (!toast) return;
@@ -446,9 +421,6 @@ export function DriversTable() {
     );
   };
 
-  const verifyingDriver = verifyingId
-    ? drivers.find((d) => d.id === verifyingId)
-    : null;
 
   const counts: Record<Tab["id"], number> = {
     all: drivers.length,
@@ -457,6 +429,7 @@ export function DriversTable() {
     Offline: drivers.filter((d) => d.status === "Offline").length,
     Pending: drivers.filter((d) => d.status === "Pending").length,
     Suspended: drivers.filter((d) => d.status === "Suspended").length,
+    Rejected: drivers.filter((d) => d.status === "Rejected").length,
   };
 
   const filtered = drivers.filter((d) => {
@@ -518,7 +491,7 @@ export function DriversTable() {
         <div className="flex w-full items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setVerifyingId(d.id)}
+            onClick={() => router.push(`/admin/drivers/${d.id}`)}
             className="inline-flex h-8 flex-1 items-center justify-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
           >
             View
@@ -540,7 +513,7 @@ export function DriversTable() {
     return (
       <button
         type="button"
-        onClick={() => setVerifyingId(d.id)}
+        onClick={() => router.push(`/admin/drivers/${d.id}`)}
         className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
       >
         View
@@ -555,9 +528,9 @@ export function DriversTable() {
       onToggle={() => setOpenMenuId(openMenuId === d.id ? null : d.id)}
       onClose={() => setOpenMenuId(null)}
       onVerify={
-        d.status === "Pending" ? () => setVerifyingId(d.id) : undefined
+        d.status === "Pending" ? () => router.push(`/admin/drivers/${d.id}`) : undefined
       }
-      onView={() => setVerifyingId(d.id)}
+      onView={() => router.push(`/admin/drivers/${d.id}`)}
       onMessage={() => setToast(`Message sent to ${d.name}`)}
       onForceOffline={async () => {
         try {
@@ -858,45 +831,6 @@ export function DriversTable() {
         </div>
       </div>
 
-      {detailLoading && verifyingId ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-          <p className="rounded-xl border border-border bg-card px-6 py-4 text-sm font-medium text-foreground shadow-xl">
-            Loading driver profile…
-          </p>
-        </div>
-      ) : null}
-
-      <VerifyDriverModal
-        driver={verifyDriver}
-        mode={verifyingDriver?.status === "Pending" ? "verify" : "view"}
-        onClose={() => setVerifyingId(null)}
-        onApprove={async (id) => {
-          try {
-            await approveDriver(id);
-            updateStatus(id, "Offline");
-            setToast(`${verifyingDriver?.name ?? "Driver"} approved`);
-            setVerifyingId(null);
-            void loadDrivers();
-          } catch (err) {
-            setToast(
-              err instanceof Error ? err.message : "Failed to approve driver",
-            );
-          }
-        }}
-        onReject={async (id, reason) => {
-          try {
-            await rejectDriver(id, reason);
-            updateStatus(id, "Suspended");
-            setToast(`${verifyingDriver?.name ?? "Driver"} rejected`);
-            setVerifyingId(null);
-            void loadDrivers();
-          } catch (err) {
-            setToast(
-              err instanceof Error ? err.message : "Failed to reject driver",
-            );
-          }
-        }}
-      />
 
       {toast ? (
         <div className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 shadow-2xl">

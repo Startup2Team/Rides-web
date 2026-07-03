@@ -137,12 +137,8 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [rescanKey, setRescanKey] = useState(0);
   const provisioningFired = useRef(false);
-
-  // Re-enroll states for totp_verify step
-  const [rescanBusy, setRescanBusy] = useState(false);
-  const [rescanQrData, setRescanQrData] = useState<{ secret: string; qr_code_url: string } | null>(null);
+  const lastSubmittedCode = useRef("");
 
   useEffect(() => {
     if (defaultEmail) setEmail(defaultEmail);
@@ -227,10 +223,17 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [step, challengeToken, rescanKey]);
+  }, [step, challengeToken]);
 
   const fullCode = code.join("");
   const codeReady = fullCode.length === 6;
+
+  useEffect(() => {
+    if (codeReady && !busy && !provisioningLoading && !loadProvisioningFailed && lastSubmittedCode.current !== fullCode) {
+      lastSubmittedCode.current = fullCode;
+      void handleTotpComplete();
+    }
+  }, [fullCode, codeReady, busy, provisioningLoading, loadProvisioningFailed]);
 
   async function handleCredentials(e: React.FormEvent) {
     e.preventDefault();
@@ -276,6 +279,14 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
 
       const token = j.data?.challenge_token ?? "";
 
+      // Dev: backend authenticated directly (2FA skipped) — go straight in.
+      if (status === "success") {
+        const dest = await resolvePostLoginRedirect(nextPath);
+        router.replace(dest);
+        router.refresh();
+        return;
+      }
+
       if (!token || (status !== "totp_required" && status !== "totp_setup_required")) {
         setError("Unexpected response from server.");
         return;
@@ -299,9 +310,10 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
     }
   }
 
-  async function handleTotpComplete(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleTotpComplete(e?: React.FormEvent) {
+    if (e) e.preventDefault();
     setError(null);
+    lastSubmittedCode.current = fullCode;
 
     if (!challengeToken) {
       setError("Session expired — start sign-in again.");
@@ -364,17 +376,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
     setLoadProvisioningFailed(null);
     setProvisioningLoading(false);
     provisioningFired.current = false;
-    setRescanKey(0);
-    setRescanQrData(null);
-  }
-
-  function handleRescan() {
-    provisioningFired.current = false;
-    setOtpauthUrl("");
-    setSetupSecret("");
-    setLoadProvisioningFailed(null);
-    setCode(["", "", "", "", "", ""]);
-    setRescanKey((k) => k + 1);
+    lastSubmittedCode.current = "";
   }
 
   function isSessionExpiredError(message: string, code?: string) {
@@ -385,45 +387,6 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
       lower.includes("expired") ||
       lower.includes("pre-auth")
     );
-  }
-
-  async function handleRescanVerify() {
-    if (!challengeToken) {
-      setError("Session expired — go back and sign in again.");
-      return;
-    }
-    setError(null);
-    setRescanBusy(true);
-    try {
-      const r = await fetch("/api/admin/auth/reset-totp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challenge_token: challengeToken, totp_code: "" }),
-      });
-      const j = (await r.json()) as ApiEnvelope<{
-        secret?: string;
-        qr_code_url?: string;
-      }>;
-      if (!r.ok) {
-        const msg = j.error?.message ?? "Could not reset authenticator.";
-        if (isSessionExpiredError(msg, j.error?.code)) {
-          setError("Your sign-in session expired. Click “Back to sign in”, log in again, then use “Scan QR code again”.");
-        } else {
-          setError(msg);
-        }
-        return;
-      }
-      if (!j.data?.qr_code_url) {
-        setError("Server did not return a QR code. Try again or sign in again.");
-        return;
-      }
-      setRescanQrData({ secret: j.data?.secret ?? "", qr_code_url: j.data.qr_code_url });
-      setCode(["", "", "", "", "", ""]);
-    } catch {
-      setError("Network error during authenticator reset.");
-    } finally {
-      setRescanBusy(false);
-    }
   }
 
   function copySecret() {
@@ -437,13 +400,12 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
   if (step === "credentials") {
     return (
       <form onSubmit={handleCredentials} className="mt-8 space-y-4">
-        <h1 className="text-3xl font-bold tracking-[-0.02em] text-foreground">Sign in</h1>
-        <p className="text-sm text-muted-foreground">
-          Welcome back. Sign in with your admin email and password. You&apos;ll confirm with your authenticator app.
-        </p>
+        <h1 className="text-3xl font-bold tracking-[-0.02em] text-foreground">
+          Sign in
+        </h1>
 
-        <label className="block pt-4">
-          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Email</span>
+        <label className="block pt-6">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Email</span>
           <input
             name="email"
             type="email"
@@ -451,16 +413,16 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            className="mt-2 block h-11 w-full rounded-xl border border-border bg-surface px-3.5 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="mt-2 block w-full border-0 border-b border-border bg-transparent px-0 py-3 text-base text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-foreground"
           />
         </label>
 
-        <div>
+        <div className="pt-2">
           <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Password
             </span>
-            <div className="relative mt-2">
+            <div className="relative">
               <input
                 name="password"
                 type={showPassword ? "text" : "password"}
@@ -468,22 +430,25 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="block h-11 w-full rounded-xl border border-border bg-surface pl-3.5 pr-11 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="mt-2 block w-full border-0 border-b border-border bg-transparent pl-0 pr-10 py-3 text-base text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-foreground"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
               >
                 {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
               </button>
             </div>
           </label>
-          <div className="mt-2 flex justify-end">
-            <span className="text-xs font-medium text-muted-foreground">
-              Forgot password? Contact a super admin.
-            </span>
+          <div className="mt-3 flex justify-end">
+            <a
+              href="mailto:admin@rides.rw?subject=Password%20reset%20request"
+              className="text-xs font-bold text-primary underline-offset-4 transition-colors hover:underline"
+            >
+              Forgot password
+            </a>
           </div>
         </div>
 
@@ -496,7 +461,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         <button
           type="submit"
           disabled={busy}
-          className="mt-2 flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold tracking-[-0.01em] text-primary-foreground transition duration-200 hover:scale-[1.01] hover:bg-foreground active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Signing in…" : "Continue"}
         </button>
@@ -510,9 +475,6 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
     return (
       <form onSubmit={handleTotpComplete} className="mt-8 space-y-5">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">
-            Step 2 of 2 · Set up 2FA
-          </p>
           <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground">Secure your account</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Scan the QR code with your authenticator app, then enter the 6-digit code to confirm. This replaces any
@@ -537,15 +499,6 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
                 <span className="text-xs text-muted-foreground">Waiting for provisioning…</span>
               )}
             </div>
-            {!provisioningLoading ? (
-              <button
-                type="button"
-                onClick={handleRescan}
-                className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                Get a new QR code
-              </button>
-            ) : null}
           </div>
 
           <div className="min-w-0 space-y-2">
@@ -594,7 +547,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         <button
           type="submit"
           disabled={!codeReady || busy || provisioningLoading || !!loadProvisioningFailed}
-          className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold tracking-[-0.01em] text-primary-foreground transition duration-200 hover:scale-[1.01] hover:bg-foreground active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {busy ? "Verifying…" : provisioningLoading ? "Loading setup…" : "Enable 2FA & enter dashboard"}
         </button>
@@ -614,7 +567,6 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
   return (
     <form onSubmit={handleTotpComplete} className="mt-8 space-y-5">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">Step 2 of 2</p>
         <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-foreground">Two-factor authentication</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Enter the 6-digit code from your authenticator app for{" "}
@@ -637,64 +589,27 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
         </p>
       ) : null}
 
-      {rescanQrData ? (
-        <div className="space-y-3 rounded-2xl border border-primary/25 bg-primary/5 p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">
-            New QR code — scan now, then enter the code above
-          </p>
-          <div className="flex gap-4">
-            <div className="flex h-[140px] w-[140px] shrink-0 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border">
-              <OtpQrCode value={rescanQrData.qr_code_url} />
-            </div>
-            <div className="min-w-0 space-y-2">
-              <p className="text-xs text-muted-foreground">
-                Scan with Google Authenticator, Authy, or any TOTP app. Then enter the 6-digit code it shows into the box above.
-              </p>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                Can&apos;t scan? Use this key
-              </p>
-              <code className="block break-all font-mono text-[11px] font-semibold text-foreground">
-                {rescanQrData.secret}
-              </code>
-            </div>
-          </div>
-        </div>
-      ) : (
+      {error && isSessionExpiredError(error) ? (
         <div className="space-y-2 text-center">
-          <button
-            type="button"
-            onClick={() => void handleRescanVerify()}
-            disabled={rescanBusy || isSessionExpiredError(error ?? "", undefined)}
-            className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {rescanBusy ? "Generating QR…" : "New device? Scan QR code again"}
-          </button>
-          {error && isSessionExpiredError(error) ? (
-            <p className="text-[10px] text-muted-foreground">
-              Session expired — use{" "}
-              <button type="button" onClick={() => resetToCredentials()} className="font-semibold text-primary hover:underline">
-                Back to sign in
-              </button>{" "}
-              first.
-            </p>
-          ) : null}
+          <p className="text-[10px] text-muted-foreground">
+            Session expired — use{" "}
+            <button type="button" onClick={() => resetToCredentials()} className="font-semibold text-primary hover:underline">
+              Back to sign in
+            </button>{" "}
+            first.
+          </p>
         </div>
-      )}
+      ) : null}
 
       <button
         type="submit"
         disabled={!codeReady || busy}
-        className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold tracking-[-0.01em] text-primary-foreground transition duration-200 hover:scale-[1.01] hover:bg-foreground active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {busy ? "Verifying…" : "Verify & continue"}
+        {busy ? "Verifying…" : "Continue"}
       </button>
 
-      <p className="text-center text-[11px] text-muted-foreground">
-        Prefer to leave?{" "}
-        <Link href="/" className="font-semibold text-primary hover:underline">
-          Back to marketing site
-        </Link>
-      </p>
+
 
       <button
         type="button"

@@ -9,6 +9,7 @@ import { LiveMapWidget } from "../live-map-widget";
 import { RideTrendWidget, DriverStatusWidget } from "../dashboard-side-widgets";
 import { ActivityFeed, AlertsPanel } from "../dashboard-feed-widgets";
 import { RecentMessagesWidget } from "../recent-messages-widget";
+import { MonetizationGrid } from "../monetization-widgets";
 import {
   getDashboard,
   getAnalyticsOverviewData,
@@ -39,7 +40,7 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-primary/5"
+      className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5"
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
@@ -83,7 +84,7 @@ function LivePipeline({ stats, loading }: { stats: LiveRidesStats | null; loadin
     : [];
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5">
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-foreground">Live ride pipeline</h2>
         <Link href="/admin/live-rides" className="text-xs font-medium text-primary hover:underline">
@@ -146,7 +147,7 @@ function OpsKpis({
       {kpis.map((kpi) => (
         <div
           key={kpi.label}
-          className="rounded-2xl border border-border bg-card p-4 transition-all hover:border-primary/25"
+          className="rounded-2xl border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5"
         >
           <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             {kpi.label}
@@ -173,7 +174,7 @@ function OpsKpis({
 
 function LiveRidesList({ rides, loading }: { rides: Ride[]; loading: boolean }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-foreground">Active rides snapshot</h2>
         <Link href="/admin/live-rides" className="text-xs font-medium text-primary hover:underline">
@@ -397,6 +398,8 @@ export function OperationsDashboard() {
         <RideTrendWidget />
         <DriverStatusWidget />
       </div>
+
+      <MonetizationGrid />
 
       <div className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-7">

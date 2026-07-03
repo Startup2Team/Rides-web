@@ -31,7 +31,6 @@ export type CustomerProfile = {
   spend: number;
   avgFare: number;
   lastTrip: string;
-  rating: number;
   preferredVehicle: string;
   status: CustomerStatus;
   recentTrips: CustomerTrip[];
@@ -161,14 +160,10 @@ export function CustomerModal({
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Stat label="Lifetime Trips" value={String(customer.trips)} />
             <Stat label="Total Spend" value={formatRWF(customer.spend)} />
             <Stat label="Avg Fare" value={formatRWF(customer.avgFare)} />
-            <Stat
-              label="Rating Given"
-              value={`${customer.rating.toFixed(1)} ★`}
-            />
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">

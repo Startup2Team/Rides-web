@@ -1,22 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Avatar, Card, StatusPill } from "../_components";
 import {
-  CustomerModal,
   type CustomerProfile,
   type CustomerStatus,
 } from "./customer-modal";
 import {
   getCustomers,
-  getCustomer,
   suspendCustomer,
   reinstateCustomer,
   type Customer as ApiCustomer,
-  type CustomerDetail,
-  type CustomerTrip as ApiTrip,
 } from "@/lib/api";
-import type { CustomerTrip } from "./customer-modal";
+import { MOCK_API_CUSTOMERS } from "@/lib/mock-customers";
+
+const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
 function mapApiCustomer(c: ApiCustomer): Customer {
   return {
@@ -32,7 +31,6 @@ function mapApiCustomer(c: ApiCustomer): Customer {
     lastTrip: c.last_seen_at
       ? new Date(c.last_seen_at).toLocaleDateString()
       : "—",
-    rating: c.rating ?? 0,
     preferredVehicle: "",
     status: mapCustomerStatus(c.is_suspended),
     recentTrips: [],
@@ -40,33 +38,9 @@ function mapApiCustomer(c: ApiCustomer): Customer {
   };
 }
 
-function mapApiTrip(t: ApiTrip): CustomerTrip {
-  return {
-    id: t.id,
-    date: new Date(t.created_at).toLocaleDateString(),
-    from: t.pickup_address,
-    to: t.destination_address,
-    vehicle: t.transport_type.replace(/_/g, " "),
-    fare: t.agreed_fare ?? 0,
-    status: t.status === "COMPLETED" ? "Completed" : "Cancelled",
-  };
-}
-
 function mapCustomerStatus(isSuspended: boolean): CustomerStatus {
   if (isSuspended) return "Suspended";
   return "Active";
-}
-
-function mergeDetail(base: Customer, detail: CustomerDetail): Customer {
-  return {
-    ...base,
-    email: detail.email ?? base.email,
-    rating: detail.rating ?? base.rating,
-    lastTrip: detail.last_seen_at
-      ? new Date(detail.last_seen_at).toLocaleDateString()
-      : base.lastTrip,
-    recentTrips: (detail.recent_trips ?? []).map(mapApiTrip),
-  };
 }
 
 type Customer = CustomerProfile;
@@ -361,7 +335,7 @@ function CustomerCard({
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface/50 p-2.5">
+      <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-border bg-surface/50 p-2.5">
         <div className="text-center">
           <p className="text-sm font-bold tracking-tight text-foreground">
             {customer.trips}
@@ -370,7 +344,7 @@ function CustomerCard({
             Trips
           </p>
         </div>
-        <div className="border-x border-border text-center">
+        <div className="border-l border-border text-center">
           <p className="truncate text-sm font-bold tracking-tight text-foreground">
             {customer.spend === 0
               ? "—"
@@ -378,19 +352,6 @@ function CustomerCard({
           </p>
           <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
             Spend
-          </p>
-        </div>
-        <div className="text-center">
-          <p className="text-sm font-bold tracking-tight text-foreground">
-            {customer.rating === 0 ? "—" : (
-              <>
-                {customer.rating.toFixed(1)}{" "}
-                <span className="text-amber-500">★</span>
-              </>
-            )}
-          </p>
-          <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Rating
           </p>
         </div>
       </div>
@@ -409,34 +370,35 @@ function CustomerCard({
 }
 
 export function CustomersTable() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab["id"]>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [viewingId, setViewingId] = useState<string | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   useEffect(() => {
+    if (NO_BACKEND) {
+      setCustomers(MOCK_API_CUSTOMERS.map(mapApiCustomer));
+      setLoading(false);
+      return;
+    }
     getCustomers({ limit: "100", offset: "0" })
-      .then((res) => setCustomers((res.customers ?? []).map(mapApiCustomer)))
-      .catch(() => null)
+      .then((res) => {
+        const api = (res.customers ?? []).map(mapApiCustomer);
+        setCustomers([...MOCK_API_CUSTOMERS.map(mapApiCustomer), ...api]);
+      })
+      .catch(() => setCustomers(MOCK_API_CUSTOMERS.map(mapApiCustomer)))
       .finally(() => setLoading(false));
   }, []);
 
   const openProfile = (id: string) => {
-    setViewingId(id);
-    getCustomer(id)
-      .then((detail) => {
-        setCustomers((prev) =>
-          prev.map((c) => (c.id === id ? mergeDetail(c, detail) : c))
-        );
-      })
-      .catch(() => null);
+    router.push(`/admin/customers/${id}`);
   };
 
   useEffect(() => {
@@ -450,10 +412,6 @@ export function CustomersTable() {
       prev.map((c) => (c.id === id ? { ...c, status } : c))
     );
   };
-
-  const viewingCustomer = viewingId
-    ? customers.find((c) => c.id === viewingId) ?? null
-    : null;
 
   const counts: Record<Tab["id"], number> = {
     all: customers.length,
@@ -773,37 +731,6 @@ export function CustomersTable() {
           </button>
         </div>
       </div>
-
-      <CustomerModal
-        customer={viewingCustomer}
-        onClose={() => setViewingId(null)}
-        onMessage={(id) => {
-          const target = customers.find((c) => c.id === id);
-          setToast(target ? `Message sent to ${target.name}` : "Message sent");
-        }}
-        onFlag={(id) => {
-          updateStatus(id, "Flagged");
-          const target = customers.find((c) => c.id === id);
-          setToast(`${target?.name ?? "Customer"} flagged for review`);
-        }}
-        onUnflag={(id) => {
-          updateStatus(id, "Active");
-          const target = customers.find((c) => c.id === id);
-          setToast(`${target?.name ?? "Customer"} flag removed`);
-        }}
-        onSuspend={(id) => {
-          updateStatus(id, "Suspended");
-          const target = customers.find((c) => c.id === id);
-          setToast(`${target?.name ?? "Customer"} suspended`);
-          setViewingId(null);
-        }}
-        onReinstate={(id) => {
-          updateStatus(id, "Active");
-          const target = customers.find((c) => c.id === id);
-          setToast(`${target?.name ?? "Customer"} reinstated`);
-          setViewingId(null);
-        }}
-      />
 
       {toast ? (
         <div className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 shadow-2xl">

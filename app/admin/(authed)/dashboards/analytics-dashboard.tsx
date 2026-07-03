@@ -10,6 +10,7 @@ import {
   type DailyRidePoint,
 } from "@/lib/api";
 import { useAuth } from "@/context/auth-context";
+import { MonetizationGrid } from "../monetization-widgets";
 
 function QuickLink({
   href,
@@ -25,7 +26,7 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-primary/5"
+      className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5"
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
@@ -136,7 +137,7 @@ export function AnalyticsDashboard() {
         ].map((kpi) => (
           <div
             key={kpi.label}
-            className="rounded-2xl border border-border bg-card p-4"
+            className="rounded-2xl border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5"
           >
             <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
               {kpi.label}
@@ -167,7 +168,7 @@ export function AnalyticsDashboard() {
         />
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-foreground">Completed rides — last 14 days</h2>
           <Link href="/admin/analytics" className="text-xs font-medium text-primary hover:underline">
@@ -178,6 +179,8 @@ export function AnalyticsDashboard() {
           <MiniTrend days={rides} />
         </div>
       </div>
+
+      <MonetizationGrid />
     </div>
   );
 }

@@ -55,7 +55,7 @@ type Kpi = {
 
 function KpiCard({ kpi }: { kpi: Kpi }) {
   return (
-    <div className="group relative rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-primary/5">
+    <div className="group relative rounded-2xl border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
       <div className="flex items-center gap-2">
         <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary ring-1 ring-inset ring-primary/15">
           {kpi.icon}

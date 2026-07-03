@@ -18,7 +18,7 @@ export function RidesLogo({
   const intrinsic = (size ?? 120) * 2;
   return (
     <Image
-      src="/rideslogo.png"
+      src="/ridelogo.png"
       alt={alt}
       width={intrinsic}
       height={intrinsic}

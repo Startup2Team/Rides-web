@@ -158,9 +158,8 @@ export default function Features() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             Built for the trip
           </p>
-          <h2 className="mt-3 text-balance text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-            Everything you need,{" "}
-            <span className="text-primary">on your terms</span>
+          <h2 className="mt-3 text-balance text-3xl font-bold tracking-[-0.02em] text-muted-foreground sm:text-4xl lg:text-5xl">
+            Everything you need, on your terms
           </h2>
           <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
             Built around how Rwanda actually moves. Fair prices, the right

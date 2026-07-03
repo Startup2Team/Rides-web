@@ -134,7 +134,7 @@ export function ActivityFeed() {
   }, []);
 
   return (
-    <div className="rounded-2xl border border-border bg-card">
+    <div className="rounded-2xl border border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
@@ -143,7 +143,7 @@ export function ActivityFeed() {
           </span>
           <h2 className="text-sm font-semibold tracking-tight text-foreground">Recent Activity</h2>
         </div>
-        <Link href="/admin/activity" className="text-[11px] font-medium text-muted-foreground hover:text-primary">
+        <Link href="/admin/audit" className="text-[11px] font-medium text-muted-foreground hover:text-primary">
           View all
         </Link>
       </div>
@@ -251,7 +251,7 @@ export function AlertsPanel() {
   const count = items?.length ?? 0;
 
   return (
-    <div className="rounded-2xl border border-border bg-card">
+    <div className="rounded-2xl border border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <span className={`flex h-2 w-2 rounded-full ${count > 0 ? "bg-red-500" : "bg-muted-foreground/40"}`} />

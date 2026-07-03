@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { getAccount, getRoles, type AdminAccount } from "@/lib/api";
+import { clearToken } from "@/lib/auth";
 import {
   type Permission,
   resolveRole,
@@ -41,15 +42,29 @@ const AuthContext = createContext<AuthContextValue>({
   refreshUser: async () => {},
 });
 
+const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+
+const MOCK_USER: AuthUser = {
+  id: "mock-admin",
+  name: "Admin (Mock)",
+  email: "admin@mock.local",
+  role_id: "mock-role",
+  role_name: "super_admin",
+  two_factor: false,
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [roleName, setRoleName] = useState<AdminRoleName | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(NO_BACKEND ? MOCK_USER : null);
+  const [roleName, setRoleName] = useState<AdminRoleName | null>(NO_BACKEND ? "Super Admin" : null);
   const [permissions, setPermissions] = useState<Permission[]>(["*"]);
   const [readOnly, setReadOnly] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(NO_BACKEND);
+  const [connError, setConnError] = useState<string | null>(null);
 
   const refreshUser = useCallback(async () => {
+    if (NO_BACKEND) return;
     try {
+      setConnError(null);
       const account = await getAccount();
       let apiPerms: unknown;
       try {
@@ -71,11 +86,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRoleName((role?.name as AdminRoleName) ?? null);
       setPermissions(role?.permissions ?? ["*"]);
       setReadOnly(role?.readOnly === true);
-    } catch {
-      setUser(null);
-      setRoleName(null);
-      setPermissions([]);
-      setReadOnly(false);
+    } catch (err: any) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const isAuthErr = errMsg === "Unauthorized" || errMsg.toLowerCase().includes("unauthorized");
+      if (isAuthErr) {
+        setUser(null);
+        setRoleName(null);
+        setPermissions([]);
+        setReadOnly(false);
+      } else {
+        setConnError(errMsg || "Failed to connect to the administration server.");
+      }
     } finally {
       setReady(true);
     }
@@ -96,6 +117,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPermissions([]);
     window.location.href = "/admin/login";
   }, []);
+
+  if (connError) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-background px-4 text-center">
+        <div className="max-w-md space-y-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+            <svg
+              className="h-8 w-8"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Connection Failure
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {connError}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setConnError(null);
+              setReady(false);
+              void refreshUser();
+            }}
+            className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider

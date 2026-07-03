@@ -559,21 +559,6 @@ export function TeamConsole() {
                                       },
                                     },
                                   ]),
-                              {
-                                label: "Remove admin",
-                                tone: "danger" as const,
-                                onClick: async () => {
-                                  try {
-                                    await removeMember(a.id);
-                                  } catch {
-                                    /* ignore */
-                                  }
-                                  setAdmins((prev) =>
-                                    prev.filter((x) => x.id !== a.id),
-                                  );
-                                  setToast(`${a.name} removed`);
-                                },
-                              },
                             ]}
                           />
                         </td>
