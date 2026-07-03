@@ -46,9 +46,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: "SERVER_ERROR", message: "Empty response from server" } }, { status: 502 });
   }
 
-  // 2FA is optional. A 2FA-off admin gets an access_token → sign straight in
-  // (no forced setup). Enabling 2FA is self-serve from Account settings.
+  // 2FA is MANDATORY. A 2FA-off admin gets an access_token; in production we
+  // force them into 2FA setup (QR + setup key) before the dashboard. Dev skips
+  // the wall so testing isn't gated behind an authenticator.
   if (data.access_token) {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({
+        data: { status: "totp_setup_required", challenge_token: data.access_token },
+      });
+    }
     const response = NextResponse.json({ data: { status: "success" } });
     applyAdminTokenCookies(response, data.access_token);
     return response;
