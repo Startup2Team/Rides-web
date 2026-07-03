@@ -4,6 +4,8 @@ import type {
   Campaign as AdminCampaignView,
   CampaignAudience,
   CampaignStatus,
+  Entitlement,
+  EntitlementTransactionKind,
   PurchaseSnapshot,
   PurchaseStatus,
   VehicleType as MonetizationVehicleType,
@@ -1369,6 +1371,83 @@ export const getAdminPurchases = async (): Promise<PurchaseSnapshot[]> => {
   const list = await request<BackendPurchase[]>("/admin/packages-purchases");
   return (list ?? []).map(mapPurchase);
 };
+
+// ── Entitlements ──────────────────────────────────────────────────────────
+// GET /admin/entitlements → { entitlements: AdminEntitlement[] }. Mapped to the
+// console's Entitlement view. The id is "driver_id:vehicle_type_id".
+type BackendEntitlementTxn = {
+  id: string;
+  kind: string;
+  rides_delta: number;
+  bonus_rides_delta: number;
+  rides_after: number;
+  bonus_rides_after: number;
+  source_ref: string;
+  reason?: string | null;
+  performed_by?: string | null;
+  created_at: string;
+};
+type BackendEntitlement = {
+  id: string;
+  driver_id: string;
+  driver_name: string;
+  driver_phone: string;
+  vehicle_type_code: string;
+  vehicle_plate: string;
+  rides_remaining: number;
+  bonus_rides_remaining: number;
+  total_granted: number;
+  total_consumed: number;
+  transactions: BackendEntitlementTxn[] | null;
+};
+
+function mapEntitlement(e: BackendEntitlement): Entitlement {
+  return {
+    id: e.id,
+    driverId: e.driver_id,
+    driverName: e.driver_name,
+    driverPhone: e.driver_phone,
+    vehicleId: "",
+    vehicleType: VEHICLE_CODE_TO_VIEW[e.vehicle_type_code] ?? "moto",
+    vehiclePlate: e.vehicle_plate,
+    ridesRemaining: e.rides_remaining,
+    bonusRidesRemaining: e.bonus_rides_remaining,
+    totalGranted: e.total_granted,
+    totalConsumed: e.total_consumed,
+    transactions: (e.transactions ?? []).map((t) => ({
+      id: t.id,
+      entitlementId: e.id,
+      kind: t.kind as EntitlementTransactionKind,
+      ridesDelta: t.rides_delta,
+      bonusRidesDelta: t.bonus_rides_delta,
+      ridesAfter: t.rides_after,
+      bonusRidesAfter: t.bonus_rides_after,
+      sourceRef: t.source_ref,
+      reason: t.reason ?? undefined,
+      performedBy: t.performed_by ?? undefined,
+      createdAt: t.created_at,
+    })),
+  };
+}
+
+export const getAdminEntitlements = async (): Promise<Entitlement[]> => {
+  const res = await request<{ entitlements: BackendEntitlement[] }>("/admin/entitlements");
+  return (res?.entitlements ?? []).map(mapEntitlement);
+};
+
+// Grant credits to a driver's vehicle-type entitlement. driverId + vehicleTypeId
+// come from splitting the entitlement id ("driver_id:vehicle_type_id").
+export const grantEntitlement = (
+  driverId: string,
+  vehicleTypeId: string,
+  rides: number,
+  bonusRides: number,
+  reason: string,
+) =>
+  request<void>("/admin/entitlements/grant", {
+    method: "POST",
+    body: { driver_id: driverId, vehicle_type_id: vehicleTypeId, rides, bonus_rides: bonusRides, reason },
+  });
 
 // ── Audit Logs ────────────────────────────────────────────────────────────
 

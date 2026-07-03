@@ -1,17 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { grantEntitlement } from "@/lib/api";
 
 /**
  * Modal for granting rides (or bonus rides) to a driver's specific vehicle
  * entitlement. Requires a reason — the reason is written to the audit log
  * along with the actor and the before/after balances.
  *
- * UI-only until the backend `POST /entitlements/:id/grant` endpoint ships.
+ * Wired to POST /admin/entitlements/grant. The entitlement id encodes both
+ * identifiers as "driver_id:vehicle_type_id".
  */
 export function GrantRidesModal({
   target,
   onClose,
+  onGranted,
 }: {
   target: {
     entitlementId: string;
@@ -19,6 +22,7 @@ export function GrantRidesModal({
     vehicleLabel: string;
   };
   onClose: () => void;
+  onGranted: () => void;
 }) {
   const [rides, setRides] = useState(0);
   const [bonusRides, setBonusRides] = useState(0);
@@ -49,15 +53,9 @@ export function GrantRidesModal({
     setErrorMessage(null);
     setSubmitting(true);
     try {
-      // TODO: when backend ships:
-      // await postEntitlementGrant({
-      //   entitlementId: target.entitlementId,
-      //   ridesDelta: rides,
-      //   bonusRidesDelta: bonusRides,
-      //   reason: reason.trim(),
-      // });
-      await new Promise((r) => setTimeout(r, 600));
-      onClose();
+      const [driverId, vehicleTypeId] = target.entitlementId.split(":");
+      await grantEntitlement(driverId, vehicleTypeId, rides, bonusRides, reason.trim());
+      onGranted();
     } catch (err) {
       setErrorMessage(
         err instanceof Error ? err.message : "Could not grant rides. Please try again.",
