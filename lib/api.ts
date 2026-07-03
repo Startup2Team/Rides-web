@@ -1,4 +1,7 @@
 import { clearToken, getToken } from "./auth";
+import { MOCK_LIVE_RIDES, MOCK_LIVE_RIDE_DETAILS, MOCK_LIVE_RIDES_STATS } from "./mock-live-rides";
+
+const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
@@ -27,8 +30,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     clearToken();
     if (typeof window !== "undefined") {
       // Clear the HttpOnly admin_access_token cookie via the server logout route
-      // so proxy.ts does not redirect back to /admin and loop.
-      await fetch("/api/admin/auth/logout", { method: "POST" }).catch(() => {});
+      // so middleware.ts does not redirect back to /admin and loop.
+      await fetch("/api/admin/auth/logout?local=true", { method: "POST" }).catch(() => {});
       window.location.href = "/admin/login";
     }
     throw new Error("Unauthorized");
@@ -36,7 +39,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (res.status === 204) return undefined as T;
 
-  const json = await res.json();
+  const text = await res.text();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let json: any;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Server error (${res.status})`);
+  }
 
   if (!res.ok) {
     // Backend error shape: { error: { code, message } }
@@ -441,6 +451,12 @@ export type DriversOverview = {
   suspended: number;
 };
 
+export const sendDriverOTP = (phone: string) =>
+  request<{ dev_otp?: string } | void>("/admin/drivers/send-otp", { method: "POST", body: { phone } });
+
+export const verifyDriverOTP = (phone: string, otp: string) =>
+  request<{ status: string }>("/admin/drivers/verify-otp", { method: "POST", body: { phone, otp } });
+
 export const getDrivers = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
   return request<DriversResponse>(`/admin/drivers${qs ? `?${qs}` : ""}`);
@@ -457,6 +473,7 @@ export type DriverDetail = {
   phone?: string;
   transport_type: string;
   vehicle_plate?: string;
+  national_id_number?: string | null;
   license_number?: string;
   date_of_birth?: string | null;
   city?: string;
@@ -472,17 +489,73 @@ export type DriverDetail = {
   approval_status: string;
   created_at: string;
   is_online?: boolean;
+  license_issued_date?: string | null;
+  license_expiry_date?: string | null;
+  insurance_issued_date?: string | null;
+  insurance_expiry_date?: string | null;
+  authorization_issued_date?: string | null;
+  authorization_expiry_date?: string | null;
   documents?: Array<{
     document_type: string;
     file_url: string;
     uploaded_at: string;
+  }>;
+  /**
+   * Append-only audit trail of every prior admin review decision for this
+   * driver — populated by the backend when a re-submission occurs.
+   * Newest first. Optional because legacy drivers may have no recorded history.
+   */
+  review_history?: Array<{
+    id: string;
+    decided_at: string;
+    decided_by: string;
+    decision: "approved" | "rejected" | "more_info_requested";
+    reason?: string;
+    document_decisions?: Array<{
+      document_type: string;
+      decision: "accepted" | "rejected" | "more_info";
+      comment?: string;
+    }>;
   }>;
 };
 
 export const getDriver = (id: string) => request<DriverDetail>(`/admin/drivers/${id}`);
 
 export const createDriver = (body: Record<string, unknown>) =>
-  request<{ id: string; message: string }>("/admin/drivers", { method: "POST", body });
+  request<{ id: string; user_id?: string; message: string }>("/admin/drivers", {
+    method: "POST",
+    body,
+  });
+
+export const uploadDriverDocument = (
+  driverId: string,
+  documentType: string,
+  fileUrl: string,
+) =>
+  request<void>(`/admin/drivers/${driverId}/documents`, {
+    method: "POST",
+    body: { document_type: documentType, file_url: fileUrl },
+  });
+
+/** Upload a driver document image/PDF via admin multipart endpoint. */
+export async function uploadDriverFile(file: File): Promise<string> {
+  const token = getToken();
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${BASE_URL}/admin/uploads/file`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = json?.error?.message ?? "File upload failed";
+    throw new Error(msg);
+  }
+  const data = (json?.data ?? json) as { file_url?: string };
+  if (!data.file_url) throw new Error("Upload succeeded but no file URL returned");
+  return data.file_url;
+}
 
 export const forceDriverOffline = (id: string) =>
   request<{ message: string }>(`/admin/drivers/${id}/force-offline`, { method: "POST" });
@@ -492,6 +565,21 @@ export const approveDriver = (id: string) =>
 
 export const rejectDriver = (id: string, reason: string) =>
   request<void>(`/admin/drivers/${id}/reject`, { method: "POST", body: { reason } });
+
+/**
+ * Ask the driver to re-upload specific documents without rejecting the whole
+ * application. Backend sends an SMS/push to the driver pointing at the items
+ * that need attention, and the driver app re-opens those documents for upload.
+ */
+export const requestDriverMoreInfo = (
+  id: string,
+  reason: string,
+  documents?: Array<{ document_type: string; comment?: string }>,
+) =>
+  request<void>(`/admin/drivers/${id}/request-more-info`, {
+    method: "POST",
+    body: { reason, documents },
+  });
 
 export const suspendDriver = (id: string, durationHours: number) =>
   request<void>(`/admin/drivers/${id}/suspend`, {
@@ -516,7 +604,6 @@ export type Customer = {
   total_spend?: number;
   created_at: string;
   last_seen_at?: string | null;
-  rating?: number;
   notes?: string;
 };
 
@@ -528,6 +615,10 @@ export type CustomerTrip = {
   pickup_address: string;
   destination_address: string;
   created_at: string;
+  driver_id?: string | null;
+  driver_name?: string | null;
+  driver_phone?: string | null;
+  vehicle_plate?: string | null;
 };
 
 export type CustomerDetail = Customer & {
@@ -632,23 +723,45 @@ export const getRides = (params: Record<string, string> = {}) => {
   return request<RidesResponse>(`/admin/rides${qs ? `?${qs}` : ""}`);
 };
 
-export const getLiveRides = (params: Record<string, string> = {}) => {
+export const getLiveRides = async (params: Record<string, string> = {}): Promise<RidesResponse> => {
+  if (NO_BACKEND) {
+    return {
+      rides: MOCK_LIVE_RIDES,
+      total: MOCK_LIVE_RIDES.length,
+    };
+  }
   const qs = new URLSearchParams(params).toString();
   return request<RidesResponse>(`/admin/rides/live${qs ? `?${qs}` : ""}`);
 };
 
-export const getLiveRidesStats = () =>
-  request<LiveRidesStats>("/admin/rides/live/stats");
+export const getLiveRidesStats = async (): Promise<LiveRidesStats> => {
+  if (NO_BACKEND) {
+    return MOCK_LIVE_RIDES_STATS;
+  }
+  return request<LiveRidesStats>("/admin/rides/live/stats");
+};
 
 export const getRide = (id: string) => request<RideDetail>(`/admin/rides/${id}`);
 
-export const getLiveRide = (id: string) => request<RideDetail>(`/admin/rides/live/${id}`);
+export const getLiveRide = async (id: string): Promise<RideDetail> => {
+  if (NO_BACKEND) {
+    const detail = MOCK_LIVE_RIDE_DETAILS[id];
+    if (detail) return detail;
+    throw new Error("Mock live ride not found");
+  }
+  return request<RideDetail>(`/admin/rides/live/${id}`);
+};
 
-export const interveneRide = (id: string, action: string, reason: string) =>
-  request<void>(`/admin/rides/live/${id}/intervene`, {
+export const interveneRide = async (id: string, action: string, reason: string): Promise<void> => {
+  if (NO_BACKEND) {
+    console.log(`[Mock API] Intervened ride ${id} with action=${action}, reason=${reason}`);
+    return;
+  }
+  return request<void>(`/admin/rides/live/${id}/intervene`, {
     method: "POST",
     body: { action, reason },
   });
+};
 
 // ── Negotiations ──────────────────────────────────────────────────────────
 
@@ -1073,3 +1186,111 @@ export const updateRolePermissions = (roleId: string, permissions: string[]) =>
     method: "POST",
     body: { permissions },
   });
+
+// ── Packages ──────────────────────────────────────────────────────────────
+
+export type Package = {
+  id: string;
+  name: string;
+  vehicle_type_id: string;
+  vehicle_type_code: string;
+  ride_count: number;
+  bonus_rides: number;
+  validity_days: number;
+  price_rwf: number;
+  is_promotional: boolean;
+  is_active: boolean;
+  created_at: string;
+};
+
+export const getAdminPackages = () =>
+  request<Package[]>("/admin/packages");
+
+export const createPackage = (data: {
+  name: string;
+  vehicle_type_code: string;
+  ride_count: number;
+  bonus_rides: number;
+  validity_days: number;
+  price_rwf: number;
+  is_promotional: boolean;
+}) =>
+  request<Package>("/admin/packages", { method: "POST", body: data });
+
+export const updatePackage = (
+  id: string,
+  data: {
+    name?: string;
+    ride_count?: number;
+    bonus_rides?: number;
+    validity_days?: number;
+    price_rwf?: number;
+  }
+) =>
+  request<Package>(`/admin/packages/${id}`, { method: "PATCH", body: data });
+
+export const togglePackage = (id: string, isActive: boolean) =>
+  request<{ status: string }>(`/admin/packages/${id}/toggle`, {
+    method: "POST",
+    body: { is_active: isActive },
+  });
+
+export const deletePackage = (id: string) =>
+  request<{ status: string }>(`/admin/packages/${id}`, { method: "DELETE" });
+
+// ── Audit Logs ────────────────────────────────────────────────────────────
+
+export type AuditLogEntry = {
+  id: number;
+  admin_id?: string;
+  admin_name?: string;
+  admin_role?: string;
+  action: string;
+  target_type?: string;
+  target_id?: string;
+  detail?: string;
+  ip?: string;
+  metadata?: Record<string, any>;
+  occurred_at: string;
+};
+
+export const getAuditLogs = (params: {
+  actor?: string;
+  action?: string;
+  target_type?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}) => {
+  const qs = new URLSearchParams();
+  if (params.actor) qs.append("actor", params.actor);
+  if (params.action) qs.append("action", params.action);
+  if (params.target_type) qs.append("target_type", params.target_type);
+  if (params.from) qs.append("from", params.from);
+  if (params.to) qs.append("to", params.to);
+  if (params.limit !== undefined) qs.append("limit", params.limit.toString());
+  if (params.offset !== undefined) qs.append("offset", params.offset.toString());
+  
+  const query = qs.toString();
+  return request<{ entries: AuditLogEntry[]; total: number; limit: number; offset: number }>(
+    `/admin/audit${query ? `?${query}` : ""}`
+  );
+};
+
+// ── Account Assist ────────────────────────────────────────────────────────
+
+export const clearOTPLockout = (userID: string) =>
+  request<void>(`/admin/customers/${userID}/clear-otp-lockout`, { method: "POST" });
+
+export const clearGPSFlags = (profileID: string) =>
+  request<void>(`/admin/drivers/${profileID}/clear-gps-flags`, { method: "POST" });
+
+export const clearDeviceCollision = (userID: string, deviceID: string) =>
+  request<void>(`/admin/users/${userID}/clear-device-collision`, {
+    method: "POST",
+    body: { device_id: deviceID },
+  });
+
+export const getAccountTimeline = (userID: string, limit?: number) =>
+  request<any>(`/admin/users/${userID}/timeline${limit !== undefined ? `?limit=${limit}` : ""}`);

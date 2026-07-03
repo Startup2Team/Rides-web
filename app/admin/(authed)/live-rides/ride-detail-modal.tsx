@@ -23,7 +23,7 @@ export type NegotiationOffer = {
 
 export type RideDetail = {
   id: string;
-  customer: { name: string; phone: string; rating: number };
+  customer: { name: string; phone: string };
   driver: {
     name: string;
     phone: string;
@@ -100,16 +100,18 @@ function ContactCard({
         </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-        <div>
+        <div className={role === "Customer" || rating === undefined ? "col-span-2" : ""}>
           <p className="text-muted-foreground">Phone</p>
           <p className="font-medium text-foreground">{phone}</p>
         </div>
-        <div>
-          <p className="text-muted-foreground">Rating</p>
-          <p className="font-medium text-foreground">
-            {rating?.toFixed(1)} <span className="text-amber-500">★</span>
-          </p>
-        </div>
+        {role === "Driver" && rating !== undefined ? (
+          <div>
+            <p className="text-muted-foreground">Rating</p>
+            <p className="font-medium text-foreground">
+              {rating.toFixed(1)} <span className="text-amber-500">★</span>
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -262,7 +264,6 @@ export function RideDetailModal({
               role="Customer"
               name={ride.customer.name}
               phone={ride.customer.phone}
-              rating={ride.customer.rating}
               meta="Rider"
             />
             <ContactCard

@@ -113,11 +113,55 @@ const icons = {
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </Icon>
   ),
+  packages: (
+    <Icon>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </Icon>
+  ),
+  campaigns: (
+    <Icon>
+      <path d="M3 11l18-5v12L3 14v-3z" />
+      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+    </Icon>
+  ),
+  purchases: (
+    <Icon>
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+    </Icon>
+  ),
+  entitlements: (
+    <Icon>
+      <path d="M14 11a4 4 0 1 1-8 0 4 4 0 0 1 8 0z" />
+      <path d="M18 8a4 4 0 0 0-3.78 5.28" />
+      <path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    </Icon>
+  ),
+  auditLogs: (
+    <Icon>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="9" y1="13" x2="15" y2="13" />
+      <line x1="9" y1="17" x2="13" y2="17" />
+    </Icon>
+  ),
   team: (
     <Icon>
       <circle cx="12" cy="8" r="4" />
       <path d="M5 21v-2a7 7 0 0 1 14 0v2" />
       <path d="m18 11 2 2 4-4" />
+    </Icon>
+  ),
+  audit: (
+    <Icon>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="9" y1="9" x2="15" y2="9" />
+      <line x1="9" y1="13" x2="15" y2="13" />
+      <line x1="9" y1="17" x2="11" y2="17" />
     </Icon>
   ),
 };
@@ -131,10 +175,11 @@ type NavItem = {
 };
 
 const driverCategories: { label: string; href: string }[] = [
-  { label: "Moto Bikes", href: "/admin/drivers?vehicle=moto" },
-  { label: "Cab Taxis", href: "/admin/drivers?vehicle=cab" },
+  { label: "Moto Bikes",  href: "/admin/drivers?vehicle=moto" },
+  { label: "Rifani",      href: "/admin/drivers?vehicle=rifani" },
+  { label: "Cab Taxis",   href: "/admin/drivers?vehicle=cab" },
   { label: "Light Hilux", href: "/admin/drivers?vehicle=hilux" },
-  { label: "Heavy Fuso", href: "/admin/drivers?vehicle=fuso" },
+  { label: "Heavy Fuso",  href: "/admin/drivers?vehicle=fuso" },
 ];
 
 const groups: {
@@ -172,11 +217,22 @@ const groups: {
     ],
   },
   {
+    label: "Monetization",
+    items: [
+      { label: "Packages", href: "/admin/packages", icon: icons.packages },
+      { label: "Campaigns", href: "/admin/campaigns", icon: icons.campaigns },
+      { label: "Purchases", href: "/admin/purchases", icon: icons.purchases },
+      { label: "Entitlements", href: "/admin/entitlements", icon: icons.entitlements },
+      { label: "Audit Logs", href: "/admin/audit-logs", icon: icons.auditLogs },
+    ],
+  },
+  {
     label: "System",
     items: [
       { label: "System Settings", href: "/admin/settings", icon: icons.settings },
       { label: "Admins & Roles", href: "/admin/team", icon: icons.team },
       { label: "API Docs", href: "/admin/api-docs", icon: icons.reports },
+      { label: "Audit Log", href: "/admin/audit", icon: icons.audit },
     ],
   },
 ];
@@ -262,7 +318,7 @@ export function AdminSidebar({
             <RidesLogo size={56} className="shrink-0" />
             <div className="min-w-0">
               <span className="block truncate text-sm font-semibold tracking-[-0.02em] text-foreground">
-                {showUser ? user.name : "Rides"}
+                Rides
               </span>
               {showUser && user.role_name ? (
                 <span className="mt-0.5 inline-block rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-primary">
@@ -284,7 +340,7 @@ export function AdminSidebar({
           </button>
         </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-5">
         {groups.map((group) => {
           const items = ready
             ? group.items.filter((item) => hasPermission(permissions, item.href))
@@ -292,10 +348,7 @@ export function AdminSidebar({
           if (items.length === 0) return null;
           return (
           <div key={group.label}>
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-              {group.label}
-            </p>
-            <ul className="mt-2 space-y-0.5">
+            <ul className="space-y-0.5">
               {items.map((item) => {
                 const parentMatch =
                   item.href === "/admin"
@@ -309,10 +362,10 @@ export function AdminSidebar({
                   return (
                     <li key={item.href}>
                       <div
-                        className={`flex items-center rounded-lg pr-1 transition-colors ${
+                        className={`flex items-center rounded-lg pr-1 transition-colors font-semibold ${
                           parentExactActive
-                            ? "bg-primary/15 font-semibold text-primary"
-                            : "text-muted-foreground hover:bg-surface hover:text-foreground"
+                            ? "bg-primary/15 font-bold text-primary"
+                            : "text-foreground hover:bg-surface"
                         }`}
                       >
                         <button
@@ -358,10 +411,10 @@ export function AdminSidebar({
                               <li key={child.href}>
                                 <Link
                                   href={child.href}
-                                  className={`flex items-center rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                                  className={`flex items-center rounded-lg px-3 py-1.5 text-xs transition-colors font-semibold ${
                                     childActive
-                                      ? "bg-primary/10 font-semibold text-primary"
-                                      : "text-muted-foreground hover:bg-surface hover:text-foreground"
+                                      ? "bg-primary/10 font-bold text-primary"
+                                      : "text-foreground hover:bg-surface"
                                   }`}
                                 >
                                   {child.label}
@@ -397,10 +450,10 @@ export function AdminSidebar({
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors font-semibold ${
                         parentMatch
-                          ? "bg-primary/15 font-semibold text-primary"
-                          : "text-muted-foreground hover:bg-surface hover:text-foreground"
+                          ? "bg-primary/15 font-bold text-primary"
+                          : "text-foreground hover:bg-surface"
                       }`}
                     >
                       {item.icon}

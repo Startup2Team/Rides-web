@@ -46,15 +46,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: "SERVER_ERROR", message: "Empty response from server" } }, { status: 502 });
   }
 
-  // 2FA is removed from the admin console: the backend always returns an
-  // access_token, so sign the admin straight in (no setup/verify screen).
+  // 2FA is optional. A 2FA-off admin gets an access_token → sign straight in
+  // (no forced setup). Enabling 2FA is self-serve from Account settings.
   if (data.access_token) {
     const response = NextResponse.json({ data: { status: "success" } });
     applyAdminTokenCookies(response, data.access_token);
     return response;
   }
 
-  // Legacy path (should not occur now that 2FA is disabled server-side).
+  // A 2FA-on admin gets a pre-auth token → show the verify-code screen.
   if (data.two_factor_required === true && data.pre_auth_token) {
     return NextResponse.json({
       data: { status: "totp_required", challenge_token: data.pre_auth_token },
