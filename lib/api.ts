@@ -1,5 +1,15 @@
 import { clearToken, getToken } from "./auth";
 import { MOCK_LIVE_RIDES, MOCK_LIVE_RIDE_DETAILS, MOCK_LIVE_RIDES_STATS } from "./mock-live-rides";
+import type {
+  Campaign as AdminCampaignView,
+  CampaignAudience,
+  CampaignStatus,
+  Entitlement,
+  EntitlementTransactionKind,
+  PurchaseSnapshot,
+  PurchaseStatus,
+  VehicleType as MonetizationVehicleType,
+} from "./packages-mock";
 
 const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -1237,6 +1247,207 @@ export const togglePackage = (id: string, isActive: boolean) =>
 
 export const deletePackage = (id: string) =>
   request<{ status: string }>(`/admin/packages/${id}`, { method: "DELETE" });
+
+// ── Campaigns ─────────────────────────────────────────────────────────────
+// The backend returns AdminCampaign (snake_case, type/target model). The
+// monetization console renders the richer camelCase Campaign view, so we map
+// backend → view here. The console is read-only, so only the GET is wired.
+type BackendCampaign = {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  type: string; // GLOBAL | VEHICLE_TYPE | PACKAGE | FIRST_PURCHASE | REFERRAL
+  status: string; // DRAFT | SCHEDULED | ACTIVE | EXPIRED | ARCHIVED
+  starts_at: string | null;
+  ends_at: string | null;
+  target_vehicle_type_code: string | null;
+  target_package_id: string | null;
+  override_price_rwf: number | null;
+  override_rides: number | null;
+  override_bonus_rides: number | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+const VEHICLE_CODE_TO_VIEW: Record<string, MonetizationVehicleType> = {
+  MOTO_BIKE: "moto",
+  CAB_TAXI: "cab",
+  LIGHT_HILUX: "hilux",
+  HEAVY_FUSO: "fuso",
+};
+
+function mapCampaign(c: BackendCampaign): AdminCampaignView {
+  const audience: CampaignAudience =
+    c.type === "VEHICLE_TYPE" ? "vehicle-type" : c.type === "FIRST_PURCHASE" ? "first-purchase" : "all";
+  const vt = c.target_vehicle_type_code ? VEHICLE_CODE_TO_VIEW[c.target_vehicle_type_code] : undefined;
+  return {
+    id: c.id,
+    slug: c.code,
+    name: c.name,
+    description: c.description ?? "",
+    status: (c.status ? c.status.toLowerCase() : "draft") as CampaignStatus,
+    audience,
+    vehicleTypes: vt ? [vt] : null,
+    packageIds: c.target_package_id ? [c.target_package_id] : null,
+    priceOverride: c.override_price_rwf ?? null,
+    ridesOverride: c.override_rides ?? null,
+    bonusRidesOverride: c.override_bonus_rides ?? null,
+    startsAt: c.starts_at ?? c.created_at,
+    endsAt: c.ends_at ?? c.created_at,
+    createdAt: c.created_at,
+    createdBy: c.created_by ?? "system",
+  };
+}
+
+export const getAdminCampaigns = async (): Promise<AdminCampaignView[]> => {
+  const list = await request<BackendCampaign[]>("/admin/campaigns");
+  return (list ?? []).map(mapCampaign);
+};
+
+// ── Purchases ─────────────────────────────────────────────────────────────
+// GET /admin/packages-purchases returns AdminPurchase (snake_case, joined
+// driver + vehicle info). We map it to the console's PurchaseSnapshot view.
+type BackendPurchase = {
+  id: string;
+  driver_id: string;
+  driver_name: string | null;
+  driver_phone: string;
+  vehicle_id?: string | null;
+  vehicle_type_code: string;
+  vehicle_plate: string;
+  package_id: string;
+  package_name: string;
+  package_version: number;
+  campaign_id?: string | null;
+  campaign_code?: string | null;
+  campaign_name?: string | null;
+  price_paid_rwf: number;
+  rides_granted: number;
+  bonus_rides_granted: number;
+  status: string;
+  payment_provider?: string | null;
+  payment_ref: string;
+  created_at: string;
+  paid_at?: string | null;
+};
+
+function mapPaymentProvider(p: string | null | undefined): PurchaseSnapshot["paymentProvider"] {
+  if (!p) return null;
+  const s = p.toLowerCase();
+  if (s.includes("mtn")) return "mtn-momo";
+  if (s.includes("airtel")) return "airtel-money";
+  return null;
+}
+
+function mapPurchase(p: BackendPurchase): PurchaseSnapshot {
+  return {
+    id: p.id,
+    driverId: p.driver_id,
+    driverName: p.driver_name ?? "Unknown driver",
+    driverPhone: p.driver_phone,
+    vehicleId: p.vehicle_id ?? "",
+    // The console's VehicleType enum has no tuk-tuk; unknown codes fall back to
+    // "moto" so labels/filters still render (rare edge case).
+    vehicleType: VEHICLE_CODE_TO_VIEW[p.vehicle_type_code] ?? "moto",
+    vehiclePlate: p.vehicle_plate ?? "—",
+    packageId: p.package_id,
+    packageName: p.package_name,
+    packageVersion: p.package_version,
+    campaignId: p.campaign_id ?? null,
+    campaignName: p.campaign_name ?? p.campaign_code ?? null,
+    pricePaid: p.price_paid_rwf,
+    ridesGranted: p.rides_granted,
+    bonusRidesGranted: p.bonus_rides_granted,
+    status: (p.status ? p.status.toLowerCase() : "pending") as PurchaseStatus,
+    paymentProvider: mapPaymentProvider(p.payment_provider),
+    paymentReference: p.payment_ref,
+    createdAt: p.created_at,
+    paidAt: p.paid_at ?? null,
+  };
+}
+
+export const getAdminPurchases = async (): Promise<PurchaseSnapshot[]> => {
+  const list = await request<BackendPurchase[]>("/admin/packages-purchases");
+  return (list ?? []).map(mapPurchase);
+};
+
+// ── Entitlements ──────────────────────────────────────────────────────────
+// GET /admin/entitlements → { entitlements: AdminEntitlement[] }. Mapped to the
+// console's Entitlement view. The id is "driver_id:vehicle_type_id".
+type BackendEntitlementTxn = {
+  id: string;
+  kind: string;
+  rides_delta: number;
+  bonus_rides_delta: number;
+  rides_after: number;
+  bonus_rides_after: number;
+  source_ref: string;
+  reason?: string | null;
+  performed_by?: string | null;
+  created_at: string;
+};
+type BackendEntitlement = {
+  id: string;
+  driver_id: string;
+  driver_name: string;
+  driver_phone: string;
+  vehicle_type_code: string;
+  vehicle_plate: string;
+  rides_remaining: number;
+  bonus_rides_remaining: number;
+  total_granted: number;
+  total_consumed: number;
+  transactions: BackendEntitlementTxn[] | null;
+};
+
+function mapEntitlement(e: BackendEntitlement): Entitlement {
+  return {
+    id: e.id,
+    driverId: e.driver_id,
+    driverName: e.driver_name,
+    driverPhone: e.driver_phone,
+    vehicleId: "",
+    vehicleType: VEHICLE_CODE_TO_VIEW[e.vehicle_type_code] ?? "moto",
+    vehiclePlate: e.vehicle_plate,
+    ridesRemaining: e.rides_remaining,
+    bonusRidesRemaining: e.bonus_rides_remaining,
+    totalGranted: e.total_granted,
+    totalConsumed: e.total_consumed,
+    transactions: (e.transactions ?? []).map((t) => ({
+      id: t.id,
+      entitlementId: e.id,
+      kind: t.kind as EntitlementTransactionKind,
+      ridesDelta: t.rides_delta,
+      bonusRidesDelta: t.bonus_rides_delta,
+      ridesAfter: t.rides_after,
+      bonusRidesAfter: t.bonus_rides_after,
+      sourceRef: t.source_ref,
+      reason: t.reason ?? undefined,
+      performedBy: t.performed_by ?? undefined,
+      createdAt: t.created_at,
+    })),
+  };
+}
+
+export const getAdminEntitlements = async (): Promise<Entitlement[]> => {
+  const res = await request<{ entitlements: BackendEntitlement[] }>("/admin/entitlements");
+  return (res?.entitlements ?? []).map(mapEntitlement);
+};
+
+// Grant credits to a driver's vehicle-type entitlement. driverId + vehicleTypeId
+// come from splitting the entitlement id ("driver_id:vehicle_type_id").
+export const grantEntitlement = (
+  driverId: string,
+  vehicleTypeId: string,
+  rides: number,
+  bonusRides: number,
+  reason: string,
+) =>
+  request<void>("/admin/entitlements/grant", {
+    method: "POST",
+    body: { driver_id: driverId, vehicle_type_id: vehicleTypeId, rides, bonus_rides: bonusRides, reason },
+  });
 
 // ── Audit Logs ────────────────────────────────────────────────────────────
 

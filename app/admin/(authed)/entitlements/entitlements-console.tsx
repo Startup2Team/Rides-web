@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Avatar, Card, StatCard } from "../_components";
 import {
-  MOCK_ENTITLEMENTS,
   VEHICLE_LABELS,
   formatDateTime,
   type Entitlement,
   type EntitlementTransaction,
   type EntitlementTransactionKind,
 } from "@/lib/packages-mock";
+import { getAdminEntitlements } from "@/lib/api";
 import { GrantRidesModal } from "./grant-rides-modal";
 
 type GrantTarget = {
@@ -33,10 +33,21 @@ const TXN_COLOUR: Record<EntitlementTransactionKind, string> = {
 };
 
 export function EntitlementsConsole() {
-  const [entitlements] = useState<Entitlement[]>(MOCK_ENTITLEMENTS);
+  const [entitlements, setEntitlements] = useState<Entitlement[]>([]);
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [grantTarget, setGrantTarget] = useState<GrantTarget>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(() => {
+    getAdminEntitlements()
+      .then(setEntitlements)
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load entitlements"));
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return entitlements;
@@ -62,6 +73,13 @@ export function EntitlementsConsole() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="shrink-0 text-xs font-semibold underline-offset-2 hover:underline">Dismiss</button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Active drivers" value={String(entitlements.length)} tone="primary" />
         <StatCard label="Rides remaining" value={totalRides.toLocaleString()} />
@@ -202,6 +220,10 @@ export function EntitlementsConsole() {
         <GrantRidesModal
           target={grantTarget}
           onClose={() => setGrantTarget(null)}
+          onGranted={() => {
+            setGrantTarget(null);
+            refresh();
+          }}
         />
       ) : null}
     </div>

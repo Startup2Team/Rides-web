@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, StatCard, StatusPill } from "../_components";
 import {
-  MOCK_CAMPAIGNS,
   VEHICLE_LABELS,
   formatDate,
   formatRWF,
   type Campaign,
   type CampaignStatus,
 } from "@/lib/packages-mock";
+import { getAdminCampaigns } from "@/lib/api";
 import { CampaignDetailDrawer } from "./campaign-detail-drawer";
 
 const STATUS_TONE: Record<CampaignStatus, "success" | "warn" | "info" | "neutral" | "danger"> = {
@@ -32,9 +32,16 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 ];
 
 export function CampaignsConsole() {
-  const [campaigns] = useState<Campaign[]>(MOCK_CAMPAIGNS);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAdminCampaigns()
+      .then(setCampaigns)
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load campaigns"));
+  }, []);
 
   const filtered = useMemo(() => {
     if (statusFilter === "all") return campaigns;
@@ -56,6 +63,13 @@ export function CampaignsConsole() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="shrink-0 text-xs font-semibold underline-offset-2 hover:underline">Dismiss</button>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Active campaigns" value={String(activeCount)} tone="primary" />

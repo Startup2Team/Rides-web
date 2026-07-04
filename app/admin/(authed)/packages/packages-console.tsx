@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  getAdminPackages,
+  createPackage,
+  updatePackage,
+  togglePackage,
+  deletePackage,
+  type Package as ApiPackage,
+} from "@/lib/api";
 
 // ── Subscriber types (swap mock for real API later) ───────────────────────────
 type Subscriber = {
@@ -20,8 +28,6 @@ const MOCK_SUBSCRIBERS: Subscriber[] = [
   { id: "4", name: "Claudine Mukamana", phone: "+250 788 555 777", purchased_at: "2026-06-15", expires_at: "2026-07-15", rides_remaining: 0, rides_total: 10 },
 ];
 
-const STORAGE_KEY = "rides_admin_packages";
-
 const VEHICLE_TYPES = [
   { code: "MOTO_BIKE", name: "Moto" },
   { code: "CAB_TAXI", name: "Cab" },
@@ -30,31 +36,9 @@ const VEHICLE_TYPES = [
   { code: "TUK_TUK", name: "Tuk Tuk" },
 ];
 
-type Package = {
-  id: string;
-  name: string;
-  vehicle_type_code: string;
-  ride_count: number;
-  bonus_rides: number;
-  validity_days: number;
-  price_rwf: number;
-  is_promotional: boolean;
-  is_active: boolean;
-  created_at: string;
-  subscribers: number;
-};
-
-function load(): Package[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-}
-
-function save(pkgs: Package[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(pkgs));
-}
+// The backend Package shape plus a client-only subscriber count. The count is
+// not yet served by the API (see the drawer note), so it stays 0 for now.
+type Package = ApiPackage & { subscribers: number };
 
 const BLANK_FORM = {
   name: "",
@@ -69,6 +53,7 @@ const BLANK_FORM = {
 export function PackagesConsole() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Modal states
   const [createOpen, setCreateOpen] = useState(false);
@@ -91,66 +76,82 @@ export function PackagesConsole() {
     priceRWF: 1000 as number | "",
   });
 
-  useEffect(() => {
-    setPackages(load());
-    setReady(true);
+  const refresh = useCallback(async () => {
+    try {
+      const list = await getAdminPackages();
+      setPackages(list.map((p) => ({ ...p, subscribers: 0 })));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load packages");
+    } finally {
+      setReady(true);
+    }
   }, []);
 
-  const persist = (updated: Package[]) => {
-    setPackages(updated);
-    save(updated);
-  };
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const pkg: Package = {
-      id: crypto.randomUUID(),
-      name: form.name,
-      vehicle_type_code: form.vehicleTypeCode,
-      ride_count: Number(form.rideCount) || 1,
-      bonus_rides: Number(form.bonusRides) || 0,
-      validity_days: Number(form.validityDays) || 30,
-      price_rwf: Number(form.priceRWF) || 0,
-      is_promotional: form.isPromotional,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      subscribers: 0,
-    };
-    persist([...packages, pkg]);
-    setForm(BLANK_FORM);
-    setCreateOpen(false);
+    try {
+      await createPackage({
+        name: form.name,
+        vehicle_type_code: form.vehicleTypeCode,
+        ride_count: Number(form.rideCount) || 1,
+        bonus_rides: Number(form.bonusRides) || 0,
+        validity_days: Number(form.validityDays) || 30,
+        price_rwf: Number(form.priceRWF) || 0,
+        is_promotional: form.isPromotional,
+      });
+      setForm(BLANK_FORM);
+      setCreateOpen(false);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create package");
+    }
   };
 
-  const handleEdit = (e: React.FormEvent) => {
+  const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selected) return;
-    persist(
-      packages.map((p) =>
-        p.id === selected.id
-          ? {
-              ...p,
-              name: editForm.name,
-              ride_count: Number(editForm.rideCount) || 1,
-              bonus_rides: Number(editForm.bonusRides) || 0,
-              validity_days: Number(editForm.validityDays) || 30,
-              price_rwf: Number(editForm.priceRWF) || 0,
-            }
-          : p,
-      ),
-    );
-    setEditOpen(false);
-    setSelected(null);
+    try {
+      await updatePackage(selected.id, {
+        name: editForm.name,
+        ride_count: Number(editForm.rideCount) || 1,
+        bonus_rides: Number(editForm.bonusRides) || 0,
+        validity_days: Number(editForm.validityDays) || 30,
+        price_rwf: Number(editForm.priceRWF) || 0,
+      });
+      setEditOpen(false);
+      setSelected(null);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update package");
+    }
   };
 
-  const handleToggle = (id: string) => {
-    persist(packages.map((p) => (p.id === id ? { ...p, is_active: !p.is_active } : p)));
+  const handleToggle = async (id: string) => {
+    const pkg = packages.find((p) => p.id === id);
+    if (!pkg) return;
+    try {
+      await togglePackage(id, !pkg.is_active);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to toggle package");
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selected) return;
-    persist(packages.filter((p) => p.id !== selected.id));
-    setDeleteOpen(false);
-    setSelected(null);
+    try {
+      await deletePackage(selected.id);
+      setDeleteOpen(false);
+      setSelected(null);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete package");
+    }
   };
 
   const openEdit = (pkg: Package) => {
@@ -178,6 +179,13 @@ export function PackagesConsole() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="shrink-0 text-xs font-semibold underline-offset-2 hover:underline">Dismiss</button>
+        </div>
+      )}
+
       {/* Top bar */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
