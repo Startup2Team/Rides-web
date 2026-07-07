@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import "leaflet/dist/leaflet.css";
 import { Avatar } from "../_components";
 
 export type RideStatus =
@@ -32,7 +33,15 @@ export type RideDetail = {
     rating: number;
   } | null;
   pickup: string;
+  /** Optional until the backend admin API starts returning ride coordinates (currently only mobile does). */
+  pickupLat: number | null;
+  pickupLng: number | null;
   destination: string;
+  destLat: number | null;
+  destLng: number | null;
+  /** Driver's live position, if we have one (from the live-map endpoint, joined by driver id). */
+  driverLat: number | null;
+  driverLng: number | null;
   vehicleType: string;
   status: RideStatus;
   startedAt: string;
@@ -117,53 +126,144 @@ function ContactCard({
   );
 }
 
-function MiniMap({ pickup, destination }: { pickup: string; destination: string }) {
+const KIGALI_CENTER: [number, number] = [-1.9577, 30.0619];
+const KIGALI_ZOOM = 12;
+const PICKUP_HEX = "#007AFF";
+const DEST_HEX = "#1f2937";
+const DRIVER_HEX = "#f59e0b";
+
+function pointMarkerHtml(color: string): string {
+  return `<span style="display:block;width:14px;height:14px;border-radius:50%;background:${color};box-shadow:0 0 0 2px #fff;"></span>`;
+}
+
+function driverMarkerHtml(): string {
+  return `
+    <span style="position:relative;display:inline-block;width:14px;height:14px;">
+      <span style="position:absolute;inset:-6px;border-radius:50%;background:${DRIVER_HEX};opacity:.35;animation:rideRoutePulse 1.8s ease-out infinite;"></span>
+      <span style="position:relative;display:block;width:14px;height:14px;border-radius:50%;background:${DRIVER_HEX};box-shadow:0 0 0 2px #fff;"></span>
+    </span>
+  `;
+}
+
+function RideRouteMap({ ride }: { ride: RideDetail }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const layerRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const LRef = useRef<any>(null);
+  const [ready, setReady] = useState(false);
+
+  const hasPickup = ride.pickupLat != null && ride.pickupLng != null;
+  const hasDest = ride.destLat != null && ride.destLng != null;
+  const hasDriver = ride.driverLat != null && ride.driverLng != null;
+  const hasAnyPoint = hasPickup || hasDest || hasDriver;
+
+  useEffect(() => {
+    if (!hasAnyPoint) return;
+    let cancelled = false;
+    async function init() {
+      const L = (await import("leaflet")).default;
+      if (cancelled || !containerRef.current) return;
+      LRef.current = L;
+      const map = L.map(containerRef.current, {
+        center: KIGALI_CENTER,
+        zoom: KIGALI_ZOOM,
+        zoomControl: true,
+        attributionControl: true,
+        preferCanvas: true,
+      });
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap",
+      }).addTo(map);
+      layerRef.current = L.layerGroup().addTo(map);
+      mapRef.current = map;
+      setReady(true);
+    }
+    init();
+    return () => {
+      cancelled = true;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      setReady(false);
+    };
+  }, [ride.id, hasAnyPoint]);
+
+  useEffect(() => {
+    const L = LRef.current;
+    const map = mapRef.current;
+    if (!ready || !L || !map || !layerRef.current) return;
+
+    layerRef.current.clearLayers();
+    const points: [number, number][] = [];
+
+    if (hasPickup) {
+      const p: [number, number] = [ride.pickupLat!, ride.pickupLng!];
+      points.push(p);
+      L.marker(p, { icon: L.divIcon({ html: pointMarkerHtml(PICKUP_HEX), className: "", iconSize: [14, 14], iconAnchor: [7, 7] }) })
+        .bindTooltip("Pickup", { direction: "top", offset: [0, -8], permanent: false })
+        .addTo(layerRef.current);
+    }
+    if (hasDest) {
+      const p: [number, number] = [ride.destLat!, ride.destLng!];
+      points.push(p);
+      L.marker(p, { icon: L.divIcon({ html: pointMarkerHtml(DEST_HEX), className: "", iconSize: [14, 14], iconAnchor: [7, 7] }) })
+        .bindTooltip("Drop-off", { direction: "top", offset: [0, -8], permanent: false })
+        .addTo(layerRef.current);
+    }
+    if (hasPickup && hasDest) {
+      L.polyline([[ride.pickupLat!, ride.pickupLng!], [ride.destLat!, ride.destLng!]], {
+        color: "#10b981",
+        weight: 3,
+        dashArray: "6 6",
+      }).addTo(layerRef.current);
+    }
+    if (hasDriver) {
+      const p: [number, number] = [ride.driverLat!, ride.driverLng!];
+      points.push(p);
+      L.marker(p, { icon: L.divIcon({ html: driverMarkerHtml(), className: "", iconSize: [14, 14], iconAnchor: [7, 7] }) })
+        .bindTooltip("Driver — current position", { direction: "top", offset: [0, -8] })
+        .addTo(layerRef.current);
+    }
+
+    if (points.length > 0) {
+      const bounds = L.latLngBounds(points);
+      if (bounds.isValid()) map.fitBounds(bounds.pad(0.3), { animate: false });
+    }
+  }, [ready, ride, hasPickup, hasDest, hasDriver]);
+
   return (
-    <div className="relative aspect-[16/7] overflow-hidden rounded-xl border border-border">
-      <img
-        src="/maps/map.png"
-        alt=""
-        aria-hidden
-        className="absolute inset-0 h-full w-full object-cover"
-      />
-      <div className="absolute z-10" style={{ top: "30%", left: "25%" }}>
-        <div className="flex flex-col items-center">
-          <span className="rounded-md bg-card px-2 py-0.5 text-[9px] font-bold text-foreground shadow-sm ring-1 ring-border">
-            Pickup
-          </span>
-          <span className="mt-1 block h-3 w-3 rounded-full bg-primary ring-[3px] ring-card shadow-sm" />
+    <div className="relative aspect-[16/7] overflow-hidden rounded-xl border border-border bg-surface">
+      {hasAnyPoint ? (
+        <div ref={containerRef} className="absolute inset-0 z-0" />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-center">
+          <p className="max-w-xs px-4 text-xs text-muted-foreground">
+            Location data isn&apos;t available for this ride yet.
+          </p>
         </div>
-      </div>
-      <div className="absolute z-10" style={{ top: "60%", left: "70%" }}>
-        <div className="flex flex-col items-center">
-          <span className="rounded-md bg-card px-2 py-0.5 text-[9px] font-bold text-foreground shadow-sm ring-1 ring-border">
-            Drop-off
-          </span>
-          <span className="mt-1 block h-3 w-3 rounded-full bg-foreground ring-[3px] ring-card shadow-sm" />
-        </div>
-      </div>
-      <svg
-        className="absolute inset-0 z-[5] h-full w-full"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        aria-hidden
-      >
-        <path
-          d="M 26 32 Q 50 25, 70 60"
-          stroke="rgb(16,185,129)"
-          strokeWidth="0.6"
-          strokeDasharray="1.2 1"
-          fill="none"
-        />
-      </svg>
-      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-card/85 px-3 py-2 text-[11px] backdrop-blur">
+      )}
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[400] flex items-center justify-between gap-3 bg-card/85 px-3 py-2 text-[11px] backdrop-blur">
         <span className="truncate text-foreground">
-          <span className="text-muted-foreground">From</span> {pickup}
+          <span className="text-muted-foreground">From</span> {ride.pickup}
         </span>
         <span className="truncate text-foreground">
-          <span className="text-muted-foreground">To</span> {destination}
+          <span className="text-muted-foreground">To</span> {ride.destination}
         </span>
       </div>
+
+      <style>{`
+        @keyframes rideRoutePulse {
+          0% { transform: scale(.8); opacity: .55; }
+          70% { transform: scale(1.8); opacity: 0; }
+          100% { transform: scale(1.8); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -257,7 +357,7 @@ export function RideDetailModal({
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-          <MiniMap pickup={ride.pickup} destination={ride.destination} />
+          <RideRouteMap ride={ride} />
 
           <div className="grid gap-3 sm:grid-cols-2">
             <ContactCard

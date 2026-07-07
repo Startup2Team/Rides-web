@@ -23,11 +23,13 @@ import {
 } from "@/lib/drivers";
 import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
 import { getLocalApiDrivers } from "@/lib/local-drivers";
+import { ReferralCountLink, ReferralStatTile } from "./referred-drivers-section";
 
 type Driver = DriverRow;
 
 
-const statusStyles: Record<DriverStatus, string> = {
+const statusStyles: Record<string, string> = {
+  Approved: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100",
   Online: "bg-primary/15 text-primary",
   "On trip": "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-100",
   Offline: "bg-muted text-muted-foreground",
@@ -36,18 +38,9 @@ const statusStyles: Record<DriverStatus, string> = {
   Rejected: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-100",
 };
 
-type Tab = { id: "all" | DriverStatus; label: string };
 
-const tabs: Tab[] = [
-  { id: "all", label: "All" },
-  { id: "Online", label: "Online" },
-  { id: "On trip", label: "On trip" },
-  { id: "Pending", label: "Pending" },
-  { id: "Suspended", label: "Suspended" },
-  { id: "Rejected", label: "Rejected" },
-];
 
-type SortKey = "name" | "acceptance" | "rating" | "lastActive" | "applied";
+type SortKey = "name" | "acceptance" | "rating" | "lastActive" | "applied" | "referrals";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 8;
@@ -132,17 +125,35 @@ function DriverCard({
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-2">
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusStyles[driver.status]}`}
-        >
-          {driver.status}
-        </span>
+        <div className="flex flex-col gap-1 items-start">
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+              statusStyles[driver.status === "Online" || driver.status === "On trip" || driver.status === "Offline" ? "Approved" : driver.status]
+            }`}
+          >
+            {driver.status === "Online" || driver.status === "On trip" || driver.status === "Offline" ? "Approved" : driver.status}
+          </span>
+          {(driver.status === "Online" || driver.status === "On trip" || driver.status === "Offline") && (
+            driver.eligible !== false ? (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-emerald-700 ring-1 ring-inset ring-emerald-100">
+                Eligible
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-800 ring-1 ring-inset ring-amber-200">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-2 w-2" aria-hidden>
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                </svg>
+                Non-compliant
+              </span>
+            )
+          )}
+        </div>
         <span className="font-mono text-[10px] text-muted-foreground">
           {driver.plate}
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface/50 p-2.5">
+      <div className="mt-3 grid grid-cols-4 gap-2 rounded-xl border border-border bg-surface/50 p-2.5">
         <div className="text-center">
           <p className="text-sm font-bold tracking-tight text-foreground">
             {driver.acceptance === null ? "—" : `${driver.acceptance}%`}
@@ -165,6 +176,9 @@ function DriverCard({
           <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
             Rating
           </p>
+        </div>
+        <div className="border-r border-border text-center">
+          <ReferralStatTile driverId={driver.id} count={driver.referrals} />
         </div>
         <div className="text-center">
           <p className="truncate text-sm font-bold tracking-tight text-foreground">
@@ -339,7 +353,7 @@ export function DriversTable() {
   const vehicleSlug = searchParams.get("vehicle");
   const vehicleType = vehicleTypeFromSlug(vehicleSlug);
 
-  const [tab, setTab] = useState<Tab["id"]>("all");
+
   const [sortKey, setSortKey] = useState<SortKey>("applied");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
@@ -353,6 +367,8 @@ export function DriversTable() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -361,7 +377,7 @@ export function DriversTable() {
 
   useEffect(() => {
     setPage(1);
-  }, [vehicleSlug, debouncedQuery]);
+  }, [vehicleSlug, debouncedQuery, statusFilter, dateFilter]);
 
   const loadDrivers = useCallback(async () => {
     setLoading(true);
@@ -376,11 +392,21 @@ export function DriversTable() {
 
       const res = await getDrivers(params);
       const apiRows = (res.drivers ?? []).map(mapApiDriver);
+      const queryLower = debouncedQuery.toLowerCase();
+      const matchSearch = (d: any) => {
+        if (!debouncedQuery) return true;
+        const name = d.full_name?.toLowerCase() ?? "";
+        const plate = d.vehicle_plate?.toLowerCase() ?? "";
+        const phone = d.phone?.toLowerCase() ?? "";
+        return name.includes(queryLower) || plate.includes(queryLower) || phone.includes(queryLower);
+      };
       const mockRows = MOCK_API_DRIVERS
         .filter((d) => !vehicleType || d.transport_type === vehicleType)
+        .filter(matchSearch)
         .map(mapApiDriver);
       const localRows = getLocalApiDrivers()
         .filter((d) => !vehicleType || d.transport_type === vehicleType)
+        .filter(matchSearch)
         .map(mapApiDriver);
       // Deduplicate — real API takes precedence over mock/local if IDs ever collide.
       const seenIds = new Set(apiRows.map((d) => d.id));
@@ -422,18 +448,41 @@ export function DriversTable() {
   };
 
 
-  const counts: Record<Tab["id"], number> = {
-    all: drivers.length,
-    Online: drivers.filter((d) => d.status === "Online").length,
-    "On trip": drivers.filter((d) => d.status === "On trip").length,
-    Offline: drivers.filter((d) => d.status === "Offline").length,
-    Pending: drivers.filter((d) => d.status === "Pending").length,
-    Suspended: drivers.filter((d) => d.status === "Suspended").length,
-    Rejected: drivers.filter((d) => d.status === "Rejected").length,
-  };
+
 
   const filtered = drivers.filter((d) => {
-    if (tab !== "all" && d.status !== tab) return false;
+    // Status Filter
+    if (statusFilter !== "all") {
+      const isApproved = d.status === "Online" || d.status === "On trip" || d.status === "Offline";
+      if (statusFilter === "ApprovedEligible") {
+        if (!isApproved || d.eligible === false) return false;
+      } else if (statusFilter === "ApprovedNonCompliant") {
+        if (!isApproved || d.eligible !== false) return false;
+      } else if (statusFilter === "Pending") {
+        if (d.status !== "Pending") return false;
+      } else if (statusFilter === "Rejected") {
+        if (d.status !== "Rejected") return false;
+      } else if (statusFilter === "Suspended") {
+        if (d.status !== "Suspended") return false;
+      }
+    }
+
+    // Joining Date Filter
+    if (dateFilter !== "all") {
+      const createdTime = d.createdAt ? new Date(d.createdAt).getTime() : 0;
+      const now = Date.now();
+      if (dateFilter === "today") {
+        const oneDay = 24 * 60 * 60 * 1000;
+        if (now - createdTime > oneDay) return false;
+      } else if (dateFilter === "week") {
+        const oneWeek = 7 * 24 * 60 * 60 * 1000;
+        if (now - createdTime > oneWeek) return false;
+      } else if (dateFilter === "month") {
+        const oneMonth = 30 * 24 * 60 * 60 * 1000;
+        if (now - createdTime > oneMonth) return false;
+      }
+    }
+
     return true;
   });
 
@@ -459,6 +508,8 @@ export function DriversTable() {
       va = a.acceptance ?? -1; vb = b.acceptance ?? -1;
     } else if (sortKey === "rating") {
       va = a.rating ?? -1; vb = b.rating ?? -1;
+    } else if (sortKey === "referrals") {
+      va = a.referrals; vb = b.referrals;
     } else {
       va = a.lastActive; vb = b.lastActive;
     }
@@ -564,30 +615,45 @@ export function DriversTable() {
           : "All drivers"
       }
       action={
-        <div className="flex items-center gap-2">
-          {vehicleSlug && VEHICLE_SLUG_LABELS[vehicleSlug] ? (
-            <button
-              type="button"
-              onClick={() => router.push("/admin/drivers")}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/15"
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+          <div className="flex items-center justify-between sm:justify-start gap-2">
+            <span className="text-xs text-muted-foreground sm:hidden">View Mode:</span>
+            <ViewToggle value={viewMode} onChange={setViewMode} />
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 rounded-lg border border-border bg-surface px-2.5 text-xs text-foreground outline-none focus:border-primary cursor-pointer w-[48%] sm:w-auto flex-1"
             >
-              {VEHICLE_SLUG_LABELS[vehicleSlug]}
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.25"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-                className="h-3 w-3"
-              >
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          ) : null}
-          <ViewToggle value={viewMode} onChange={setViewMode} />
+              <option value="all">All statuses</option>
+              <option value="Pending">Pending Review</option>
+              <option value="ApprovedEligible">Approved (Eligible)</option>
+              <option value="ApprovedNonCompliant">Approved (Non-compliant)</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+
+            {/* Joining Date Filter */}
+            <select
+              value={dateFilter}
+              onChange={(e) => {
+                setDateFilter(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 rounded-lg border border-border bg-surface px-2.5 text-xs text-foreground outline-none focus:border-primary cursor-pointer w-[48%] sm:w-auto flex-1"
+            >
+              <option value="all">Joined: All time</option>
+              <option value="today">Joined: Today</option>
+              <option value="week">Joined: Last 7 days</option>
+              <option value="month">Joined: Last 30 days</option>
+            </select>
+          </div>
+
           <input
             type="search"
             placeholder="Search drivers, plates…"
@@ -596,7 +662,7 @@ export function DriversTable() {
               setQuery(e.target.value);
               setPage(1);
             }}
-            className="h-8 w-56 rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary"
+            className="h-8 flex-1 sm:flex-initial sm:w-48 rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary"
           />
         </div>
       }
@@ -614,37 +680,7 @@ export function DriversTable() {
         </div>
       ) : null}
 
-      <div className="flex items-center gap-1 border-b border-border px-3 py-2">
-        {tabs.map((t) => {
-          const active = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => {
-                setTab(t.id);
-                setPage(1);
-              }}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-surface hover:text-foreground"
-              }`}
-            >
-              {t.label}
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                  active
-                    ? "bg-primary/20 text-primary"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {counts[t.id]}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+
 
       {viewMode === "table" ? (
       <div className="overflow-x-auto">
@@ -684,6 +720,14 @@ export function DriversTable() {
                 onClick={() => toggleSort("rating")}
               />
               <SortHeader
+                label="Referrals"
+                sortKey="referrals"
+                currentKey={sortKey}
+                dir={sortDir}
+                align="right"
+                onClick={() => toggleSort("referrals")}
+              />
+              <SortHeader
                 label="Applied"
                 sortKey="applied"
                 currentKey={sortKey}
@@ -699,14 +743,14 @@ export function DriversTable() {
           <tbody className="divide-y divide-border">
             {loading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                <td colSpan={9} className="px-4 py-10 text-center text-sm text-muted-foreground">
                   Loading drivers…
                 </td>
               </tr>
             ) : paginated.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-4 py-10 text-center text-sm text-muted-foreground"
                 >
                   No drivers match your filters.
@@ -728,11 +772,29 @@ export function DriversTable() {
                     {d.plate}
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusStyles[d.status]}`}
-                    >
-                      {d.status}
-                    </span>
+                    <div className="flex flex-col gap-1 items-start">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                          statusStyles[d.status === "Online" || d.status === "On trip" || d.status === "Offline" ? "Approved" : d.status]
+                        }`}
+                      >
+                        {d.status === "Online" || d.status === "On trip" || d.status === "Offline" ? "Approved" : d.status}
+                      </span>
+                      {(d.status === "Online" || d.status === "On trip" || d.status === "Offline") && (
+                        d.eligible !== false ? (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-emerald-700 ring-1 ring-inset ring-emerald-100">
+                            Eligible
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-800 ring-1 ring-inset ring-amber-200">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-2 w-2" aria-hidden>
+                              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                            </svg>
+                            Non-compliant
+                          </span>
+                        )
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-foreground">
                     {d.acceptance === null ? (
@@ -750,6 +812,9 @@ export function DriversTable() {
                         <span className="text-amber-500">★</span>
                       </span>
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-foreground">
+                    <ReferralCountLink driverId={d.id} count={d.referrals} />
                   </td>
                   <td className="px-4 py-3 text-right text-xs text-muted-foreground">
                     {d.lastActive}
@@ -801,7 +866,7 @@ export function DriversTable() {
           </span>{" "}
           of{" "}
           <span className="font-semibold text-foreground">
-            {debouncedQuery || tab !== "all" ? sorted.length : totalFromApi}
+            {debouncedQuery || statusFilter !== "all" || dateFilter !== "all" ? sorted.length : totalFromApi}
           </span>{" "}
           drivers
         </p>

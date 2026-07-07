@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ContactForm } from "./contact-form";
+import { ContactHeading } from "./contact-heading";
 
 export const metadata: Metadata = {
   title: "Contact Rides",
@@ -54,9 +55,7 @@ export default function ContactPage() {
       <section className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 px-5 py-12 sm:gap-12 sm:px-6 sm:py-16 lg:min-h-[calc(100vh-5rem)] lg:grid-cols-2 lg:gap-20 lg:py-24">
         {/* ── Left: heading + contact info ── */}
         <div className="relative">
-          <h1 className="text-balance text-[2.75rem] font-bold leading-[1.02] tracking-[-0.035em] text-muted-foreground sm:text-6xl md:text-7xl lg:text-8xl">
-            Let&apos;s talk?
-          </h1>
+          <ContactHeading />
 
           <div className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-5">
             <InfoRow icon={<PhoneIcon />} label="+250 789 534 491" />

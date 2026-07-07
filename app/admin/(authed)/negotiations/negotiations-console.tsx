@@ -13,6 +13,7 @@ import {
   type Negotiation as ApiNegotiation,
   type RideDetail as ApiRideDetail,
 } from "@/lib/api";
+import { MOCK_NEGOTIATIONS, MOCK_NEGOTIATION_DETAILS } from "@/lib/mock-negotiations";
 
 const TRANSPORT_DISPLAY: Record<string, string> = {
   MOTO_BIKE: "Moto Bike", CAB_TAXI: "Cab Taxi",
@@ -25,7 +26,7 @@ function toVehicleLabel(code: string): string {
 function mapNegStatus(s: string): NegotiationStatus {
   if (s === "Agreed" || s === "COMPLETED") return "Agreed";
   if (s === "Failed" || s === "CANCELLED") return "Failed";
-  if (s === "Disputed") return "Disputed";
+  if (s === "Disputed" || s === "DISPUTED") return "Disputed";
   return "In progress";
 }
 
@@ -443,8 +444,11 @@ export function NegotiationsConsole() {
 
   useEffect(() => {
     getNegotiations({ limit: "100", offset: "0" })
-      .then((res) => setNegotiations((res.negotiations ?? []).map(mapApiNegotiation)))
-      .catch(() => null);
+      .then((res) => {
+        const rows = res.negotiations?.length ? res.negotiations : MOCK_NEGOTIATIONS;
+        setNegotiations(rows.map(mapApiNegotiation));
+      })
+      .catch(() => setNegotiations(MOCK_NEGOTIATIONS.map(mapApiNegotiation)));
   }, []);
 
   const openNegotiation = (id: string) => {
@@ -455,7 +459,13 @@ export function NegotiationsConsole() {
           prev.map((n) => (n.id === id ? mergeDetail(n, detail) : n))
         );
       })
-      .catch(() => null);
+      .catch(() => {
+        const detail = MOCK_NEGOTIATION_DETAILS[id];
+        if (!detail) return;
+        setNegotiations((prev) =>
+          prev.map((n) => (n.id === id ? mergeDetail(n, detail) : n))
+        );
+      });
   };
 
   useEffect(() => {

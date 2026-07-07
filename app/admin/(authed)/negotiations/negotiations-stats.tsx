@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import { StatCard } from "../_components";
 import { getNegotiationsStats, type NegotiationsStats } from "@/lib/api";
+import { MOCK_NEGOTIATIONS_STATS } from "@/lib/mock-negotiations";
 
 export function NegotiationsStatsCards() {
   const [data, setData] = useState<NegotiationsStats | null>(null);
 
   useEffect(() => {
-    getNegotiationsStats().then(setData).catch(() => null);
+    getNegotiationsStats()
+      .then((stats) => setData(stats.total_today > 0 ? stats : MOCK_NEGOTIATIONS_STATS))
+      .catch(() => setData(MOCK_NEGOTIATIONS_STATS));
   }, []);
 
   const successRate =
