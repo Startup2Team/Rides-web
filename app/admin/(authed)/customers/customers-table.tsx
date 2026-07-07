@@ -92,12 +92,12 @@ const statusToneMap: Record<
 
 type Tab = { id: "all" | CustomerStatus; label: string };
 
+// The backend only distinguishes Active vs Suspended (mapCustomerStatus), so the
+// customer list is filtered to those states plus All. VIP/Dormant/Flagged were
+// never populated by the API and are intentionally omitted.
 const tabs: Tab[] = [
   { id: "all", label: "All" },
   { id: "Active", label: "Active" },
-  { id: "VIP", label: "VIP" },
-  { id: "Dormant", label: "Dormant" },
-  { id: "Flagged", label: "Flagged" },
   { id: "Suspended", label: "Suspended" },
 ];
 
