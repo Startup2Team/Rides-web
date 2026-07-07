@@ -1,5 +1,20 @@
 import { clearToken, getToken } from "./auth";
 import { MOCK_LIVE_RIDES, MOCK_LIVE_RIDE_DETAILS, MOCK_LIVE_RIDES_STATS } from "./mock-live-rides";
+import {
+  MOCK_NEGOTIATIONS,
+  MOCK_NEGOTIATION_DETAILS,
+  MOCK_NEGOTIATIONS_STATS,
+} from "./mock-negotiations";
+import type {
+  Campaign as AdminCampaignView,
+  CampaignAudience,
+  CampaignStatus,
+  Entitlement,
+  EntitlementTransactionKind,
+  PurchaseSnapshot,
+  PurchaseStatus,
+  VehicleType as MonetizationVehicleType,
+} from "./packages-mock";
 
 const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -15,15 +30,17 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const token = tokenOverride ?? getToken();
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(rest.headers as Record<string, string>),
   };
+  if (!(body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...rest,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body !== undefined ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
   });
 
   if (res.status === 401) {
@@ -138,6 +155,9 @@ export type AdminAccount = {
   id: string;
   name: string;
   email: string;
+  phone?: string | null;
+  photo_url?: string | null;
+  photoUrl?: string | null;
   role_id: string;
   role_name: string;
   status: string;
@@ -149,8 +169,18 @@ export type AdminAccount = {
 
 export const getAccount = (token?: string) => request<AdminAccount>("/admin/account", token ? { token } : {});
 
-export const updateAccount = (name: string) =>
-  request<void>("/admin/account", { method: "PUT", body: { name } });
+export const updateAccount = (
+  data: { name: string; phone?: string | null; photo_url?: string | null } | FormData
+) =>
+  request<void>("/admin/account", {
+    method: "PUT",
+    body: data instanceof FormData ? data : {
+      name: data.name,
+      phone: data.phone,
+      photo_url: data.photo_url,
+      photoUrl: data.photo_url,
+    },
+  });
 
 export const changePassword = (currentPassword: string, newPassword: string) =>
   request<void>("/admin/account/password", {
@@ -433,6 +463,8 @@ export type Driver = {
   total_rides?: number;
   city?: string;
   created_at: string;
+  referral_count?: number;
+  referred_by_driver_id?: string | null;
 };
 
 export type DriversResponse = {
@@ -449,6 +481,7 @@ export type DriversOverview = {
   on_trip: number;
   pending: number;
   suspended: number;
+  total_referrals?: number;
 };
 
 export const sendDriverOTP = (phone: string) =>
@@ -489,6 +522,9 @@ export type DriverDetail = {
   approval_status: string;
   created_at: string;
   is_online?: boolean;
+  referral_count?: number;
+  /** Present when this driver was referred by another driver on the platform. */
+  referred_by_driver_id?: string | null;
   license_issued_date?: string | null;
   license_expiry_date?: string | null;
   insurance_issued_date?: string | null;
@@ -521,6 +557,24 @@ export type DriverDetail = {
 
 export const getDriver = (id: string) => request<DriverDetail>(`/admin/drivers/${id}`);
 
+export type ReferredDriver = {
+  id: string;
+  full_name: string | null;
+  phone?: string;
+  transport_type: string;
+  vehicle_plate?: string;
+  approval_status: string;
+  created_at: string;
+};
+
+export async function getDriverReferrals(driverId: string): Promise<ReferredDriver[]> {
+  if (NO_BACKEND) {
+    const { getLocalReferredDrivers } = await import("./referrals");
+    return getLocalReferredDrivers(driverId);
+  }
+  return request<ReferredDriver[]>(`/admin/drivers/${driverId}/referrals`);
+}
+
 export const createDriver = (body: Record<string, unknown>) =>
   request<{ id: string; user_id?: string; message: string }>("/admin/drivers", {
     method: "POST",
@@ -537,8 +591,8 @@ export const uploadDriverDocument = (
     body: { document_type: documentType, file_url: fileUrl },
   });
 
-/** Upload a driver document image/PDF via admin multipart endpoint. */
-export async function uploadDriverFile(file: File): Promise<string> {
+/** Upload a file (image/PDF) via admin multipart endpoint. */
+export async function uploadFile(file: File): Promise<string> {
   const token = getToken();
   const form = new FormData();
   form.append("file", file);
@@ -555,6 +609,11 @@ export async function uploadDriverFile(file: File): Promise<string> {
   const data = (json?.data ?? json) as { file_url?: string };
   if (!data.file_url) throw new Error("Upload succeeded but no file URL returned");
   return data.file_url;
+}
+
+/** Upload a driver document image/PDF via admin multipart endpoint. */
+export async function uploadDriverFile(file: File): Promise<string> {
+  return uploadFile(file);
 }
 
 export const forceDriverOffline = (id: string) =>
@@ -597,6 +656,8 @@ export type Customer = {
   full_name: string | null;
   phone: string;
   email?: string | null;
+  photo_url?: string | null;
+  location?: string | null;
   role_state: string;
   is_suspended: boolean;
   suspension_until?: string | null;
@@ -678,7 +739,13 @@ export type Ride = {
   customer: RideParticipant;
   driver: RideDriverParticipant;
   pickup_address: string;
+  /** Not yet returned by the admin API (only the mobile API has it) — optional until the backend catches up. */
+  pickup_lat?: number;
+  pickup_lng?: number;
   destination_address: string;
+  /** Same gap as pickup_lat/pickup_lng above. */
+  dest_lat?: number;
+  dest_lng?: number;
   agreed_fare: number | null;
   initial_fare: number | null;
   distance_km: number | null;
@@ -793,15 +860,29 @@ export type NegotiationsStats = {
   avg_rounds: number;
 };
 
-export const getNegotiations = (params: Record<string, string> = {}) => {
+export const getNegotiations = async (params: Record<string, string> = {}): Promise<NegotiationsResponse> => {
+  if (NO_BACKEND) {
+    return { negotiations: MOCK_NEGOTIATIONS, total: MOCK_NEGOTIATIONS.length };
+  }
   const qs = new URLSearchParams(params).toString();
   return request<NegotiationsResponse>(`/admin/negotiations${qs ? `?${qs}` : ""}`);
 };
 
-export const getNegotiationsStats = () =>
-  request<NegotiationsStats>("/admin/negotiations/stats");
+export const getNegotiationsStats = async (): Promise<NegotiationsStats> => {
+  if (NO_BACKEND) {
+    return MOCK_NEGOTIATIONS_STATS;
+  }
+  return request<NegotiationsStats>("/admin/negotiations/stats");
+};
 
-export const getNegotiation = (id: string) => request<RideDetail>(`/admin/negotiations/${id}`);
+export const getNegotiation = async (id: string): Promise<RideDetail> => {
+  if (NO_BACKEND) {
+    const detail = MOCK_NEGOTIATION_DETAILS[id];
+    if (detail) return detail;
+    throw new Error("Mock negotiation not found");
+  }
+  return request<RideDetail>(`/admin/negotiations/${id}`);
+};
 
 // ── Revenue ───────────────────────────────────────────────────────────────
 
@@ -1237,6 +1318,207 @@ export const togglePackage = (id: string, isActive: boolean) =>
 
 export const deletePackage = (id: string) =>
   request<{ status: string }>(`/admin/packages/${id}`, { method: "DELETE" });
+
+// ── Campaigns ─────────────────────────────────────────────────────────────
+// The backend returns AdminCampaign (snake_case, type/target model). The
+// monetization console renders the richer camelCase Campaign view, so we map
+// backend → view here. The console is read-only, so only the GET is wired.
+type BackendCampaign = {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  type: string; // GLOBAL | VEHICLE_TYPE | PACKAGE | FIRST_PURCHASE | REFERRAL
+  status: string; // DRAFT | SCHEDULED | ACTIVE | EXPIRED | ARCHIVED
+  starts_at: string | null;
+  ends_at: string | null;
+  target_vehicle_type_code: string | null;
+  target_package_id: string | null;
+  override_price_rwf: number | null;
+  override_rides: number | null;
+  override_bonus_rides: number | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+const VEHICLE_CODE_TO_VIEW: Record<string, MonetizationVehicleType> = {
+  MOTO_BIKE: "moto",
+  CAB_TAXI: "cab",
+  LIGHT_HILUX: "hilux",
+  HEAVY_FUSO: "fuso",
+};
+
+function mapCampaign(c: BackendCampaign): AdminCampaignView {
+  const audience: CampaignAudience =
+    c.type === "VEHICLE_TYPE" ? "vehicle-type" : c.type === "FIRST_PURCHASE" ? "first-purchase" : "all";
+  const vt = c.target_vehicle_type_code ? VEHICLE_CODE_TO_VIEW[c.target_vehicle_type_code] : undefined;
+  return {
+    id: c.id,
+    slug: c.code,
+    name: c.name,
+    description: c.description ?? "",
+    status: (c.status ? c.status.toLowerCase() : "draft") as CampaignStatus,
+    audience,
+    vehicleTypes: vt ? [vt] : null,
+    packageIds: c.target_package_id ? [c.target_package_id] : null,
+    priceOverride: c.override_price_rwf ?? null,
+    ridesOverride: c.override_rides ?? null,
+    bonusRidesOverride: c.override_bonus_rides ?? null,
+    startsAt: c.starts_at ?? c.created_at,
+    endsAt: c.ends_at ?? c.created_at,
+    createdAt: c.created_at,
+    createdBy: c.created_by ?? "system",
+  };
+}
+
+export const getAdminCampaigns = async (): Promise<AdminCampaignView[]> => {
+  const list = await request<BackendCampaign[]>("/admin/campaigns");
+  return (list ?? []).map(mapCampaign);
+};
+
+// ── Purchases ─────────────────────────────────────────────────────────────
+// GET /admin/packages-purchases returns AdminPurchase (snake_case, joined
+// driver + vehicle info). We map it to the console's PurchaseSnapshot view.
+type BackendPurchase = {
+  id: string;
+  driver_id: string;
+  driver_name: string | null;
+  driver_phone: string;
+  vehicle_id?: string | null;
+  vehicle_type_code: string;
+  vehicle_plate: string;
+  package_id: string;
+  package_name: string;
+  package_version: number;
+  campaign_id?: string | null;
+  campaign_code?: string | null;
+  campaign_name?: string | null;
+  price_paid_rwf: number;
+  rides_granted: number;
+  bonus_rides_granted: number;
+  status: string;
+  payment_provider?: string | null;
+  payment_ref: string;
+  created_at: string;
+  paid_at?: string | null;
+};
+
+function mapPaymentProvider(p: string | null | undefined): PurchaseSnapshot["paymentProvider"] {
+  if (!p) return null;
+  const s = p.toLowerCase();
+  if (s.includes("mtn")) return "mtn-momo";
+  if (s.includes("airtel")) return "airtel-money";
+  return null;
+}
+
+function mapPurchase(p: BackendPurchase): PurchaseSnapshot {
+  return {
+    id: p.id,
+    driverId: p.driver_id,
+    driverName: p.driver_name ?? "Unknown driver",
+    driverPhone: p.driver_phone,
+    vehicleId: p.vehicle_id ?? "",
+    // The console's VehicleType enum has no tuk-tuk; unknown codes fall back to
+    // "moto" so labels/filters still render (rare edge case).
+    vehicleType: VEHICLE_CODE_TO_VIEW[p.vehicle_type_code] ?? "moto",
+    vehiclePlate: p.vehicle_plate ?? "—",
+    packageId: p.package_id,
+    packageName: p.package_name,
+    packageVersion: p.package_version,
+    campaignId: p.campaign_id ?? null,
+    campaignName: p.campaign_name ?? p.campaign_code ?? null,
+    pricePaid: p.price_paid_rwf,
+    ridesGranted: p.rides_granted,
+    bonusRidesGranted: p.bonus_rides_granted,
+    status: (p.status ? p.status.toLowerCase() : "pending") as PurchaseStatus,
+    paymentProvider: mapPaymentProvider(p.payment_provider),
+    paymentReference: p.payment_ref,
+    createdAt: p.created_at,
+    paidAt: p.paid_at ?? null,
+  };
+}
+
+export const getAdminPurchases = async (): Promise<PurchaseSnapshot[]> => {
+  const list = await request<BackendPurchase[]>("/admin/packages-purchases");
+  return (list ?? []).map(mapPurchase);
+};
+
+// ── Entitlements ──────────────────────────────────────────────────────────
+// GET /admin/entitlements → { entitlements: AdminEntitlement[] }. Mapped to the
+// console's Entitlement view. The id is "driver_id:vehicle_type_id".
+type BackendEntitlementTxn = {
+  id: string;
+  kind: string;
+  rides_delta: number;
+  bonus_rides_delta: number;
+  rides_after: number;
+  bonus_rides_after: number;
+  source_ref: string;
+  reason?: string | null;
+  performed_by?: string | null;
+  created_at: string;
+};
+type BackendEntitlement = {
+  id: string;
+  driver_id: string;
+  driver_name: string;
+  driver_phone: string;
+  vehicle_type_code: string;
+  vehicle_plate: string;
+  rides_remaining: number;
+  bonus_rides_remaining: number;
+  total_granted: number;
+  total_consumed: number;
+  transactions: BackendEntitlementTxn[] | null;
+};
+
+function mapEntitlement(e: BackendEntitlement): Entitlement {
+  return {
+    id: e.id,
+    driverId: e.driver_id,
+    driverName: e.driver_name,
+    driverPhone: e.driver_phone,
+    vehicleId: "",
+    vehicleType: VEHICLE_CODE_TO_VIEW[e.vehicle_type_code] ?? "moto",
+    vehiclePlate: e.vehicle_plate,
+    ridesRemaining: e.rides_remaining,
+    bonusRidesRemaining: e.bonus_rides_remaining,
+    totalGranted: e.total_granted,
+    totalConsumed: e.total_consumed,
+    transactions: (e.transactions ?? []).map((t) => ({
+      id: t.id,
+      entitlementId: e.id,
+      kind: t.kind as EntitlementTransactionKind,
+      ridesDelta: t.rides_delta,
+      bonusRidesDelta: t.bonus_rides_delta,
+      ridesAfter: t.rides_after,
+      bonusRidesAfter: t.bonus_rides_after,
+      sourceRef: t.source_ref,
+      reason: t.reason ?? undefined,
+      performedBy: t.performed_by ?? undefined,
+      createdAt: t.created_at,
+    })),
+  };
+}
+
+export const getAdminEntitlements = async (): Promise<Entitlement[]> => {
+  const res = await request<{ entitlements: BackendEntitlement[] }>("/admin/entitlements");
+  return (res?.entitlements ?? []).map(mapEntitlement);
+};
+
+// Grant credits to a driver's vehicle-type entitlement. driverId + vehicleTypeId
+// come from splitting the entitlement id ("driver_id:vehicle_type_id").
+export const grantEntitlement = (
+  driverId: string,
+  vehicleTypeId: string,
+  rides: number,
+  bonusRides: number,
+  reason: string,
+) =>
+  request<void>("/admin/entitlements/grant", {
+    method: "POST",
+    body: { driver_id: driverId, vehicle_type_id: vehicleTypeId, rides, bonus_rides: bonusRides, reason },
+  });
 
 // ── Audit Logs ────────────────────────────────────────────────────────────
 

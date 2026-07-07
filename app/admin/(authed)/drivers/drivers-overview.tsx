@@ -23,7 +23,7 @@ type CategoryView = {
   eyebrow: string;
   addLabel: string;
   defaultVehicle?: VehicleSlug;
-  cards: (stats: DriversOverviewStats) => [Card, Card, Card, Card];
+  cards: (stats: DriversOverviewStats) => [Card, Card, Card, Card, Card];
 };
 
 const all: CategoryView = {
@@ -39,6 +39,11 @@ const all: CategoryView = {
       label: "Pending Verification",
       value: String(s.pending),
       hint: "awaiting review",
+    },
+    {
+      label: "Total Referrals",
+      value: String(s.totalReferrals),
+      hint: "drivers referred by drivers",
     },
   ],
 };
@@ -56,6 +61,7 @@ const byCategory: Record<VehicleSlug, CategoryView> = {
       { label: "Riding Now", value: String(s.online), hint: "online and available" },
       { label: "On Delivery", value: String(s.onTrip), hint: "trips in progress" },
       { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
+      { label: "Referrals", value: String(s.totalReferrals), hint: "drivers referred by Moto riders" },
     ],
   },
   cab: {
@@ -70,6 +76,7 @@ const byCategory: Record<VehicleSlug, CategoryView> = {
       { label: "On Duty", value: String(s.online), hint: "ready for trips" },
       { label: "Passengers Onboard", value: String(s.onTrip), hint: "active trips" },
       { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
+      { label: "Referrals", value: String(s.totalReferrals), hint: "drivers referred by Cab drivers" },
     ],
   },
   hilux: {
@@ -84,6 +91,7 @@ const byCategory: Record<VehicleSlug, CategoryView> = {
       { label: "Available", value: String(s.online), hint: "online and idle" },
       { label: "On Cargo Run", value: String(s.onTrip), hint: "deliveries in progress" },
       { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
+      { label: "Referrals", value: String(s.totalReferrals), hint: "drivers referred by Hilux drivers" },
     ],
   },
   rifani: {
@@ -97,6 +105,7 @@ const byCategory: Record<VehicleSlug, CategoryView> = {
       { label: "On Duty", value: String(s.online), hint: "online and available" },
       { label: "On Trip", value: String(s.onTrip), hint: "trips in progress" },
       { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
+      { label: "Referrals", value: String(s.totalReferrals), hint: "drivers referred by Rifani drivers" },
     ],
   },
   fuso: {
@@ -110,6 +119,7 @@ const byCategory: Record<VehicleSlug, CategoryView> = {
       { label: "Available", value: String(s.online), hint: "ready to haul" },
       { label: "Hauling", value: String(s.onTrip), hint: "loads in transit" },
       { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
+      { label: "Referrals", value: String(s.totalReferrals), hint: "drivers referred by Fuso drivers" },
     ],
   },
 };
@@ -120,6 +130,7 @@ const emptyStats: DriversOverviewStats = {
   onTrip: 0,
   pending: 0,
   suspended: 0,
+  totalReferrals: 0,
 };
 
 function StatCardSkeleton() {
@@ -161,12 +172,18 @@ export function DriversOverview() {
         ].filter((d) => !vehicleType || d.transport_type === vehicleType);
         const isPending = (d: { approval_status?: string }) =>
           ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
+        const isOnline = (d: { is_online?: boolean }) => !!d.is_online;
+        const isOnTrip = (d: { on_trip?: boolean }) => !!d.on_trip;
+        const isSuspended = (d: { approval_status?: string }) =>
+          d.approval_status?.toUpperCase() === "SUSPENDED";
+        const referralsOf = (d: { referral_count?: number }) => d.referral_count ?? 0;
         setStats({
           total: (res.total ?? 0) + extras.length,
-          online: res.online ?? 0,
-          onTrip: res.on_trip ?? 0,
+          online: (res.online ?? 0) + extras.filter(isOnline).length,
+          onTrip: (res.on_trip ?? 0) + extras.filter(isOnTrip).length,
           pending: (res.pending ?? 0) + extras.filter(isPending).length,
-          suspended: res.suspended ?? 0,
+          suspended: (res.suspended ?? 0) + extras.filter(isSuspended).length,
+          totalReferrals: (res.total_referrals ?? 0) + extras.reduce((sum, d) => sum + referralsOf(d), 0),
         });
       } catch (err) {
         if (cancelled) return;
@@ -198,12 +215,18 @@ export function DriversOverview() {
           );
           const isPending = (d: { approval_status?: string }) =>
             ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
+          const isOnline = (d: { is_online?: boolean }) => !!d.is_online;
+          const isOnTrip = (d: { on_trip?: boolean }) => !!d.on_trip;
+          const isSuspended = (d: { approval_status?: string }) =>
+            d.approval_status?.toUpperCase() === "SUSPENDED";
+          const referralsOf = (d: { referral_count?: number }) => d.referral_count ?? 0;
           setStats({
             total: (res.total ?? 0) + extras.length,
-            online: res.online ?? 0,
-            onTrip: res.on_trip ?? 0,
+            online: (res.online ?? 0) + extras.filter(isOnline).length,
+            onTrip: (res.on_trip ?? 0) + extras.filter(isOnTrip).length,
             pending: (res.pending ?? 0) + extras.filter(isPending).length,
-            suspended: res.suspended ?? 0,
+            suspended: (res.suspended ?? 0) + extras.filter(isSuspended).length,
+            totalReferrals: (res.total_referrals ?? 0) + extras.reduce((sum, d) => sum + referralsOf(d), 0),
           });
         } catch {
           /* ignore — keep previous stats */
@@ -242,9 +265,9 @@ export function DriversOverview() {
         </p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {loading
-          ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          ? Array.from({ length: 5 }).map((_, i) => <StatCardSkeleton key={i} />)
           : cards.map((c) => (
               <StatCard
                 key={c.label}

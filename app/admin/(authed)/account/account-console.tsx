@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar, Card } from "../_components";
 import { QRCode } from "./qr-code";
 import {
@@ -13,8 +13,10 @@ import {
   get2FASetup,
   enable2FA,
   resetTOTP,
+  uploadFile,
 } from "@/lib/api";
 import { getAdminUser, getToken } from "@/lib/auth";
+import { useAuth } from "@/context/auth-context";
 
 type Tab = "profile" | "security" | "sessions";
 
@@ -144,6 +146,11 @@ export function AccountConsole() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { refreshUser } = useAuth();
 
   // Password state
   const [currentPwd, setCurrentPwd] = useState("");
@@ -188,6 +195,8 @@ export function AccountConsole() {
       .then((a) => {
         setName(a.name);
         setEmail(a.email);
+        setPhone(a.phone || "");
+        setPhotoUrl(a.photo_url || a.photoUrl || null);
         setTwoFactorEnabled(a.two_factor);
       })
       .catch(() => null);
@@ -218,12 +227,33 @@ export function AccountConsole() {
 
   async function handleSaveProfile() {
     try {
-      await updateAccount(name);
+      await updateAccount({ name, phone, photo_url: photoUrl });
       setToast("Profile saved");
+      await refreshUser();
     } catch {
       setToast("Failed to save profile");
     }
   }
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setToast("Uploading photo...");
+    try {
+      const url = await uploadFile(file);
+      setPhotoUrl(url);
+      setToast("Photo uploaded. Save changes to apply.");
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : "Failed to upload photo");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -350,17 +380,25 @@ export function AccountConsole() {
         <Card title="Profile">
           <div className="p-5">
             <div className="flex items-center gap-4">
-              <Avatar name={name} />
+              <Avatar name={name} url={photoUrl} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground">{name}</p>
                 <p className="text-xs text-muted-foreground">{email}</p>
               </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+              />
               <button
                 type="button"
-                onClick={() => setToast("Photo upload coming soon")}
-                className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
+                onClick={handleUploadClick}
+                disabled={uploading}
+                className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Upload photo
+                {uploading ? "Uploading..." : "Upload photo"}
               </button>
             </div>
 

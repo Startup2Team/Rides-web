@@ -46,26 +46,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: "SERVER_ERROR", message: "Empty response from server" } }, { status: 502 });
   }
 
-  // Backend returns either:
-  //   { access_token, two_factor_required: false }  — 2FA not set up yet → force setup
-  //   { pre_auth_token, two_factor_required: true }  — 2FA exists → need verification
+  // 2FA is MANDATORY. A 2FA-off admin gets an access_token; in production we
+  // force them into 2FA setup (QR + setup key) before the dashboard. Dev skips
+  // the wall so testing isn't gated behind an authenticator.
+  if (data.access_token) {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({
+        data: { status: "totp_setup_required", challenge_token: data.access_token },
+      });
+    }
+    const response = NextResponse.json({ data: { status: "success" } });
+    applyAdminTokenCookies(response, data.access_token);
+    return response;
+  }
+
+  // A 2FA-on admin gets a pre-auth token → show the verify-code screen.
   if (data.two_factor_required === true && data.pre_auth_token) {
     return NextResponse.json({
       data: { status: "totp_required", challenge_token: data.pre_auth_token },
-    });
-  }
-
-  if (data.two_factor_required === false && data.access_token) {
-    // Dev: the backend skips 2FA and authenticates directly. Log straight in by
-    // setting the session cookie — don't force the (production-only) 2FA
-    // enrollment that would otherwise gate every dev login.
-    if (process.env.NODE_ENV !== "production") {
-      const response = NextResponse.json({ data: { status: "success" } });
-      applyAdminTokenCookies(response, data.access_token);
-      return response;
-    }
-    return NextResponse.json({
-      data: { status: "totp_setup_required", challenge_token: data.access_token },
     });
   }
 
