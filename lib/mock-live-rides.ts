@@ -103,7 +103,7 @@ const RIDE_004: ApiRide = {
  * so the Active rides tab has real volume to demo with, seeded programmatically
  * rather than hand-writing 18 near-duplicate literals.
  */
-const KIGALI_PLACES: { name: string; lat: number; lng: number }[] = [
+export const KIGALI_PLACES: { name: string; lat: number; lng: number }[] = [
   { name: "Kimironko Market", lat: -1.9506, lng: 30.1044 },
   { name: "Kabuga", lat: -1.9631, lng: 30.1922 },
   { name: "Kigali Convention Centre", lat: -1.9457, lng: 30.0919 },
@@ -123,6 +123,20 @@ const KIGALI_PLACES: { name: string; lat: number; lng: number }[] = [
   { name: "Nyanza (Kicukiro)", lat: -1.9962, lng: 30.1147 },
   { name: "Kagugu", lat: -1.9098, lng: 30.0742 },
 ];
+
+/** Rough area label from GPS — nearest known Kigali place (demo + offline dev). */
+export function nearestKigaliPlace(lat: number, lng: number): string {
+  let best = KIGALI_PLACES[0];
+  let bestDist = Infinity;
+  for (const p of KIGALI_PLACES) {
+    const d = (p.lat - lat) ** 2 + (p.lng - lng) ** 2;
+    if (d < bestDist) {
+      bestDist = d;
+      best = p;
+    }
+  }
+  return best.name;
+}
 
 const ACTIVE_RIDE_PEOPLE: { customer: string; customerPhone: string; driver: string; driverPhone: string; plate: string }[] = [
   { customer: "Eric Nsengimana", customerPhone: "+250788100201", driver: "Vincent Habyarimana", driverPhone: "+250722100201", plate: "RAD 210 K" },

@@ -6,7 +6,7 @@ import Link from "next/link";
 import "leaflet/dist/leaflet.css";
 import { getDriver, getLiveMap, type LiveMapDriver } from "@/lib/api";
 import { isMockDriverId, MOCK_DRIVERS } from "@/lib/mock-drivers";
-import { MOCK_LIVE_MAP_DRIVERS, MOCK_ONLINE_DRIVERS } from "@/lib/mock-live-rides";
+import { MOCK_LIVE_MAP_DRIVERS, MOCK_ONLINE_DRIVERS, nearestKigaliPlace } from "@/lib/mock-live-rides";
 import { formatTransportType } from "@/lib/drivers";
 import { Avatar, StatusPill } from "../../../_components";
 
@@ -210,24 +210,26 @@ export default function DriverActivityPage() {
 
       <div className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">Current location</h2>
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">Waiting location</h2>
           {position ? (
             <span className="text-[11px] font-medium text-muted-foreground">
-              {positionIsLive ? "Live position" : "Demo position — not connected to the backend"}
+              {positionIsLive ? "Live GPS" : "Demo position"}
             </span>
           ) : null}
         </div>
         {position ? (
           <div className="mt-4 space-y-3">
             <CurrentPositionMap lat={position.lat} lng={position.lng} />
+            <p className="text-sm font-medium text-foreground">
+              {nearestKigaliPlace(position.lat, position.lng)}, Kigali
+            </p>
             <p className="text-[11px] text-muted-foreground">
-              {position.lat.toFixed(5)}, {position.lng.toFixed(5)} ·{" "}
-              {position.onTrip ? "Currently on a trip" : "Online and available"}
+              Waiting for a ride · {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
             </p>
           </div>
         ) : (
           <p className="mt-4 rounded-xl border border-dashed border-border px-4 py-6 text-center text-xs text-muted-foreground">
-            No current position available — this driver may be offline.
+            No current position available — this driver may be offline or on a trip.
           </p>
         )}
       </div>

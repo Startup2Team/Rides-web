@@ -215,13 +215,6 @@ function RideRouteMap({ ride }: { ride: RideDetail }) {
         .bindTooltip("Drop-off", { direction: "top", offset: [0, -8], permanent: false })
         .addTo(layerRef.current);
     }
-    if (hasPickup && hasDest) {
-      L.polyline([[ride.pickupLat!, ride.pickupLng!], [ride.destLat!, ride.destLng!]], {
-        color: "#10b981",
-        weight: 3,
-        dashArray: "6 6",
-      }).addTo(layerRef.current);
-    }
     if (hasDriver) {
       const p: [number, number] = [ride.driverLat!, ride.driverLng!];
       points.push(p);
@@ -293,15 +286,9 @@ function TimelineRow({ event }: { event: TimelineEvent }) {
 export function RideDetailModal({
   ride,
   onClose,
-  onMessageCustomer,
-  onMessageDriver,
-  onCancelRide,
 }: {
   ride: RideDetail | null;
   onClose: () => void;
-  onMessageCustomer: (id: string) => void;
-  onMessageDriver: (id: string) => void;
-  onCancelRide: (id: string) => void;
 }) {
   useEffect(() => {
     if (!ride) return;
@@ -319,44 +306,70 @@ export function RideDetailModal({
 
   if (!ride) return null;
 
+  const shortId = ride.id.length > 12 ? `${ride.id.slice(0, 10)}…` : ride.id;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 grid place-items-center p-4 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ride-detail-title"
+    >
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-md"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-sm font-bold text-foreground">
-                {ride.id}
-              </span>
-              <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusStyles[ride.status]}`}
+
+      <div className="ride-detail-modal-panel relative z-10 flex max-h-[min(90vh,820px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl ring-1 ring-black/5">
+        <div className="border-b border-border bg-surface/30 px-5 py-4 sm:px-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1 text-center sm:text-left">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+                Trip inspection
+              </p>
+              <h2
+                id="ride-detail-title"
+                className="mt-1 truncate text-lg font-bold tracking-tight text-foreground"
               >
-                {ride.status}
-              </span>
+                {ride.pickup} → {ride.destination}
+              </h2>
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <span className="font-mono text-[11px] font-semibold text-muted-foreground">
+                  {shortId}
+                </span>
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${statusStyles[ride.status]}`}
+                >
+                  {ride.status}
+                </span>
+                <span className="text-[11px] text-muted-foreground">{ride.vehicleType}</span>
+              </div>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {ride.vehicleType} · Started {ride.startedAt} · {ride.district}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="mx-auto mt-4 flex max-w-sm items-center justify-center rounded-xl border border-border bg-card px-4 py-2.5 sm:mx-0 sm:max-w-none sm:inline-flex">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+              Negotiated price
+            </p>
+            <p className="ml-3 text-base font-bold tracking-tight text-foreground">
+              {ride.fare === 0 ? "—" : formatRWF(ride.fare)}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
         </div>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
           <RideRouteMap ride={ride} />
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -376,35 +389,8 @@ export function RideDetailModal({
                   ? `${ride.driver.vehicleType} · ${ride.driver.plate}`
                   : undefined
               }
-              emptyLabel="Searching for a nearby driver…"
+              emptyLabel="No driver on this trip"
             />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-border bg-surface/40 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                Current fare
-              </p>
-              <p className="mt-1 text-base font-bold tracking-tight text-foreground">
-                {ride.fare === 0 ? "Negotiating" : formatRWF(ride.fare)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-surface/40 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                Payment
-              </p>
-              <p className="mt-1 text-base font-bold tracking-tight text-foreground">
-                {ride.paymentMethod}
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-surface/40 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                ETA
-              </p>
-              <p className="mt-1 text-base font-bold tracking-tight text-foreground">
-                {ride.eta ?? "—"}
-              </p>
-            </div>
           </div>
 
           {ride.negotiation.length > 0 ? (
@@ -435,52 +421,36 @@ export function RideDetailModal({
             </div>
           ) : null}
 
-          <div>
-            <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-              Trip timeline
-            </p>
-            <ol className="mt-2 space-y-3 border-l border-border pl-1">
-              {ride.timeline.map((e, i) => (
-                <TimelineRow key={i} event={e} />
-              ))}
-            </ol>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-2 border-t border-border bg-surface/40 px-6 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-foreground transition-colors hover:bg-surface"
-          >
-            Close
-          </button>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onMessageCustomer(ride.id)}
-              className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-foreground transition-colors hover:bg-surface"
-            >
-              Message customer
-            </button>
-            <button
-              type="button"
-              onClick={() => onMessageDriver(ride.id)}
-              disabled={!ride.driver}
-              className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-foreground transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Message driver
-            </button>
-            <button
-              type="button"
-              onClick={() => onCancelRide(ride.id)}
-              className="inline-flex h-9 items-center rounded-lg border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100"
-            >
-              Cancel ride
-            </button>
-          </div>
+          {ride.timeline.length > 0 ? (
+            <div>
+              <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                Trip timeline
+              </p>
+              <ol className="mt-2 space-y-3 border-l border-border pl-1">
+                {ride.timeline.map((e, i) => (
+                  <TimelineRow key={i} event={e} />
+                ))}
+              </ol>
+            </div>
+          ) : null}
         </div>
       </div>
+
+      <style>{`
+        .ride-detail-modal-panel {
+          animation: rideDetailModalIn 0.22s ease-out;
+        }
+        @keyframes rideDetailModalIn {
+          from {
+            opacity: 0;
+            transform: scale(0.97) translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }

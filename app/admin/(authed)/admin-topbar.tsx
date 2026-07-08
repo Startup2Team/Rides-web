@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
+import { useAdminNotifications } from "@/context/admin-notifications-context";
 import { getDrivers, getCustomers, getRides } from "@/lib/api";
 
 function initialsFrom(name: string | undefined, email: string | undefined): string {
@@ -88,64 +89,6 @@ function Icon({ children }: { children: ReactNode }) {
   );
 }
 
-type Notification = {
-  id: string;
-  tone: "danger" | "warn" | "info";
-  title: string;
-  detail: string;
-  time: string;
-  unread: boolean;
-  href: string;
-};
-
-const notifications: Notification[] = [
-  {
-    id: "n1",
-    tone: "danger",
-    title: "SOS triggered on ride #4821",
-    detail: "Aiden M. · Kimironko area",
-    time: "Just now",
-    unread: true,
-    href: "/admin/safety-center",
-  },
-  {
-    id: "n2",
-    tone: "warn",
-    title: "Driver complaint received",
-    detail: "Unsafe driving · Trip #4815",
-    time: "14m ago",
-    unread: true,
-    href: "/admin/support",
-  },
-  {
-    id: "n3",
-    tone: "warn",
-    title: "Possible fraud detected",
-    detail: "Unusual cancellation pattern · 3 accounts",
-    time: "32m ago",
-    unread: true,
-    href: "/admin/safety-center",
-  },
-  {
-    id: "n4",
-    tone: "info",
-    title: "Payment gateway latency",
-    detail: "MoMo API responding above threshold",
-    time: "1h ago",
-    unread: false,
-    href: "/admin/settings",
-  },
-  {
-    id: "n5",
-    tone: "info",
-    title: "New driver application",
-    detail: "Florence I. submitted documents",
-    time: "2h ago",
-    unread: false,
-    href: "/admin/drivers",
-  },
-];
-
 export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}) {
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -158,6 +101,7 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
   const [signingOut, setSigningOut] = useState(false);
 
   const { user, ready } = useAuth();
+  const { notifications, unreadCount, markAllRead, markRead } = useAdminNotifications();
   const displayName = user?.name?.trim() || user?.email?.split("@")[0] || "Account";
   const displayEmail = user?.email ?? "";
   const initials = useMemo(() => initialsFrom(user?.name, user?.email), [user?.name, user?.email]);
@@ -229,8 +173,6 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
-
-  const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
     <header className="sticky top-0 z-30 grid h-20 shrink-0 grid-cols-[1fr_minmax(0,28rem)_1fr] items-center gap-4 border-b border-border/60 bg-card/70 px-4 backdrop-blur-xl backdrop-saturate-150 lg:px-6">
@@ -356,7 +298,11 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                     </span>
                   ) : null}
                 </div>
-                <button className="text-[11px] font-medium text-muted-foreground hover:text-primary">
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="text-[11px] font-medium text-muted-foreground hover:text-primary"
+                >
                   Mark all read
                 </button>
               </div>
@@ -365,7 +311,10 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                   <li key={n.id}>
                     <Link
                       href={n.href}
-                      onClick={() => setOpenNotif(false)}
+                      onClick={() => {
+                        markRead(n.id);
+                        setOpenNotif(false);
+                      }}
                       className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface ${
                         n.unread ? "bg-primary/[0.02]" : ""
                       }`}

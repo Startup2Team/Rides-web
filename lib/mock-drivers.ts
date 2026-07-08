@@ -238,6 +238,10 @@ MOCK_DRIVERS_LIST.forEach((referrer, referrerIdx) => {
   referrer.referral_count = REFERRALS_PER_DRIVER;
 });
 
+export function getAllMockDriversForReport(): DriverDetail[] {
+  return [...MOCK_DRIVERS_LIST, ...MOCK_REFERRED_LIST];
+}
+
 export function getMockReferredDrivers(referrerId: string): DriverDetail[] {
   return MOCK_REFERRED_LIST.filter((d) => d.referred_by_driver_id === referrerId);
 }

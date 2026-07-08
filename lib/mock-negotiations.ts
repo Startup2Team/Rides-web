@@ -29,7 +29,7 @@ const seeds: MockNegotiationSeed[] = [
     initial_fare: 1800,
     agreed_fare: 2200,
     uplift: 22,
-    rounds: 4,
+    rounds: 3,
     created_at: minutesAgo(42),
     detail: {
       id: "NEG-2407-001",
@@ -52,8 +52,7 @@ const seeds: MockNegotiationSeed[] = [
       negotiation_rounds: [
         { round: 1, proposed_by: "CUSTOMER", amount: 1800, response: null, at: minutesAgo(42) },
         { round: 2, proposed_by: "DRIVER", amount: 2500, response: null, at: minutesAgo(40) },
-        { round: 3, proposed_by: "CUSTOMER", amount: 2100, response: null, at: minutesAgo(38) },
-        { round: 4, proposed_by: "DRIVER", amount: 2200, response: "ACCEPTED", at: minutesAgo(35) },
+        { round: 3, proposed_by: "DRIVER", amount: 2200, response: "ACCEPTED", at: minutesAgo(35) },
       ],
       events: [],
     },
@@ -200,14 +199,14 @@ const seeds: MockNegotiationSeed[] = [
     id: "NEG-2407-005",
     ride_id: "NEG-2407-005",
     status: "COMPLETED",
-    transport_type: "TUK_TUK",
+    transport_type: "CAB_TAXI",
     pickup_address: "Remera Taxi Park",
     destination_address: "Kisimenti",
     customer: { phone: "+250782115509", name: "Divine Ishimwe" },
     driver: {
       phone: "+250781122334",
       name: "David Mugisha",
-      vehicle_type: "TUK_TUK",
+      vehicle_type: "CAB_TAXI",
       plate: "RAB 511 T",
     },
     initial_fare: 2500,
@@ -218,7 +217,7 @@ const seeds: MockNegotiationSeed[] = [
     detail: {
       id: "NEG-2407-005",
       status: "COMPLETED",
-      transport_type: "TUK_TUK",
+      transport_type: "CAB_TAXI",
       customer: { id: "mock-customer-005", phone: "+250782115509", name: "Divine Ishimwe" },
       driver: {
         id: "mock-driver-005",
@@ -242,7 +241,208 @@ const seeds: MockNegotiationSeed[] = [
   },
 ];
 
-export const MOCK_NEGOTIATIONS: Negotiation[] = seeds.map((seed) => ({
+type AgreedSeedConfig = {
+  id: string;
+  transport_type: Negotiation["transport_type"];
+  pickup: string;
+  destination: string;
+  customer: { phone: string; name: string };
+  driver: { phone: string; name: string; plate: string };
+  initial_fare: number;
+  agreed_fare: number;
+  rounds: number;
+  minutesAgo: number;
+  durationMin: number;
+};
+
+function buildAgreedSeed(c: AgreedSeedConfig): MockNegotiationSeed {
+  const uplift =
+    c.initial_fare > 0
+      ? Math.round(((c.agreed_fare - c.initial_fare) / c.initial_fare) * 100)
+      : 0;
+  const created = minutesAgo(c.minutesAgo);
+  const completed = minutesAgo(c.minutesAgo - c.durationMin);
+  const offers: RideDetail["negotiation_rounds"] = [];
+  let amount = c.initial_fare;
+  for (let r = 1; r <= c.rounds; r++) {
+    const isLast = r === c.rounds;
+    const fromCustomer = r % 2 === 1;
+    if (isLast) amount = c.agreed_fare;
+    else if (fromCustomer) amount = c.initial_fare;
+    else amount = Math.round(c.agreed_fare * (1 + (c.rounds - r) * 0.08));
+    offers.push({
+      round: r,
+      proposed_by: fromCustomer ? "CUSTOMER" : "DRIVER",
+      amount,
+      response: isLast ? "ACCEPTED" : null,
+      at: minutesAgo(c.minutesAgo - (c.rounds - r) * 2),
+    });
+  }
+  if (offers.length === 0) {
+    offers.push({
+      round: 1,
+      proposed_by: "CUSTOMER",
+      amount: c.initial_fare,
+      response: null,
+      at: created,
+    });
+  }
+
+  return {
+    id: c.id,
+    ride_id: c.id,
+    status: "COMPLETED",
+    transport_type: c.transport_type,
+    pickup_address: c.pickup,
+    destination_address: c.destination,
+    customer: c.customer,
+    driver: { ...c.driver, vehicle_type: c.transport_type },
+    initial_fare: c.initial_fare,
+    agreed_fare: c.agreed_fare,
+    uplift,
+    rounds: c.rounds,
+    created_at: created,
+    detail: {
+      id: c.id,
+      status: "COMPLETED",
+      transport_type: c.transport_type,
+      customer: {
+        id: `mock-customer-${c.id.slice(-3)}`,
+        phone: c.customer.phone,
+        name: c.customer.name,
+      },
+      driver: {
+        id: `mock-driver-${c.id.slice(-3)}`,
+        phone: c.driver.phone,
+        name: c.driver.name,
+        plate: c.driver.plate,
+      },
+      pickup_address: c.pickup,
+      destination_address: c.destination,
+      agreed_fare: c.agreed_fare,
+      initial_fare: c.initial_fare,
+      distance_km: 4 + c.rounds * 1.5,
+      created_at: created,
+      completed_at: completed,
+      negotiation_rounds: offers,
+      events: [],
+    },
+  };
+}
+
+const extraAgreed: AgreedSeedConfig[] = [
+  {
+    id: "NEG-2407-006",
+    transport_type: "MOTO_BIKE",
+    pickup: "Kigali City Tower",
+    destination: "Nyamirambo",
+    customer: { phone: "+250788006006", name: "Grace Umutoni" },
+    driver: { phone: "+250781006006", name: "Fabrice Ndayisenga", plate: "RA 106 M" },
+    initial_fare: 1200,
+    agreed_fare: 1200,
+    rounds: 1,
+    minutesAgo: 28,
+    durationMin: 4,
+  },
+  {
+    id: "NEG-2407-007",
+    transport_type: "CAB_TAXI",
+    pickup: "KBC Roundabout",
+    destination: "Gisozi",
+    customer: { phone: "+250788007007", name: "Olivier Nshimiyimana" },
+    driver: { phone: "+250781007007", name: "Chantal Uwera", plate: "RAC 707 C" },
+    initial_fare: 3200,
+    agreed_fare: 3500,
+    rounds: 2,
+    minutesAgo: 65,
+    durationMin: 8,
+  },
+  {
+    id: "NEG-2407-008",
+    transport_type: "LIGHT_HILUX",
+    pickup: "Sonatubes",
+    destination: "Kanombe",
+    customer: { phone: "+250788008008", name: "Innocent Mugabo" },
+    driver: { phone: "+250781008008", name: "Sandrine Uwase", plate: "RAC 808 H" },
+    initial_fare: 8500,
+    agreed_fare: 9200,
+    rounds: 3,
+    minutesAgo: 110,
+    durationMin: 12,
+  },
+  {
+    id: "NEG-2407-009",
+    transport_type: "HEAVY_FUSO",
+    pickup: "Kigali Special Economic Zone",
+    destination: "Rwamagana District",
+    customer: { phone: "+250788009009", name: "Protais Habiyakare" },
+    driver: { phone: "+250781009009", name: "Jean Claude Niyonsaba", plate: "RAC 909 F" },
+    initial_fare: 42000,
+    agreed_fare: 45000,
+    rounds: 2,
+    minutesAgo: 155,
+    durationMin: 18,
+  },
+  {
+    id: "NEG-2407-010",
+    transport_type: "MOTO_BIKE",
+    pickup: "CHUK Hotel",
+    destination: "Kacyiru Sector Office",
+    customer: { phone: "+250788010010", name: "Mariam Keza" },
+    driver: { phone: "+250781010010", name: "Eric Niyonsenga", plate: "RA 010 M" },
+    initial_fare: 900,
+    agreed_fare: 1100,
+    rounds: 2,
+    minutesAgo: 190,
+    durationMin: 6,
+  },
+  {
+    id: "NEG-2407-011",
+    transport_type: "CAB_TAXI",
+    pickup: "Amahoro Stadium",
+    destination: "Kimironko",
+    customer: { phone: "+250788011011", name: "Bosco Iradukunda" },
+    driver: { phone: "+250781011011", name: "Aline Mukamana", plate: "RAC 111 C" },
+    initial_fare: 2800,
+    agreed_fare: 3000,
+    rounds: 3,
+    minutesAgo: 240,
+    durationMin: 10,
+  },
+  {
+    id: "NEG-2407-012",
+    transport_type: "LIGHT_HILUX",
+    pickup: "Giporoso",
+    destination: "Masaka",
+    customer: { phone: "+250788012012", name: "Vestine Nyirahabimana" },
+    driver: { phone: "+250781012012", name: "Théophile Nkurunziza", plate: "RAC 212 H" },
+    initial_fare: 14000,
+    agreed_fare: 13500,
+    rounds: 1,
+    minutesAgo: 320,
+    durationMin: 5,
+  },
+  {
+    id: "NEG-2407-013",
+    transport_type: "MOTO_BIKE",
+    pickup: "UTC Kigali",
+    destination: "Remera",
+    customer: { phone: "+250788013013", name: "Yves Habimana" },
+    driver: { phone: "+250781013013", name: "Diane Uwimana", plate: "RA 313 M" },
+    initial_fare: 1600,
+    agreed_fare: 1900,
+    rounds: 3,
+    minutesAgo: 380,
+    durationMin: 14,
+  },
+];
+
+const allSeeds: MockNegotiationSeed[] = [
+  ...seeds,
+  ...extraAgreed.map(buildAgreedSeed),
+];
+
+export const MOCK_NEGOTIATIONS: Negotiation[] = allSeeds.map((seed) => ({
   id: seed.id,
   ride_id: seed.ride_id,
   status: seed.status,
@@ -259,7 +459,7 @@ export const MOCK_NEGOTIATIONS: Negotiation[] = seeds.map((seed) => ({
 }));
 
 export const MOCK_NEGOTIATION_DETAILS: Record<string, RideDetail> = Object.fromEntries(
-  seeds.map((seed) => [seed.id, seed.detail]),
+  allSeeds.map((seed) => [seed.id, seed.detail]),
 );
 
 export const MOCK_NEGOTIATIONS_STATS: NegotiationsStats = {
