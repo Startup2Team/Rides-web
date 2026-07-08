@@ -1,10 +1,24 @@
 import { clearToken, getToken } from "./auth";
+import {
+  clusterWaitingRides,
+  clustersToHeatZones,
+  type LiveDemandHeatZone,
+} from "./live-demand-heatmap";
+import {
+  MOCK_SATISFACTION,
+  mockFunnel,
+  mockRidesDaily,
+  mockVehicleMix,
+  mockActivityHeatmap,
+  mockDriverPerformance,
+} from "./mock-analytics";
 import { MOCK_LIVE_RIDES, MOCK_LIVE_RIDE_DETAILS, MOCK_LIVE_RIDES_STATS } from "./mock-live-rides";
 import {
   MOCK_NEGOTIATIONS,
   MOCK_NEGOTIATION_DETAILS,
   MOCK_NEGOTIATIONS_STATS,
 } from "./mock-negotiations";
+import { MOCK_REPORTS, MOCK_REPORTS_STATS } from "./mock-reports";
 import type {
   Campaign as AdminCampaignView,
   CampaignAudience,
@@ -421,13 +435,21 @@ export type SatisfactionData = {
 };
 
 export const getAnalyticsOverview = () => request<AnalyticsOverviewFull>("/admin/analytics/overview");
-export const getRidesDaily = (days = 30) =>
-  request<DailyRidePoint[]>(`/admin/analytics/rides/daily?days=${days}`);
+export const getRidesDaily = async (days = 30, vehicle?: string, periodOffsetDays = 0) => {
+  if (NO_BACKEND) return mockRidesDaily(days, vehicle, periodOffsetDays);
+  const qs = new URLSearchParams({ days: String(days) });
+  if (vehicle) qs.set("vehicle", vehicle);
+  if (periodOffsetDays > 0) qs.set("offset", String(periodOffsetDays));
+  return request<DailyRidePoint[]>(`/admin/analytics/rides/daily?${qs}`);
+};
 export const getRidesWeekly = () => request<DailyRidePoint[]>("/admin/analytics/rides/weekly");
 export const getRevenueBreakdown = () =>
   request<Record<string, unknown>>("/admin/analytics/revenue/breakdown");
-export const getDriverPerformance = () =>
-  request<DriverPerf[]>("/admin/analytics/drivers/performance");
+export const getDriverPerformance = async (vehicle?: string) => {
+  if (NO_BACKEND) return mockDriverPerformance(vehicle);
+  const qs = vehicle ? `?vehicle=${encodeURIComponent(vehicle)}` : "";
+  return request<DriverPerf[]>(`/admin/analytics/drivers/performance${qs}`);
+};
 export const getNegotiationStats = () =>
   request<Record<string, unknown>>("/admin/analytics/negotiation/stats");
 
@@ -437,15 +459,60 @@ export type ActivityCell = { day: number; hour: number; count: number };
 
 export const getHeatmap = () => request<HeatPoint[]>("/admin/analytics/heatmap");
 export const getHeatmapZones = () => request<HeatZone[]>("/admin/analytics/heatmap/zones");
-export const getActivityHeatmap = () => request<ActivityCell[]>("/admin/analytics/activity-heatmap");
+export const getActivityHeatmap = async (vehicle?: string) => {
+  if (NO_BACKEND) return mockActivityHeatmap(vehicle);
+  const qs = vehicle ? `?vehicle=${encodeURIComponent(vehicle)}` : "";
+  return request<ActivityCell[]>(`/admin/analytics/activity-heatmap${qs}`);
+};
+
+export type { LiveDemandCluster, LiveDemandHeatZone } from "./live-demand-heatmap";
+
+/** Live demand from riders waiting for pickup — powers the heatmap "Now" view. */
+export const getLiveDemandHeatmap = async (): Promise<LiveDemandHeatZone[]> => {
+  if (NO_BACKEND) {
+    return clustersToHeatZones(clusterWaitingRides(MOCK_LIVE_RIDES));
+  }
+
+  try {
+    const map = await getLiveMap();
+    const points = map.heatPoints ?? [];
+    if (points.length > 0) {
+      const maxWeight = Math.max(1, ...points.map((p) => p.weight));
+      return points.map((p) => ({
+        lat: p.lat,
+        lng: p.lng,
+        demand: Math.round((p.weight / maxWeight) * 100),
+        trips: p.weight,
+        avg_fare: 0,
+        pickupLabel: "Live demand zone",
+        waitingRiders: p.weight,
+      }));
+    }
+  } catch {
+    /* fall through to ride aggregation */
+  }
+
+  const res = await getLiveRides({ limit: "200", offset: "0" });
+  return clustersToHeatZones(clusterWaitingRides(res.rides ?? []));
+};
 export const getCancellations = () =>
   request<Record<string, unknown>>("/admin/analytics/cancellations");
-export const getFunnel = (days = 30) =>
-  request<FunnelData>(`/admin/analytics/funnel?days=${days}`);
-export const getVehicleMix = (days = 30) =>
-  request<VehicleMixItem[]>(`/admin/analytics/vehicle-mix?days=${days}`);
-export const getSatisfaction = () =>
-  request<SatisfactionData>("/admin/analytics/satisfaction");
+export const getFunnel = async (days = 30, vehicle?: string) => {
+  if (NO_BACKEND) return mockFunnel(days, vehicle);
+  const qs = new URLSearchParams({ days: String(days) });
+  if (vehicle) qs.set("vehicle", vehicle);
+  return request<FunnelData>(`/admin/analytics/funnel?${qs}`);
+};
+export const getVehicleMix = async (days = 30, vehicle?: string) => {
+  if (NO_BACKEND) return mockVehicleMix(days, vehicle);
+  const qs = new URLSearchParams({ days: String(days) });
+  if (vehicle) qs.set("vehicle", vehicle);
+  return request<VehicleMixItem[]>(`/admin/analytics/vehicle-mix?${qs}`);
+};
+export const getSatisfaction = async () => {
+  if (NO_BACKEND) return MOCK_SATISFACTION;
+  return request<SatisfactionData>("/admin/analytics/satisfaction");
+};
 
 // ── Drivers ───────────────────────────────────────────────────────────────
 
@@ -1143,9 +1210,15 @@ export type ReportsStats = {
   pending: number;
 };
 
-export const getReportsStats = () => request<ReportsStats>("/admin/reports/stats");
+export const getReportsStats = async () => {
+  if (NO_BACKEND) return MOCK_REPORTS_STATS;
+  return request<ReportsStats>("/admin/reports/stats");
+};
 
-export const getReports = (params: Record<string, string> = {}) => {
+export const getReports = async (params: Record<string, string> = {}) => {
+  if (NO_BACKEND) {
+    return { reports: MOCK_REPORTS, total: MOCK_REPORTS.length };
+  }
   const qs = new URLSearchParams(params).toString();
   return request<{ reports: BackendReport[]; total: number }>(`/admin/reports${qs ? `?${qs}` : ""}`);
 };
@@ -1164,6 +1237,29 @@ export const toggleScheduledReport = (id: string) =>
 
 export const deleteReport = (id: string) =>
   request<void>(`/admin/reports/${id}`, { method: "DELETE" });
+
+export type { DriverRegistrationReport, DriverRegistrationFilters } from "./driver-registration-report";
+
+/**
+ * Driver registration report is assembled client-side from the real `/admin/drivers`
+ * list (there is no dedicated backend report endpoint for this — see Reports rebuild
+ * plan). Falls back to mock driver data only when the backend is unconfigured or the
+ * request genuinely fails.
+ */
+export const getDriverRegistrationReport = async (
+  filters: import("./driver-registration-report").DriverRegistrationFilters,
+) => {
+  const { buildDriverRegistrationReport, buildDriverRegistrationReportFromDrivers } = await import(
+    "./driver-registration-report"
+  );
+  if (NO_BACKEND) return buildDriverRegistrationReport(filters);
+  try {
+    const res = await getDrivers({ limit: "1000" });
+    return buildDriverRegistrationReportFromDrivers(res.drivers, filters);
+  } catch {
+    return buildDriverRegistrationReport(filters);
+  }
+};
 
 // ── Settings ──────────────────────────────────────────────────────────────
 

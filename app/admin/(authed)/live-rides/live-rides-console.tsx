@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import "leaflet/dist/leaflet.css";
 import { Avatar, Card } from "../_components";
 import {
@@ -14,7 +13,6 @@ import {
 import {
   getLiveRides,
   getLiveRide,
-  interveneRide,
   getLiveMap,
   getDrivers,
   type Ride as ApiRide,
@@ -28,18 +26,18 @@ import {
   MOCK_LIVE_RIDE_DETAILS,
   MOCK_LIVE_MAP_DRIVERS,
   MOCK_ONLINE_DRIVERS,
+  nearestKigaliPlace,
 } from "@/lib/mock-live-rides";
 
 // ── Transport type helpers ────────────────────────────────────────────────
 
-type VehicleType = "Moto Bike" | "Cab Taxi" | "Light Hilux" | "Heavy Fuso" | "Tuk Tuk";
+type VehicleType = "Moto Bike" | "Cab Taxi" | "Light Hilux" | "Heavy Fuso";
 
 const TRANSPORT_DISPLAY: Record<string, VehicleType> = {
   MOTO_BIKE:   "Moto Bike",
   CAB_TAXI:    "Cab Taxi",
   LIGHT_HILUX: "Light Hilux",
   HEAVY_FUSO:  "Heavy Fuso",
-  TUK_TUK:     "Tuk Tuk",
 };
 
 function toVehicleType(code: string): VehicleType {
@@ -142,6 +140,85 @@ const VEHICLE_FILTERS: { id: string; label: string }[] = [
   { id: "LIGHT_HILUX", label: "Light Hilux" },
   { id: "HEAVY_FUSO", label: "Heavy Fuso" },
 ];
+
+const RIDER_STATUS_FILTERS: { id: string; label: string }[] = [
+  { id: "all", label: "All statuses" },
+  { id: "Searching", label: "Searching" },
+  { id: "Negotiating", label: "Negotiating" },
+  { id: "Driver arriving", label: "Driver arriving" },
+];
+
+function matchesSearch(values: (string | undefined | null)[], query: string): boolean {
+  if (!query.trim()) return true;
+  const q = query.trim().toLowerCase();
+  return values.some((v) => v?.toLowerCase().includes(q));
+}
+
+function FilterChipBar({
+  options,
+  value,
+  onChange,
+}: {
+  options: { id: string; label: string }[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-border bg-surface p-0.5">
+      {options.map((opt) => {
+        const active = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function LiveRidesFilterBar({
+  vehicleFilter,
+  onVehicleFilter,
+  statusFilter,
+  onStatusFilter,
+  query,
+  onQuery,
+  searchPlaceholder,
+}: {
+  vehicleFilter: string;
+  onVehicleFilter: (id: string) => void;
+  statusFilter?: string;
+  onStatusFilter?: (id: string) => void;
+  query: string;
+  onQuery: (q: string) => void;
+  searchPlaceholder: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-b border-border px-3 py-2 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <FilterChipBar options={VEHICLE_FILTERS} value={vehicleFilter} onChange={onVehicleFilter} />
+        {statusFilter != null && onStatusFilter ? (
+          <FilterChipBar options={RIDER_STATUS_FILTERS} value={statusFilter} onChange={onStatusFilter} />
+        ) : null}
+      </div>
+      <input
+        type="search"
+        placeholder={searchPlaceholder}
+        value={query}
+        onChange={(e) => onQuery(e.target.value)}
+        className="h-8 w-full shrink-0 rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary lg:w-56"
+      />
+    </div>
+  );
+}
 
 // ── Styles ────────────────────────────────────────────────────────────────
 
@@ -267,9 +344,9 @@ function PaginationBar({
 }
 
 // ── Online drivers ───────────────────────────────────────────────────────
-// A separate concept from live rides: every driver currently online, whether
-// they're mid-trip or just available and waiting for one. Joins the drivers
-// list (identity) with the live-map endpoint (position) by driver id.
+// Drivers who are online and waiting for a ride — not on an active trip.
+// Location is shown inline (same pattern as Online riders): a Kigali area name
+// inferred from live GPS until the backend returns a proper address.
 
 type OnlineDriver = {
   id: string;
@@ -278,17 +355,28 @@ type OnlineDriver = {
   vehicleType: VehicleType;
   _transportCode: string;
   plate: string;
-  onTrip: boolean;
   lat: number | null;
   lng: number | null;
+  positionLabel: string;
 };
+
+function driverWaitingLabel(lat: number | null, lng: number | null): string {
+  if (lat == null || lng == null) return "Location unavailable — Kigali, Rwanda";
+  return `Waiting at ${nearestKigaliPlace(lat, lng)}, Kigali`;
+}
 
 function buildOnlineDrivers(apiDrivers: ApiDriver[], positions: LiveMapDriver[]): OnlineDriver[] {
   const posById = new Map(positions.map((p) => [p.id, p]));
   return apiDrivers
-    .filter((d) => d.is_online)
+    .filter((d) => {
+      if (!d.is_online || d.on_trip) return false;
+      const pos = posById.get(d.id);
+      return !pos?.onTrip;
+    })
     .map((d) => {
       const pos = posById.get(d.id);
+      const lat = pos?.lat ?? null;
+      const lng = pos?.lng ?? null;
       return {
         id: d.id,
         name: d.full_name?.trim() || d.phone || "Unknown driver",
@@ -296,41 +384,40 @@ function buildOnlineDrivers(apiDrivers: ApiDriver[], positions: LiveMapDriver[])
         vehicleType: toVehicleType(d.transport_type),
         _transportCode: d.transport_type,
         plate: d.vehicle_plate ?? "—",
-        onTrip: Boolean(d.on_trip),
-        lat: pos?.lat ?? null,
-        lng: pos?.lng ?? null,
+        lat,
+        lng,
+        positionLabel: driverWaitingLabel(lat, lng),
       };
     });
 }
 
-const MOCK_ONLINE_DRIVERS_DISPLAY: OnlineDriver[] = MOCK_ONLINE_DRIVERS.map((d) => ({
+const MOCK_ONLINE_DRIVERS_DISPLAY: OnlineDriver[] = MOCK_ONLINE_DRIVERS.filter((d) => !d.onTrip).map((d) => ({
   id: d.id,
   name: d.name,
   phone: d.phone,
   vehicleType: toVehicleType(d.transportType),
   _transportCode: d.transportType,
   plate: d.plate,
-  onTrip: d.onTrip,
   lat: d.lat,
   lng: d.lng,
+  positionLabel: driverWaitingLabel(d.lat, d.lng),
 }));
 
-function OnlineDriverCard({ driver, onOpen }: { driver: OnlineDriver; onOpen: () => void }) {
+function OnlineDriverCard({ driver }: { driver: OnlineDriver }) {
   return (
-    <div className="group flex flex-col rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/30">
+    <div className="group flex flex-col rounded-2xl border border-border bg-card p-4 text-left">
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <Avatar name={driver.name} size="sm" />
           <span className="truncate text-sm font-semibold text-foreground">{driver.name}</span>
         </div>
-        <span
-          className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-            driver.onTrip ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100" : "bg-primary/15 text-primary"
-          }`}
-        >
-          {driver.onTrip ? "On trip" : "Available"}
+        <span className="inline-flex shrink-0 items-center rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+          Waiting
         </span>
       </div>
+
+      <p className="mt-3 truncate text-xs text-muted-foreground">{driver.positionLabel}</p>
+
       <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-border bg-surface/50 p-2.5">
         <div>
           <p className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">Vehicle</p>
@@ -342,25 +429,11 @@ function OnlineDriverCard({ driver, onOpen }: { driver: OnlineDriver; onOpen: ()
         </div>
       </div>
       <p className="mt-3 truncate text-[11px] text-muted-foreground">{driver.phone}</p>
-
-      <button
-        type="button"
-        onClick={onOpen}
-        className="mt-3 inline-flex h-8 w-full items-center justify-center rounded-lg border border-border bg-card text-xs font-medium text-foreground transition-colors hover:bg-surface"
-      >
-        View more
-      </button>
     </div>
   );
 }
 
-function DriversTable({
-  drivers,
-  onOpen,
-}: {
-  drivers: OnlineDriver[];
-  onOpen: (id: string) => void;
-}) {
+function DriversTable({ drivers }: { drivers: OnlineDriver[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -370,15 +443,14 @@ function DriversTable({
             <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Phone</th>
             <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Vehicle</th>
             <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Plate</th>
-            <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-            <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
+            <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Position</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {drivers.length === 0 ? (
             <tr>
-              <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                No drivers online right now.
+              <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                No drivers waiting for rides right now.
               </td>
             </tr>
           ) : (
@@ -393,24 +465,7 @@ function DriversTable({
                 <td className="px-4 py-3 text-xs text-muted-foreground">{d.phone}</td>
                 <td className="px-4 py-3 text-muted-foreground">{d.vehicleType}</td>
                 <td className="px-4 py-3 font-mono text-xs text-foreground">{d.plate}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                      d.onTrip ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100" : "bg-primary/15 text-primary"
-                    }`}
-                  >
-                    {d.onTrip ? "On trip" : "Available"}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    onClick={() => onOpen(d.id)}
-                    className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
-                  >
-                    View more
-                  </button>
-                </td>
+                <td className="px-4 py-3 max-w-[280px] truncate text-xs text-foreground">{d.positionLabel}</td>
               </tr>
             ))
           )}
@@ -451,12 +506,10 @@ function RideCard({ ride, onOpen }: { ride: Ride; onOpen: () => void }) {
         </div>
         <div>
           <p className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {ride.status === "Negotiating" || ride.status === "Searching" ? "Started" : "Fare"}
+            Negotiated price
           </p>
           <p className="mt-0.5 truncate text-xs font-bold text-foreground">
-            {ride.status === "Negotiating" || ride.status === "Searching"
-              ? ride.startedAt
-              : formatRWF(ride.fare)}
+            {formatRWF(ride.fare)}
           </p>
         </div>
       </div>
@@ -499,7 +552,7 @@ function RidesTable({ rides, onOpen }: { rides: Ride[]; onOpen: (id: string) => 
             <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
             <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Customer</th>
             <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Driver</th>
-            <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Fare</th>
+            <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Price</th>
             <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
           </tr>
         </thead>
@@ -507,7 +560,7 @@ function RidesTable({ rides, onOpen }: { rides: Ride[]; onOpen: (id: string) => 
           {rides.length === 0 ? (
             <tr>
               <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                No active rides match your filters.
+                No rides on trip right now.
               </td>
             </tr>
           ) : (
@@ -546,29 +599,26 @@ function RidesTable({ rides, onOpen }: { rides: Ride[]; onOpen: (id: string) => 
   );
 }
 
-// ── Rider card ────────────────────────────────────────────────────────────
-// Same underlying ride data as the Active rides tab, framed around the rider
-// instead. There's no standalone "rider location" data source — before pickup
-// their position is the ride's pickup point, and once on trip they're with the
-// driver, so "View more" opens the same route map that already plots both.
+// ── Online riders (customers) ─────────────────────────────────────────────
+// Customers with a live ride request who are not on trip yet — searching,
+// negotiating, or waiting for the driver. On-trip customers appear under Active rides.
 
 function riderPositionLabel(ride: Ride): string {
-  if (ride.status === "On trip") return "With driver — en route to drop-off";
-  if (ride.status === "Driver arriving") return `Waiting at ${ride.pickup}`;
-  if (ride.status === "Negotiating") return `At pickup — agreeing fare · ${ride.pickup}`;
-  return `Requested pickup at ${ride.pickup}`;
+  const place = ride.pickup.toLowerCase().includes("kigali")
+    ? ride.pickup
+    : `${ride.pickup}, Kigali`;
+  if (ride.status === "Driver arriving") return `Waiting at ${place} — driver en route`;
+  if (ride.status === "Negotiating") return `At ${place} — negotiating fare`;
+  return `Requested pickup at ${place}`;
 }
 
-function RiderCard({ ride, onOpen }: { ride: Ride; onOpen: () => void }) {
+function RiderCard({ ride }: { ride: Ride }) {
   return (
-    <div className="group flex flex-col rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/30">
+    <div className="group flex flex-col rounded-2xl border border-border bg-card p-4 text-left">
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <Avatar name={ride.customer.name} tone="neutral" />
-          <span className="truncate text-sm font-semibold text-foreground">
-            {ride.customer.name}
-            {ride.driver ? <span className="font-normal text-muted-foreground"> ({ride.driver.name})</span> : null}
-          </span>
+          <Avatar name={ride.customer.name} tone="neutral" size="sm" />
+          <span className="truncate text-sm font-semibold text-foreground">{ride.customer.name}</span>
         </div>
         <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${statusStyles[ride.status]}`}>
           {ride.status}
@@ -588,18 +638,22 @@ function RiderCard({ ride, onOpen }: { ride: Ride; onOpen: () => void }) {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={onOpen}
-        className="mt-3 inline-flex h-8 w-full items-center justify-center rounded-lg border border-border bg-card text-xs font-medium text-foreground transition-colors hover:bg-surface"
-      >
-        View more
-      </button>
+      {ride.driver ? (
+        <p className="mt-3 truncate text-[11px] text-muted-foreground">
+          Matched driver: <span className="font-medium text-foreground">{ride.driver.name}</span>
+        </p>
+      ) : (
+        <p className="mt-3 truncate text-[11px] text-muted-foreground">No driver matched yet</p>
+      )}
+
+      <p className="mt-1 truncate text-[11px] text-muted-foreground">
+        To {ride.destination}
+      </p>
     </div>
   );
 }
 
-function RidersTable({ rides, onOpen }: { rides: Ride[]; onOpen: (id: string) => void }) {
+function RidersTable({ rides }: { rides: Ride[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -610,14 +664,14 @@ function RidersTable({ rides, onOpen }: { rides: Ride[]; onOpen: (id: string) =>
             <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
             <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Vehicle</th>
             <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Position</th>
-            <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
+            <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Destination</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {rides.length === 0 ? (
             <tr>
               <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                No riders in an active ride right now.
+                No riders waiting for a driver right now.
               </td>
             </tr>
           ) : (
@@ -626,10 +680,7 @@ function RidersTable({ rides, onOpen }: { rides: Ride[]; onOpen: (id: string) =>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Avatar name={r.customer.name} tone="neutral" size="sm" />
-                    <span className="font-semibold tracking-tight text-foreground">
-                      {r.customer.name}
-                      {r.driver ? <span className="font-normal text-muted-foreground"> ({r.driver.name})</span> : null}
-                    </span>
+                    <span className="font-semibold tracking-tight text-foreground">{r.customer.name}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">{r.customer.phone}</td>
@@ -639,16 +690,8 @@ function RidersTable({ rides, onOpen }: { rides: Ride[]; onOpen: (id: string) =>
                   </span>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{r.vehicleType}</td>
-                <td className="px-4 py-3 max-w-[240px] truncate text-xs text-foreground">{riderPositionLabel(r)}</td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    onClick={() => onOpen(r.id)}
-                    className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
-                  >
-                    View more
-                  </button>
-                </td>
+                <td className="px-4 py-3 max-w-[280px] truncate text-xs text-foreground">{riderPositionLabel(r)}</td>
+                <td className="px-4 py-3 max-w-[180px] truncate text-xs text-muted-foreground">{r.destination}</td>
               </tr>
             ))
           )}
@@ -664,9 +707,9 @@ export function LiveRidesConsole() {
   const [viewMode, setViewMode] = useState<"rides" | "drivers" | "riders">("rides");
   const [rides, setRides] = useState<Ride[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState<string>("all");
+  const [riderStatusFilter, setRiderStatusFilter] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [openingId, setOpeningId] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [tickAt, setTickAt] = useState(new Date());
   const tickInterval = useRef<NodeJS.Timeout | null>(null);
 
@@ -676,11 +719,12 @@ export function LiveRidesConsole() {
   const switchViewMode = (mode: "rides" | "drivers" | "riders") => {
     setViewMode(mode);
     setPage(1);
+    setQuery("");
+    setVehicleFilter("all");
+    setRiderStatusFilter("all");
   };
 
-  const router = useRouter();
   const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
-  const openDriver = (id: string) => router.push(`/admin/live-rides/drivers/${id}`);
 
   useEffect(() => {
     if (viewMode !== "drivers") return;
@@ -754,12 +798,6 @@ export function LiveRidesConsole() {
     return () => { if (tickInterval.current) clearInterval(tickInterval.current); };
   }, [loadRides]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2500);
-    return () => clearTimeout(t);
-  }, [toast]);
-
   const applyDriverPosition = useCallback(
     (mapped: Ride): Ride => {
       if (!mapped._driverId) return mapped;
@@ -783,28 +821,45 @@ export function LiveRidesConsole() {
       .catch(() => null);
   };
 
-  // Active rides = a driver is matched and something is actually moving.
+  // Active rides = driver and rider are en route (on trip only).
   const movingRides = useMemo(
-    () => rides.filter((r) => r.status === "Driver arriving" || r.status === "On trip"),
+    () => rides.filter((r) => r.status === "On trip"),
+    [rides],
+  );
+
+  // Online riders = customers waiting for a driver (not on trip yet).
+  const waitingRiders = useMemo(
+    () => rides.filter((r) => r.status !== "On trip"),
     [rides],
   );
 
   const filtered = useMemo(() => {
     return movingRides.filter((r) => {
       if (vehicleFilter !== "all" && r._transportCode !== vehicleFilter) return false;
-      if (query) {
-        const q = query.toLowerCase();
-        return (
-          r.id.toLowerCase().includes(q) ||
-          r.customer.name.toLowerCase().includes(q) ||
-          (r.driver?.name.toLowerCase().includes(q) ?? false) ||
-          r.pickup.toLowerCase().includes(q) ||
-          r.destination.toLowerCase().includes(q)
-        );
-      }
-      return true;
+      return matchesSearch(
+        [r.id, r.customer.name, r.customer.phone, r.driver?.name, r.driver?.plate, r.pickup, r.destination],
+        query,
+      );
     });
   }, [movingRides, vehicleFilter, query]);
+
+  const filteredDrivers = useMemo(() => {
+    return onlineDrivers.filter((d) => {
+      if (vehicleFilter !== "all" && d._transportCode !== vehicleFilter) return false;
+      return matchesSearch([d.name, d.phone, d.plate, d.positionLabel, d.vehicleType], query);
+    });
+  }, [onlineDrivers, vehicleFilter, query]);
+
+  const filteredWaitingRiders = useMemo(() => {
+    return waitingRiders.filter((r) => {
+      if (vehicleFilter !== "all" && r._transportCode !== vehicleFilter) return false;
+      if (riderStatusFilter !== "all" && r.status !== riderStatusFilter) return false;
+      return matchesSearch(
+        [r.id, r.customer.name, r.customer.phone, r.driver?.name, r.pickup, r.destination],
+        query,
+      );
+    });
+  }, [waitingRiders, vehicleFilter, riderStatusFilter, query]);
 
   // Recomputed from driverPositions on every render (not via an effect + setState) so the
   // driver marker in the modal keeps moving as new positions arrive, without patching `rides` state.
@@ -818,11 +873,11 @@ export function LiveRidesConsole() {
   const ridesPagination = paginate(filtered.length, page);
   const paginatedRides = filtered.slice(ridesPagination.start, ridesPagination.end);
 
-  const driversPagination = paginate(onlineDrivers.length, page);
-  const paginatedDrivers = onlineDrivers.slice(driversPagination.start, driversPagination.end);
+  const driversPagination = paginate(filteredDrivers.length, page);
+  const paginatedDrivers = filteredDrivers.slice(driversPagination.start, driversPagination.end);
 
-  const ridersPagination = paginate(rides.length, page);
-  const paginatedRiders = rides.slice(ridersPagination.start, ridersPagination.end);
+  const ridersPagination = paginate(filteredWaitingRiders.length, page);
+  const paginatedRiders = filteredWaitingRiders.slice(ridersPagination.start, ridersPagination.end);
 
   return (
     <div className="space-y-6">
@@ -862,39 +917,60 @@ export function LiveRidesConsole() {
           action={
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-medium text-muted-foreground">
-                {rides.length} in an active ride
+                {filteredWaitingRiders.length} waiting for a driver
               </span>
               <DisplayModeToggle value={displayMode} onChange={setDisplayMode} />
             </div>
           }
         >
+          <LiveRidesFilterBar
+            vehicleFilter={vehicleFilter}
+            onVehicleFilter={(id) => {
+              setVehicleFilter(id);
+              setPage(1);
+            }}
+            statusFilter={riderStatusFilter}
+            onStatusFilter={(id) => {
+              setRiderStatusFilter(id);
+              setPage(1);
+            }}
+            query={query}
+            onQuery={(q) => {
+              setQuery(q);
+              setPage(1);
+            }}
+            searchPlaceholder="Search rider, phone, pickup…"
+          />
           <div className={displayMode === "grid" ? "p-4" : ""}>
             {displayMode === "grid" ? (
               <p className="mb-4 rounded-xl border border-border bg-surface/40 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
-                Riders only show up here while they&apos;re part of an active ride — we don&apos;t
-                yet track a customer&apos;s location while they&apos;re just browsing the app.
+                Customers with an open ride request — searching, negotiating, or waiting
+                for pickup. Their location is the requested pickup point in Kigali (placeholder
+                until live customer GPS is available from the backend).
               </p>
             ) : null}
             {displayMode === "grid" ? (
               paginatedRiders.length === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">
-                  No riders in an active ride right now.
+                  {waitingRiders.length === 0
+                    ? "No riders waiting for a driver right now."
+                    : "No riders match your filters."}
                 </p>
               ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {paginatedRiders.map((r) => (
-                    <RiderCard key={r.id} ride={r} onOpen={() => openRide(r.id)} />
+                    <RiderCard key={r.id} ride={r} />
                   ))}
                 </div>
               )
             ) : (
-              <RidersTable rides={paginatedRiders} onOpen={openRide} />
+              <RidersTable rides={paginatedRiders} />
             )}
           </div>
           <PaginationBar
             start={ridersPagination.start}
             end={ridersPagination.end}
-            total={rides.length}
+            total={filteredWaitingRiders.length}
             safePage={ridersPagination.safePage}
             totalPages={ridersPagination.totalPages}
             itemLabel="riders"
@@ -909,33 +985,55 @@ export function LiveRidesConsole() {
             action={
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-medium text-muted-foreground">
-                  {onlineDrivers.length} online
+                  {filteredDrivers.length} waiting for rides
                 </span>
                 <DisplayModeToggle value={displayMode} onChange={setDisplayMode} />
               </div>
             }
           >
+            <LiveRidesFilterBar
+              vehicleFilter={vehicleFilter}
+              onVehicleFilter={(id) => {
+                setVehicleFilter(id);
+                setPage(1);
+              }}
+              query={query}
+              onQuery={(q) => {
+                setQuery(q);
+                setPage(1);
+              }}
+              searchPlaceholder="Search driver, plate, area…"
+            />
             <div className={displayMode === "grid" ? "p-4" : ""}>
+              {displayMode === "grid" ? (
+                <p className="mb-4 rounded-xl border border-border bg-surface/40 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+                  Drivers who are online and waiting for a ride. Their position is shown
+                  directly below each name — e.g. a Kigali area from live GPS (demo placeholders
+                  until the backend returns street addresses).
+                </p>
+              ) : null}
               {displayMode === "grid" ? (
                 paginatedDrivers.length === 0 ? (
                   <p className="py-10 text-center text-sm text-muted-foreground">
-                    No drivers online right now.
+                    {onlineDrivers.length === 0
+                      ? "No drivers waiting for rides right now."
+                      : "No drivers match your filters."}
                   </p>
                 ) : (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {paginatedDrivers.map((d) => (
-                      <OnlineDriverCard key={d.id} driver={d} onOpen={() => openDriver(d.id)} />
+                      <OnlineDriverCard key={d.id} driver={d} />
                     ))}
                   </div>
                 )
               ) : (
-                <DriversTable drivers={paginatedDrivers} onOpen={openDriver} />
+                <DriversTable drivers={paginatedDrivers} />
               )}
             </div>
             <PaginationBar
               start={driversPagination.start}
               end={driversPagination.end}
-              total={onlineDrivers.length}
+              total={filteredDrivers.length}
               safePage={driversPagination.safePage}
               totalPages={driversPagination.totalPages}
               itemLabel="drivers"
@@ -950,6 +1048,9 @@ export function LiveRidesConsole() {
         title="Active rides"
         action={
           <div className="flex items-center gap-2">
+            <span className="text-[11px] font-medium text-muted-foreground">
+              {filtered.length} on trip
+            </span>
             <span className="hidden items-center gap-1.5 text-[11px] font-medium text-muted-foreground sm:flex">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
@@ -958,47 +1059,30 @@ export function LiveRidesConsole() {
               Updated {lastUpdate}
             </span>
             <DisplayModeToggle value={displayMode} onChange={setDisplayMode} />
-            <input
-              type="search"
-              placeholder="Search ride, name, area…"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPage(1);
-              }}
-              className="h-8 w-56 rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary"
-            />
           </div>
         }
       >
-        <div className="flex items-center justify-start border-b border-border px-3 py-2">
-          <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-border bg-surface p-0.5">
-            {VEHICLE_FILTERS.map((v) => {
-              const active = vehicleFilter === v.id;
-              return (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => {
-                    setVehicleFilter(v.id);
-                    setPage(1);
-                  }}
-                  className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                    active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {v.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <LiveRidesFilterBar
+          vehicleFilter={vehicleFilter}
+          onVehicleFilter={(id) => {
+            setVehicleFilter(id);
+            setPage(1);
+          }}
+          query={query}
+          onQuery={(q) => {
+            setQuery(q);
+            setPage(1);
+          }}
+          searchPlaceholder="Search ride, name, pickup…"
+        />
 
         <div className={displayMode === "grid" ? "p-4" : ""}>
           {displayMode === "grid" ? (
             paginatedRides.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                No active rides match your filters.
+                {movingRides.length === 0
+                  ? "No rides on trip right now."
+                  : "No rides match your filters."}
               </p>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -1026,38 +1110,10 @@ export function LiveRidesConsole() {
       <RideDetailModal
         ride={openingRide}
         onClose={() => setOpeningId(null)}
-        onMessageCustomer={(id) => {
-          const r = rides.find((x) => x.id === id);
-          setToast(r ? `Message sent to ${r.customer.name}` : "Message sent");
-        }}
-        onMessageDriver={(id) => {
-          const r = rides.find((x) => x.id === id);
-          setToast(r?.driver ? `Message sent to ${r.driver.name}` : "Message sent");
-        }}
-        onCancelRide={async (id) => {
-          if (!isMockLiveRideId(id)) {
-            try {
-              await interveneRide(id, "cancel", "Admin cancelled ride");
-            } catch { /* ignore */ }
-          }
-          setRides((prev) => prev.filter((x) => x.id !== id));
-          setOpeningId(null);
-          const r = rides.find((x) => x.id === id);
-          setToast(`${r?.id.slice(0, 8) ?? "Ride"}… cancelled`);
-        }}
       />
       </>
       )}
 
-      {toast ? (
-        <div className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 shadow-2xl">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-          </span>
-          <span className="text-sm font-medium text-foreground">{toast}</span>
-        </div>
-      ) : null}
     </div>
   );
 }
