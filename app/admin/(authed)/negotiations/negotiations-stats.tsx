@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { StatCard } from "../_components";
-import { getNegotiationsStats, type NegotiationsStats } from "@/lib/api";
+import { getNegotiationsStats, type NegotiationsStats, NO_BACKEND } from "@/lib/api";
 import { MOCK_NEGOTIATIONS, MOCK_NEGOTIATIONS_STATS } from "@/lib/mock-negotiations";
 
 export function NegotiationsStatsCards() {
@@ -10,8 +10,8 @@ export function NegotiationsStatsCards() {
 
   useEffect(() => {
     getNegotiationsStats()
-      .then((stats) => setData(stats.total_today > 0 ? stats : MOCK_NEGOTIATIONS_STATS))
-      .catch(() => setData(MOCK_NEGOTIATIONS_STATS));
+      .then((stats) => setData(stats.total_today > 0 ? stats : (NO_BACKEND ? MOCK_NEGOTIATIONS_STATS : stats)))
+      .catch(() => setData(NO_BACKEND ? MOCK_NEGOTIATIONS_STATS : null));
   }, []);
 
   const successRate =

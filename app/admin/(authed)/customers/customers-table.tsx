@@ -12,11 +12,10 @@ import {
   suspendCustomer,
   reinstateCustomer,
   type Customer as ApiCustomer,
+  NO_BACKEND,
 } from "@/lib/api";
 import { MOCK_API_CUSTOMERS } from "@/lib/mock-customers";
 import { CustomerStats } from "./customer-stats";
-
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
 function mapApiCustomer(c: ApiCustomer): Customer {
   return {
@@ -400,9 +399,9 @@ export function CustomersTable() {
     getCustomers({ limit: "100", offset: "0" })
       .then((res) => {
         const api = (res.customers ?? []).map(mapApiCustomer);
-        setCustomers([...MOCK_API_CUSTOMERS.map(mapApiCustomer), ...api]);
+        setCustomers(api);
       })
-      .catch(() => setCustomers(MOCK_API_CUSTOMERS.map(mapApiCustomer)))
+      .catch(() => setCustomers([]))
       .finally(() => setLoading(false));
   }, []);
 

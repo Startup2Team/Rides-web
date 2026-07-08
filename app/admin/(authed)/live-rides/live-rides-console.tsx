@@ -19,6 +19,7 @@ import {
   type RideDetail as ApiRideDetail,
   type LiveMapDriver,
   type Driver as ApiDriver,
+  NO_BACKEND,
 } from "@/lib/api";
 import {
   isMockLiveRideId,
@@ -735,9 +736,9 @@ export function LiveRidesConsole() {
           if (cancelled) return;
           const real = buildOnlineDrivers(driversRes.drivers ?? [], mapRes.drivers ?? []);
           // Same rule as rides: mocks only stand in when there's genuinely no real online driver.
-          setOnlineDrivers(real.length > 0 ? real : MOCK_ONLINE_DRIVERS_DISPLAY);
+          setOnlineDrivers(real.length > 0 ? real : (NO_BACKEND ? MOCK_ONLINE_DRIVERS_DISPLAY : []));
         })
-        .catch(() => !cancelled && setOnlineDrivers(MOCK_ONLINE_DRIVERS_DISPLAY));
+        .catch(() => !cancelled && setOnlineDrivers(NO_BACKEND ? MOCK_ONLINE_DRIVERS_DISPLAY : []));
     };
     load();
     const id = setInterval(load, 15_000);
@@ -757,9 +758,9 @@ export function LiveRidesConsole() {
         .then((d) => {
           if (cancelled) return;
           const real = d.drivers ?? [];
-          setDriverPositions(real.length > 0 ? real : MOCK_LIVE_MAP_DRIVERS);
+          setDriverPositions(real.length > 0 ? real : (NO_BACKEND ? MOCK_LIVE_MAP_DRIVERS : []));
         })
-        .catch(() => !cancelled && setDriverPositions(MOCK_LIVE_MAP_DRIVERS));
+        .catch(() => !cancelled && setDriverPositions(NO_BACKEND ? MOCK_LIVE_MAP_DRIVERS : []));
     };
     load();
     const id = setInterval(load, 15_000);
@@ -770,9 +771,7 @@ export function LiveRidesConsole() {
   }, []);
 
   const mergeRides = useCallback((apiRides: ApiRide[]) => {
-    // This page monitors real live activity, so mocks must never inflate a real count —
-    // they only appear as a stand-in when the platform genuinely has zero active rides.
-    const combined = apiRides.length > 0 ? apiRides : MOCK_LIVE_RIDES;
+    const combined = apiRides.length > 0 ? apiRides : (NO_BACKEND ? MOCK_LIVE_RIDES : []);
     setRides((prev) => {
       const existing = new Map(prev.map((r) => [r.id, r]));
       return combined.map((r) => {
