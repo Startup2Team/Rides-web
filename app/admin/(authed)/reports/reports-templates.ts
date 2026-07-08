@@ -135,6 +135,27 @@ export const EXPORT_TEMPLATES: ExportTemplate[] = [
     ],
   },
   {
+    id: "general-ledger",
+    name: "General Ledger report",
+    description: "Chronological double-entry listing of debit and credit transaction records.",
+    category: "Finance",
+    formats: ["PDF", "CSV"],
+  },
+  {
+    id: "trial-balance",
+    name: "Trial Balance report",
+    description: "Aggregated debits and credits per financial account to verify system balance.",
+    category: "Finance",
+    formats: ["PDF", "CSV"],
+  },
+  {
+    id: "balance-sheet",
+    name: "Balance Sheet report",
+    description: "Statement of Assets, Liabilities, and Equity for a given date.",
+    category: "Finance",
+    formats: ["PDF"],
+  },
+  {
     id: "customer-overview",
     name: "Customer registration report",
     description: "Registered, active, and suspended customers with recent sign-ups.",
