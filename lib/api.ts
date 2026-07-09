@@ -1404,6 +1404,12 @@ export const setMemberPassword = (memberId: string, password: string) =>
     body: { password },
   });
 
+export const sendWelcomeEmail = (memberId: string, tempPassword: string, loginUrl: string) =>
+  request<void>(`/admin/team/members/${memberId}/welcome-email`, {
+    method: "POST",
+    body: { temp_password: tempPassword, login_url: loginUrl },
+  });
+
 export const updateMemberRole = (id: string, roleId: string) =>
   request<void>(`/admin/team/members/${id}/role`, { method: "POST", body: { role_id: roleId } });
 
