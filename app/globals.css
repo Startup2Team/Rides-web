@@ -100,49 +100,9 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes analytics-bar-grow {
-  from { opacity: 0; transform: scaleY(0.6); transform-origin: bottom; }
-  to   { opacity: 1; transform: scaleY(1); transform-origin: bottom; }
-}
-
-@keyframes analytics-fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes analytics-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-@keyframes analytics-donut-draw {
-  from { stroke-dashoffset: 100; opacity: 0.5; }
-  to   { opacity: 1; }
-}
-
-.analytics-bar-grow {
-  animation: analytics-bar-grow 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.analytics-fade-in {
-  animation: analytics-fade-in 0.45s ease-out both;
-}
-
-.analytics-shimmer {
-  animation: analytics-shimmer 1.8s ease-in-out infinite;
-}
-
-.analytics-donut-segment {
-  animation: analytics-donut-draw 0.8s ease-out both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .analytics-bar-grow,
-  .analytics-fade-in,
-  .analytics-shimmer,
-  .analytics-donut-segment {
-    animation: none;
-  }
+@keyframes boil {
+  0%, 100% { opacity: 0.72; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.03); }
 }
 
 /* Progress underline that fills across the active feature tab. */
@@ -330,20 +290,4 @@ body {
   .rides-line { transform: none; animation: none; }
   .rides-float { animation: none; }
   .rides-route { stroke-dashoffset: 0; animation: none; }
-}
-
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  #reports-hub-print,
-  #reports-hub-print * {
-    visibility: visible;
-  }
-  #reports-hub-print {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-  }
 }

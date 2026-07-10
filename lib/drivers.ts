@@ -1,12 +1,5 @@
 import type { Driver as ApiDriver, DriverDetail } from "./api";
 import type { VerifyDriver } from "@/app/admin/(authed)/drivers/verify-driver-modal";
-import {
-  validatePlate,
-  validateRwandaNationalId,
-  validateLicenseNumber,
-} from "./driver-registration";
-import { MOCK_DRIVERS } from "./mock-drivers";
-import { getLocalDriverDetail } from "./local-drivers";
 
 /** URL slug ?vehicle=moto → backend transport_type */
 export const VEHICLE_SLUG_TO_TYPE: Record<string, string> = {
@@ -66,50 +59,7 @@ export type DriverRow = {
   lastActive: string;
   createdAt: string; // ISO — used for "applied" sort
   phone?: string;
-  eligible?: boolean;
-  referrals: number;
 };
-
-export function isDriverEligible(driver: {
-  age?: number;
-  date_of_birth?: string | null;
-  national_id_number?: string | null;
-  license_number?: string | null;
-  vehicle_plate?: string | null;
-  transport_type?: string | null;
-}): boolean {
-  const age = driver.age ?? ageFromDob(driver.date_of_birth);
-  if (age < 18) return false;
-
-  if (driver.national_id_number) {
-    const cleanId = driver.national_id_number.replace(/\D/g, "");
-    if (cleanId.length !== 16) return false;
-  } else {
-    return false;
-  }
-
-  if (driver.license_number) {
-    const cleanLic = driver.license_number.trim().toUpperCase();
-    if (!cleanLic.startsWith("DL-")) return false;
-    const suffix = cleanLic.slice(3);
-    if (suffix.length !== 16 || !/^[A-Z0-9]+$/.test(suffix)) return false;
-  } else {
-    return false;
-  }
-
-  if (driver.vehicle_plate && driver.vehicle_plate !== "—") {
-    const cleanedPlate = driver.vehicle_plate.trim().toUpperCase();
-    const type = (driver.transport_type ?? "").toLowerCase();
-    const isMotoLike = type.includes("moto") || type.includes("rifani");
-    const isMotoValid = /^R[A-Z] \d{3} [A-Z]$/.test(cleanedPlate);
-    const isStdValid = /^R[A-Z]{2} \d{3} [A-Z]$/.test(cleanedPlate);
-    if (isMotoLike ? !isMotoValid : !isStdValid) return false;
-  } else {
-    return false;
-  }
-
-  return true;
-}
 
 export function mapApprovalStatus(
   approvalStatus: string,
@@ -122,7 +72,7 @@ export function mapApprovalStatus(
   if (s === "SUSPENDED") return "Suspended";
   if (onTrip) return "On trip";
   if (isOnline) return "Online";
-  if (s === "APPROVED" || s === "ACTIVE" || s === "APPROVED_NON_COMPLIANT") return "Offline";
+  if (s === "APPROVED" || s === "ACTIVE") return "Offline";
   return "Offline";
 }
 
@@ -140,16 +90,6 @@ export function mapApiDriver(d: ApiDriver): DriverRow {
     d.full_name?.trim() ||
     (d.phone ? d.phone : "Unknown driver");
   const onTrip = Boolean(d.on_trip);
-
-  let fullDetail: any = null;
-  if (d.id.startsWith("local-driver-")) {
-    fullDetail = getLocalDriverDetail(d.id);
-  } else if (d.id in MOCK_DRIVERS) {
-    fullDetail = MOCK_DRIVERS[d.id as keyof typeof MOCK_DRIVERS];
-  }
-  const isNonCompliant = d.approval_status?.toUpperCase() === "APPROVED_NON_COMPLIANT";
-  const eligible = isNonCompliant ? false : (fullDetail ? isDriverEligible(fullDetail) : true);
-
   return {
     id: d.id,
     name,
@@ -163,8 +103,6 @@ export function mapApiDriver(d: ApiDriver): DriverRow {
       : "—",
     createdAt: d.created_at ?? "",
     phone: d.phone,
-    eligible,
-    referrals: d.referral_count ?? 0,
   };
 }
 
@@ -246,7 +184,6 @@ export function mapDriverDetailToVerify(
         : undefined,
     },
     documents: detail.documents,
-    referralCount: detail.referral_count ?? 0,
     reviewHistory: detail.review_history?.map((h) => ({
       id: h.id,
       decidedAt: h.decided_at,
@@ -268,7 +205,6 @@ export type DriversOverviewStats = {
   onTrip: number;
   pending: number;
   suspended: number;
-  totalReferrals: number;
 };
 
 export function computeOverviewFromDrivers(
@@ -282,6 +218,5 @@ export function computeOverviewFromDrivers(
     onTrip: rows.filter((d) => d.status === "On trip").length,
     pending: rows.filter((d) => d.status === "Pending").length,
     suspended: rows.filter((d) => d.status === "Suspended").length,
-    totalReferrals: rows.reduce((sum, d) => sum + d.referrals, 0),
   };
 }

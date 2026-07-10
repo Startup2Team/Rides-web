@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTopbar } from "./admin-topbar";
-import { DemandAlertToast } from "./demand-alert-toast";
 import { RoleGuard } from "./role-guard";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -40,7 +39,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-4 sm:p-6 lg:p-10">
           <RoleGuard>{children}</RoleGuard>
         </main>
-        <DemandAlertToast />
       </div>
     </div>
   );

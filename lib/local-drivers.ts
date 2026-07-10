@@ -27,27 +27,6 @@ export function getLocalDriverDetail(id: string): DriverDetail | null {
   }
 }
 
-/** Update the approval status of an already-saved local driver (e.g. after approve/reject). */
-export function updateLocalDriverStatus(id: string, status: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    const detail = getLocalDriverDetail(id);
-    if (detail) {
-      detail.approval_status = status;
-      localStorage.setItem(DETAIL_PREFIX + id, JSON.stringify(detail));
-    }
-
-    const list = getLocalApiDrivers();
-    const idx = list.findIndex((d) => d.id === id);
-    if (idx !== -1) {
-      list[idx] = { ...list[idx], approval_status: status };
-      localStorage.setItem(LIST_KEY, JSON.stringify(list));
-    }
-  } catch {
-    // Storage quota exceeded or unavailable — silently skip.
-  }
-}
-
 export function saveLocalDriver(detail: DriverDetail): void {
   if (typeof window === "undefined") return;
   try {

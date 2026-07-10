@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, Card } from "../_components";
 import { QRCode } from "./qr-code";
 import {
@@ -13,11 +13,8 @@ import {
   get2FASetup,
   enable2FA,
   resetTOTP,
-  uploadFile,
-  NO_BACKEND,
 } from "@/lib/api";
 import { getAdminUser, getToken } from "@/lib/auth";
-import { useAuth } from "@/context/auth-context";
 
 type Tab = "profile" | "security" | "sessions";
 
@@ -147,11 +144,6 @@ export function AccountConsole() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { refreshUser } = useAuth();
 
   // Password state
   const [currentPwd, setCurrentPwd] = useState("");
@@ -177,7 +169,7 @@ export function AccountConsole() {
   const [authResetBusy, setAuthResetBusy] = useState(false);
 
   // Sessions
-  const [sessions, setSessions] = useState<Session[]>(NO_BACKEND ? initialSessions : []);
+  const [sessions, setSessions] = useState<Session[]>(initialSessions);
 
   const secret = setup2FAData?.secret ?? "";
   const otpAuth = setup2FAData?.otpauth_url ?? "";
@@ -185,23 +177,17 @@ export function AccountConsole() {
 
   // Load profile from API (and localStorage fallback before API responds)
   useEffect(() => {
-    if (NO_BACKEND) {
-      const stored = getAdminUser();
-      if (stored) {
-        setName(stored.name);
-        setEmail(stored.email);
-        setTwoFactorEnabled(stored.twoFactor);
-      }
-      setSessions(initialSessions);
-      return;
+    const stored = getAdminUser();
+    if (stored) {
+      setName(stored.name);
+      setEmail(stored.email);
+      setTwoFactorEnabled(stored.twoFactor);
     }
 
     getAccount()
       .then((a) => {
         setName(a.name);
         setEmail(a.email);
-        setPhone(a.phone || "");
-        setPhotoUrl(a.photo_url || a.photoUrl || null);
         setTwoFactorEnabled(a.two_factor);
       })
       .catch(() => null);
@@ -221,7 +207,7 @@ export function AccountConsole() {
           })),
         );
       })
-      .catch(() => setSessions([]));
+      .catch(() => null);
   }, []);
 
   useEffect(() => {
@@ -232,33 +218,12 @@ export function AccountConsole() {
 
   async function handleSaveProfile() {
     try {
-      await updateAccount({ name, phone, photo_url: photoUrl });
+      await updateAccount(name);
       setToast("Profile saved");
-      await refreshUser();
     } catch {
       setToast("Failed to save profile");
     }
   }
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setToast("Uploading photo...");
-    try {
-      const url = await uploadFile(file);
-      setPhotoUrl(url);
-      setToast("Photo uploaded. Save changes to apply.");
-    } catch (err) {
-      setToast(err instanceof Error ? err.message : "Failed to upload photo");
-    } finally {
-      setUploading(false);
-    }
-  };
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -385,25 +350,17 @@ export function AccountConsole() {
         <Card title="Profile">
           <div className="p-5">
             <div className="flex items-center gap-4">
-              <Avatar name={name} url={photoUrl} />
+              <Avatar name={name} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground">{name}</p>
                 <p className="text-xs text-muted-foreground">{email}</p>
               </div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="hidden"
-              />
               <button
                 type="button"
-                onClick={handleUploadClick}
-                disabled={uploading}
-                className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setToast("Photo upload coming soon")}
+                className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
               >
-                {uploading ? "Uploading..." : "Upload photo"}
+                Upload photo
               </button>
             </div>
 
@@ -425,11 +382,8 @@ export function AccountConsole() {
                 <input
                   type="email"
                   value={email}
-                  disabled={!NO_BACKEND}
                   onChange={(e) => setEmail(e.target.value)}
-                  className={`mt-2 block h-10 w-full rounded-lg border border-border px-3 text-sm text-foreground outline-none focus:border-primary ${
-                    !NO_BACKEND ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : "bg-surface"
-                  }`}
+                  className="mt-2 block h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-primary"
                 />
               </label>
               <label className="block">
@@ -840,18 +794,16 @@ export function AccountConsole() {
         <Card
           title={`Active sessions · ${sessions.length}`}
           action={
-            sessions.some((s) => !s.current) ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSessions((prev) => prev.filter((s) => s.current));
-                  setToast("Signed out of all other sessions");
-                }}
-                className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-red-50 px-3 text-[11px] font-semibold text-red-700 transition-colors hover:bg-red-100"
-              >
-                Sign out everywhere else
-              </button>
-            ) : null
+            <button
+              type="button"
+              onClick={() => {
+                setSessions((prev) => prev.filter((s) => s.current));
+                setToast("Signed out of all other sessions");
+              }}
+              className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-red-50 px-3 text-[11px] font-semibold text-red-700 transition-colors hover:bg-red-100"
+            >
+              Sign out everywhere else
+            </button>
           }
         >
           <ul className="divide-y divide-border">

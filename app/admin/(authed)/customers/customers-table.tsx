@@ -12,10 +12,10 @@ import {
   suspendCustomer,
   reinstateCustomer,
   type Customer as ApiCustomer,
-  NO_BACKEND,
 } from "@/lib/api";
 import { MOCK_API_CUSTOMERS } from "@/lib/mock-customers";
-import { CustomerStats } from "./customer-stats";
+
+const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
 function mapApiCustomer(c: ApiCustomer): Customer {
   return {
@@ -23,10 +23,8 @@ function mapApiCustomer(c: ApiCustomer): Customer {
     name: c.full_name ?? c.phone,
     email: c.email ?? "",
     phone: c.phone,
-    photo_url: c.photo_url,
-    location: c.location ?? "",
+    location: "",
     joined: new Date(c.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-    createdAt: c.created_at,
     trips: c.total_rides,
     spend: c.total_spend ?? 0,
     avgFare: c.total_rides > 0 ? Math.round((c.total_spend ?? 0) / c.total_rides) : 0,
@@ -66,11 +64,14 @@ const statusToneMap: Record<
   Suspended: "danger",
 };
 
-type Tab = { id: "all" | "Active" | "Suspended"; label: string };
+type Tab = { id: "all" | CustomerStatus; label: string };
 
 const tabs: Tab[] = [
   { id: "all", label: "All" },
   { id: "Active", label: "Active" },
+  { id: "VIP", label: "VIP" },
+  { id: "Dormant", label: "Dormant" },
+  { id: "Flagged", label: "Flagged" },
   { id: "Suspended", label: "Suspended" },
 ];
 
@@ -301,7 +302,7 @@ function CustomerCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-3">
           <div className="relative">
-            <Avatar name={customer.name} url={customer.photo_url} tone="neutral" />
+            <Avatar name={customer.name} tone="neutral" />
             {customer.status === "VIP" ? (
               <span
                 aria-hidden
@@ -316,7 +317,7 @@ function CustomerCard({
               {customer.name}
             </p>
             <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-              {customer.phone}
+              {customer.email}
             </p>
           </div>
         </div>
@@ -334,7 +335,7 @@ function CustomerCard({
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface/50 p-2.5">
+      <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-border bg-surface/50 p-2.5">
         <div className="text-center">
           <p className="text-sm font-bold tracking-tight text-foreground">
             {customer.trips}
@@ -343,7 +344,7 @@ function CustomerCard({
             Trips
           </p>
         </div>
-        <div className="border-x border-border text-center">
+        <div className="border-l border-border text-center">
           <p className="truncate text-sm font-bold tracking-tight text-foreground">
             {customer.spend === 0
               ? "—"
@@ -351,14 +352,6 @@ function CustomerCard({
           </p>
           <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
             Spend
-          </p>
-        </div>
-        <div className="text-center">
-          <p className="text-sm font-bold tracking-tight text-foreground">
-            {customer.avgFare === 0 ? "—" : `${Math.round(customer.avgFare / 1000)}K`}
-          </p>
-          <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Avg fare
           </p>
         </div>
       </div>
@@ -379,7 +372,6 @@ function CustomerCard({
 export function CustomersTable() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab["id"]>("all");
-  const [dateFilter, setDateFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
@@ -399,9 +391,9 @@ export function CustomersTable() {
     getCustomers({ limit: "100", offset: "0" })
       .then((res) => {
         const api = (res.customers ?? []).map(mapApiCustomer);
-        setCustomers(api);
+        setCustomers([...MOCK_API_CUSTOMERS.map(mapApiCustomer), ...api]);
       })
-      .catch(() => setCustomers([]))
+      .catch(() => setCustomers(MOCK_API_CUSTOMERS.map(mapApiCustomer)))
       .finally(() => setLoading(false));
   }, []);
 
@@ -424,32 +416,19 @@ export function CustomersTable() {
   const counts: Record<Tab["id"], number> = {
     all: customers.length,
     Active: customers.filter((c) => c.status === "Active").length,
+    VIP: customers.filter((c) => c.status === "VIP").length,
+    Dormant: customers.filter((c) => c.status === "Dormant").length,
+    Flagged: customers.filter((c) => c.status === "Flagged").length,
     Suspended: customers.filter((c) => c.status === "Suspended").length,
   };
 
   const filtered = customers.filter((c) => {
     if (tab !== "all" && c.status !== tab) return false;
-
-    // Joining Date Filter
-    if (dateFilter !== "all" && c.createdAt) {
-      const createdTime = new Date(c.createdAt).getTime();
-      const now = Date.now();
-      if (dateFilter === "today") {
-        const oneDay = 24 * 60 * 60 * 1000;
-        if (now - createdTime > oneDay) return false;
-      } else if (dateFilter === "week") {
-        const oneWeek = 7 * 24 * 60 * 60 * 1000;
-        if (now - createdTime > oneWeek) return false;
-      } else if (dateFilter === "month") {
-        const oneMonth = 30 * 24 * 60 * 60 * 1000;
-        if (now - createdTime > oneMonth) return false;
-      }
-    }
-
     if (query) {
       const q = query.toLowerCase();
       return (
         c.name.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q) ||
         c.phone.toLowerCase().includes(q)
       );
     }
@@ -525,54 +504,24 @@ export function CustomersTable() {
   );
 
   return (
-    <div className="space-y-6">
-      <CustomerStats
-        total={counts.all}
-        active={counts.Active}
-        suspended={counts.Suspended}
-        loading={loading}
-      />
-
-      <Card
-        title="Customer directory"
-        action={
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-            <div className="flex items-center justify-between sm:justify-start gap-2">
-              <span className="text-xs text-muted-foreground sm:hidden">View Mode:</span>
-              <ViewToggle value={viewMode} onChange={setViewMode} />
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Joining Date Filter */}
-              <select
-                value={dateFilter}
-                onChange={(e) => {
-                  setDateFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="h-8 rounded-lg border border-border bg-surface px-2.5 text-xs text-foreground outline-none focus:border-primary cursor-pointer w-[48%] sm:w-auto flex-1"
-              >
-                <option value="all">Joined: All time</option>
-                <option value="today">Joined: Today</option>
-                <option value="week">Joined: This week</option>
-                <option value="month">Joined: This month</option>
-              </select>
-
-              {/* Search input */}
-              <input
-                type="search"
-                placeholder="Search name, phone…"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setPage(1);
-                }}
-                className="h-8 flex-1 sm:flex-initial sm:w-64 rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary"
-              />
-            </div>
-          </div>
-        }
-      >
+    <Card
+      title="Customer directory"
+      action={
+        <div className="flex items-center gap-2">
+          <ViewToggle value={viewMode} onChange={setViewMode} />
+          <input
+            type="search"
+            placeholder="Search name, email, phone…"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
+            className="h-8 w-64 rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary"
+          />
+        </div>
+      }
+    >
       <div className="flex items-center gap-1 overflow-x-auto border-b border-border px-3 py-2">
         {tabs.map((t) => {
           const active = tab === t.id;
@@ -618,7 +567,7 @@ export function CustomersTable() {
                   onClick={() => toggleSort("name")}
                 />
                 <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Phone
+                  Contact
                 </th>
                 <SortHeader
                   label="Joined"
@@ -667,7 +616,7 @@ export function CustomersTable() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="relative">
-                          <Avatar name={c.name} url={c.photo_url} tone="neutral" />
+                          <Avatar name={c.name} tone="neutral" />
                           {c.status === "VIP" ? (
                             <span
                               aria-hidden
@@ -687,8 +636,11 @@ export function CustomersTable() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs font-medium text-foreground">
-                      {c.phone}
+                    <td className="px-4 py-3">
+                      <div className="text-xs text-foreground">{c.email}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {c.phone}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {c.joined}
@@ -789,7 +741,6 @@ export function CustomersTable() {
           <span className="text-sm font-medium text-foreground">{toast}</span>
         </div>
       ) : null}
-      </Card>
-    </div>
+    </Card>
   );
 }

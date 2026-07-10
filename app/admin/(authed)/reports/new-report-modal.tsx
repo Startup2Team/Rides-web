@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export type ReportFormat = "PDF" | "CSV";
+export type ReportFormat = "PDF" | "CSV" | "Excel";
 
 export type ReportTemplate = {
   id: string;
@@ -80,7 +80,7 @@ export function NewReportModal({
   if (!open) return null;
 
   const activeTemplate = templates.find((t) => t.id === templateId);
-  const allowedFormats = activeTemplate?.formats ?? ["PDF", "CSV"];
+  const allowedFormats = activeTemplate?.formats ?? ["PDF", "CSV", "Excel"];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -191,7 +191,7 @@ export function NewReportModal({
               Format
             </p>
             <div className="mt-2 flex items-center gap-1.5">
-              {(["PDF", "CSV"] as ReportFormat[]).map((f) => {
+              {(["PDF", "CSV", "Excel"] as ReportFormat[]).map((f) => {
                 const allowed = allowedFormats.includes(f);
                 const active = format === f;
                 return (

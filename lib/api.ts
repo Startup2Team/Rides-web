@@ -1,24 +1,5 @@
 import { clearToken, getToken } from "./auth";
-import {
-  clusterWaitingRides,
-  clustersToHeatZones,
-  type LiveDemandHeatZone,
-} from "./live-demand-heatmap";
-import {
-  MOCK_SATISFACTION,
-  mockFunnel,
-  mockRidesDaily,
-  mockVehicleMix,
-  mockActivityHeatmap,
-  mockDriverPerformance,
-} from "./mock-analytics";
 import { MOCK_LIVE_RIDES, MOCK_LIVE_RIDE_DETAILS, MOCK_LIVE_RIDES_STATS } from "./mock-live-rides";
-import {
-  MOCK_NEGOTIATIONS,
-  MOCK_NEGOTIATION_DETAILS,
-  MOCK_NEGOTIATIONS_STATS,
-} from "./mock-negotiations";
-import { MOCK_REPORTS, MOCK_REPORTS_STATS } from "./mock-reports";
 import type {
   Campaign as AdminCampaignView,
   CampaignAudience,
@@ -30,7 +11,7 @@ import type {
   VehicleType as MonetizationVehicleType,
 } from "./packages-mock";
 
-export const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL && !process.env.NEXT_PUBLIC_API_URL;
+const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
@@ -44,17 +25,15 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const token = tokenOverride ?? getToken();
 
   const headers: Record<string, string> = {
+    "Content-Type": "application/json",
     ...(rest.headers as Record<string, string>),
   };
-  if (!(body instanceof FormData)) {
-    headers["Content-Type"] = "application/json";
-  }
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...rest,
     headers,
-    body: body !== undefined ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   if (res.status === 401) {
@@ -169,9 +148,6 @@ export type AdminAccount = {
   id: string;
   name: string;
   email: string;
-  phone?: string | null;
-  photo_url?: string | null;
-  photoUrl?: string | null;
   role_id: string;
   role_name: string;
   status: string;
@@ -183,18 +159,8 @@ export type AdminAccount = {
 
 export const getAccount = (token?: string) => request<AdminAccount>("/admin/account", token ? { token } : {});
 
-export const updateAccount = (
-  data: { name: string; phone?: string | null; photo_url?: string | null } | FormData
-) =>
-  request<void>("/admin/account", {
-    method: "PUT",
-    body: data instanceof FormData ? data : {
-      name: data.name,
-      phone: data.phone,
-      photo_url: data.photo_url,
-      photoUrl: data.photo_url,
-    },
-  });
+export const updateAccount = (name: string) =>
+  request<void>("/admin/account", { method: "PUT", body: { name } });
 
 export const changePassword = (currentPassword: string, newPassword: string) =>
   request<void>("/admin/account/password", {
@@ -435,21 +401,13 @@ export type SatisfactionData = {
 };
 
 export const getAnalyticsOverview = () => request<AnalyticsOverviewFull>("/admin/analytics/overview");
-export const getRidesDaily = async (days = 30, vehicle?: string, periodOffsetDays = 0) => {
-  if (NO_BACKEND) return mockRidesDaily(days, vehicle, periodOffsetDays);
-  const qs = new URLSearchParams({ days: String(days) });
-  if (vehicle) qs.set("vehicle", vehicle);
-  if (periodOffsetDays > 0) qs.set("offset", String(periodOffsetDays));
-  return request<DailyRidePoint[]>(`/admin/analytics/rides/daily?${qs}`);
-};
+export const getRidesDaily = (days = 30) =>
+  request<DailyRidePoint[]>(`/admin/analytics/rides/daily?days=${days}`);
 export const getRidesWeekly = () => request<DailyRidePoint[]>("/admin/analytics/rides/weekly");
 export const getRevenueBreakdown = () =>
   request<Record<string, unknown>>("/admin/analytics/revenue/breakdown");
-export const getDriverPerformance = async (vehicle?: string) => {
-  if (NO_BACKEND) return mockDriverPerformance(vehicle);
-  const qs = vehicle ? `?vehicle=${encodeURIComponent(vehicle)}` : "";
-  return request<DriverPerf[]>(`/admin/analytics/drivers/performance${qs}`);
-};
+export const getDriverPerformance = () =>
+  request<DriverPerf[]>("/admin/analytics/drivers/performance");
 export const getNegotiationStats = () =>
   request<Record<string, unknown>>("/admin/analytics/negotiation/stats");
 
@@ -459,60 +417,15 @@ export type ActivityCell = { day: number; hour: number; count: number };
 
 export const getHeatmap = () => request<HeatPoint[]>("/admin/analytics/heatmap");
 export const getHeatmapZones = () => request<HeatZone[]>("/admin/analytics/heatmap/zones");
-export const getActivityHeatmap = async (vehicle?: string) => {
-  if (NO_BACKEND) return mockActivityHeatmap(vehicle);
-  const qs = vehicle ? `?vehicle=${encodeURIComponent(vehicle)}` : "";
-  return request<ActivityCell[]>(`/admin/analytics/activity-heatmap${qs}`);
-};
-
-export type { LiveDemandCluster, LiveDemandHeatZone } from "./live-demand-heatmap";
-
-/** Live demand from riders waiting for pickup — powers the heatmap "Now" view. */
-export const getLiveDemandHeatmap = async (): Promise<LiveDemandHeatZone[]> => {
-  if (NO_BACKEND) {
-    return clustersToHeatZones(clusterWaitingRides(MOCK_LIVE_RIDES));
-  }
-
-  try {
-    const map = await getLiveMap();
-    const points = map.heatPoints ?? [];
-    if (points.length > 0) {
-      const maxWeight = Math.max(1, ...points.map((p) => p.weight));
-      return points.map((p) => ({
-        lat: p.lat,
-        lng: p.lng,
-        demand: Math.round((p.weight / maxWeight) * 100),
-        trips: p.weight,
-        avg_fare: 0,
-        pickupLabel: "Live demand zone",
-        waitingRiders: p.weight,
-      }));
-    }
-  } catch {
-    /* fall through to ride aggregation */
-  }
-
-  const res = await getLiveRides({ limit: "200", offset: "0" });
-  return clustersToHeatZones(clusterWaitingRides(res.rides ?? []));
-};
+export const getActivityHeatmap = () => request<ActivityCell[]>("/admin/analytics/activity-heatmap");
 export const getCancellations = () =>
   request<Record<string, unknown>>("/admin/analytics/cancellations");
-export const getFunnel = async (days = 30, vehicle?: string) => {
-  if (NO_BACKEND) return mockFunnel(days, vehicle);
-  const qs = new URLSearchParams({ days: String(days) });
-  if (vehicle) qs.set("vehicle", vehicle);
-  return request<FunnelData>(`/admin/analytics/funnel?${qs}`);
-};
-export const getVehicleMix = async (days = 30, vehicle?: string) => {
-  if (NO_BACKEND) return mockVehicleMix(days, vehicle);
-  const qs = new URLSearchParams({ days: String(days) });
-  if (vehicle) qs.set("vehicle", vehicle);
-  return request<VehicleMixItem[]>(`/admin/analytics/vehicle-mix?${qs}`);
-};
-export const getSatisfaction = async () => {
-  if (NO_BACKEND) return MOCK_SATISFACTION;
-  return request<SatisfactionData>("/admin/analytics/satisfaction");
-};
+export const getFunnel = (days = 30) =>
+  request<FunnelData>(`/admin/analytics/funnel?days=${days}`);
+export const getVehicleMix = (days = 30) =>
+  request<VehicleMixItem[]>(`/admin/analytics/vehicle-mix?days=${days}`);
+export const getSatisfaction = () =>
+  request<SatisfactionData>("/admin/analytics/satisfaction");
 
 // ── Drivers ───────────────────────────────────────────────────────────────
 
@@ -530,8 +443,6 @@ export type Driver = {
   total_rides?: number;
   city?: string;
   created_at: string;
-  referral_count?: number;
-  referred_by_driver_id?: string | null;
 };
 
 export type DriversResponse = {
@@ -548,7 +459,6 @@ export type DriversOverview = {
   on_trip: number;
   pending: number;
   suspended: number;
-  total_referrals?: number;
 };
 
 export const sendDriverOTP = (phone: string) =>
@@ -589,9 +499,6 @@ export type DriverDetail = {
   approval_status: string;
   created_at: string;
   is_online?: boolean;
-  referral_count?: number;
-  /** Present when this driver was referred by another driver on the platform. */
-  referred_by_driver_id?: string | null;
   license_issued_date?: string | null;
   license_expiry_date?: string | null;
   insurance_issued_date?: string | null;
@@ -624,24 +531,6 @@ export type DriverDetail = {
 
 export const getDriver = (id: string) => request<DriverDetail>(`/admin/drivers/${id}`);
 
-export type ReferredDriver = {
-  id: string;
-  full_name: string | null;
-  phone?: string;
-  transport_type: string;
-  vehicle_plate?: string;
-  approval_status: string;
-  created_at: string;
-};
-
-export async function getDriverReferrals(driverId: string): Promise<ReferredDriver[]> {
-  if (NO_BACKEND) {
-    const { getLocalReferredDrivers } = await import("./referrals");
-    return getLocalReferredDrivers(driverId);
-  }
-  return request<ReferredDriver[]>(`/admin/drivers/${driverId}/referrals`);
-}
-
 export const createDriver = (body: Record<string, unknown>) =>
   request<{ id: string; user_id?: string; message: string }>("/admin/drivers", {
     method: "POST",
@@ -658,8 +547,8 @@ export const uploadDriverDocument = (
     body: { document_type: documentType, file_url: fileUrl },
   });
 
-/** Upload a file (image/PDF) via admin multipart endpoint. */
-export async function uploadFile(file: File): Promise<string> {
+/** Upload a driver document image/PDF via admin multipart endpoint. */
+export async function uploadDriverFile(file: File): Promise<string> {
   const token = getToken();
   const form = new FormData();
   form.append("file", file);
@@ -676,11 +565,6 @@ export async function uploadFile(file: File): Promise<string> {
   const data = (json?.data ?? json) as { file_url?: string };
   if (!data.file_url) throw new Error("Upload succeeded but no file URL returned");
   return data.file_url;
-}
-
-/** Upload a driver document image/PDF via admin multipart endpoint. */
-export async function uploadDriverFile(file: File): Promise<string> {
-  return uploadFile(file);
 }
 
 export const forceDriverOffline = (id: string) =>
@@ -723,8 +607,6 @@ export type Customer = {
   full_name: string | null;
   phone: string;
   email?: string | null;
-  photo_url?: string | null;
-  location?: string | null;
   role_state: string;
   is_suspended: boolean;
   suspension_until?: string | null;
@@ -806,13 +688,7 @@ export type Ride = {
   customer: RideParticipant;
   driver: RideDriverParticipant;
   pickup_address: string;
-  /** Not yet returned by the admin API (only the mobile API has it) — optional until the backend catches up. */
-  pickup_lat?: number;
-  pickup_lng?: number;
   destination_address: string;
-  /** Same gap as pickup_lat/pickup_lng above. */
-  dest_lat?: number;
-  dest_lng?: number;
   agreed_fare: number | null;
   initial_fare: number | null;
   distance_km: number | null;
@@ -927,29 +803,15 @@ export type NegotiationsStats = {
   avg_rounds: number;
 };
 
-export const getNegotiations = async (params: Record<string, string> = {}): Promise<NegotiationsResponse> => {
-  if (NO_BACKEND) {
-    return { negotiations: MOCK_NEGOTIATIONS, total: MOCK_NEGOTIATIONS.length };
-  }
+export const getNegotiations = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
   return request<NegotiationsResponse>(`/admin/negotiations${qs ? `?${qs}` : ""}`);
 };
 
-export const getNegotiationsStats = async (): Promise<NegotiationsStats> => {
-  if (NO_BACKEND) {
-    return MOCK_NEGOTIATIONS_STATS;
-  }
-  return request<NegotiationsStats>("/admin/negotiations/stats");
-};
+export const getNegotiationsStats = () =>
+  request<NegotiationsStats>("/admin/negotiations/stats");
 
-export const getNegotiation = async (id: string): Promise<RideDetail> => {
-  if (NO_BACKEND) {
-    const detail = MOCK_NEGOTIATION_DETAILS[id];
-    if (detail) return detail;
-    throw new Error("Mock negotiation not found");
-  }
-  return request<RideDetail>(`/admin/negotiations/${id}`);
-};
+export const getNegotiation = (id: string) => request<RideDetail>(`/admin/negotiations/${id}`);
 
 // ── Revenue ───────────────────────────────────────────────────────────────
 
@@ -1210,15 +1072,9 @@ export type ReportsStats = {
   pending: number;
 };
 
-export const getReportsStats = async () => {
-  if (NO_BACKEND) return MOCK_REPORTS_STATS;
-  return request<ReportsStats>("/admin/reports/stats");
-};
+export const getReportsStats = () => request<ReportsStats>("/admin/reports/stats");
 
-export const getReports = async (params: Record<string, string> = {}) => {
-  if (NO_BACKEND) {
-    return { reports: MOCK_REPORTS, total: MOCK_REPORTS.length };
-  }
+export const getReports = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
   return request<{ reports: BackendReport[]; total: number }>(`/admin/reports${qs ? `?${qs}` : ""}`);
 };
@@ -1237,29 +1093,6 @@ export const toggleScheduledReport = (id: string) =>
 
 export const deleteReport = (id: string) =>
   request<void>(`/admin/reports/${id}`, { method: "DELETE" });
-
-export type { DriverRegistrationReport, DriverRegistrationFilters } from "./driver-registration-report";
-
-/**
- * Driver registration report is assembled client-side from the real `/admin/drivers`
- * list (there is no dedicated backend report endpoint for this — see Reports rebuild
- * plan). Falls back to mock driver data only when the backend is unconfigured or the
- * request genuinely fails.
- */
-export const getDriverRegistrationReport = async (
-  filters: import("./driver-registration-report").DriverRegistrationFilters,
-) => {
-  const { buildDriverRegistrationReport, buildDriverRegistrationReportFromDrivers } = await import(
-    "./driver-registration-report"
-  );
-  if (NO_BACKEND) return buildDriverRegistrationReport(filters);
-  try {
-    const res = await getDrivers({ limit: "1000" });
-    return buildDriverRegistrationReportFromDrivers(res.drivers, filters);
-  } catch {
-    return buildDriverRegistrationReport(filters);
-  }
-};
 
 // ── Settings ──────────────────────────────────────────────────────────────
 
