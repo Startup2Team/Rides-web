@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "@/context/auth-context";
-import { getLiveDemandHeatmap } from "@/lib/api";
+import { getLiveDemandHeatmap, getDashboardAlerts, NO_BACKEND } from "@/lib/api";
 import {
   evaluateDemandAlerts,
   filterAlertsByCooldown,
@@ -137,11 +137,23 @@ function maybeBrowserNotify(n: AdminNotification) {
   }
 }
 
+function formatTimeAgo(dateStr: string | Date): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return d.toLocaleDateString();
+}
+
 export function AdminNotificationsProvider({ children }: { children: ReactNode }) {
   const { permissions, ready } = useAuth();
   const canMonitorDemand = ready && hasPermission(permissions, "/admin/heatmaps");
 
-  const [notifications, setNotifications] = useState<AdminNotification[]>(SEED_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<AdminNotification[]>(NO_BACKEND ? SEED_NOTIFICATIONS : []);
   const [latestToast, setLatestToast] = useState<AdminNotification | null>(null);
   const [demandAlertsEnabled, setDemandAlertsEnabledState] = useState(true);
 
@@ -196,6 +208,42 @@ export function AdminNotificationsProvider({ children }: { children: ReactNode }
       clearInterval(id);
     };
   }, [canMonitorDemand, demandAlertsEnabled, pushDemandAlerts]);
+
+  useEffect(() => {
+    if (NO_BACKEND) return;
+
+    let cancelled = false;
+
+    const fetchSystemAlerts = () => {
+      getDashboardAlerts({ limit: 10 })
+        .then((alerts) => {
+          if (cancelled) return;
+          const mapped = (alerts || []).map((alert) => ({
+            id: alert.id,
+            tone: alert.tone,
+            title: alert.title,
+            detail: alert.detail,
+            time: formatTimeAgo(alert.occurredAt),
+            unread: true,
+            href: alert.kind === "incident" ? "/admin/safety-center" : "/admin/support",
+            source: "system" as const,
+          }));
+          setNotifications((prev) => {
+            const demandNotifs = prev.filter((n) => n.source === "demand");
+            return [...mapped, ...demandNotifs].slice(0, 30);
+          });
+        })
+        .catch(() => {});
+    };
+
+    fetchSystemAlerts();
+    const intervalId = setInterval(fetchSystemAlerts, POLL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, []);
 
   useEffect(() => {
     if (!latestToast) return;

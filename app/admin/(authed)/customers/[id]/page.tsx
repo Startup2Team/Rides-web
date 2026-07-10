@@ -9,6 +9,7 @@ import {
   reinstateCustomer,
   type CustomerDetail,
   type CustomerTrip,
+  NO_BACKEND,
 } from "@/lib/api";
 import { Avatar, StatusPill } from "../../_components";
 import {
@@ -16,7 +17,7 @@ import {
   MOCK_CUSTOMERS,
 } from "@/lib/mock-customers";
 
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 

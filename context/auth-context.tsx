@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getAccount, getRoles, type AdminAccount } from "@/lib/api";
+import { getAccount, getRoles, type AdminAccount, NO_BACKEND } from "@/lib/api";
 import { clearToken } from "@/lib/auth";
 import {
   type Permission,
@@ -41,8 +41,6 @@ const AuthContext = createContext<AuthContextValue>({
   logout: async () => {},
   refreshUser: async () => {},
 });
-
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const MOCK_USER: AuthUser = {
   id: "mock-admin",

@@ -30,7 +30,7 @@ import type {
   VehicleType as MonetizationVehicleType,
 } from "./packages-mock";
 
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+export const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL && !process.env.NEXT_PUBLIC_API_URL;
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
