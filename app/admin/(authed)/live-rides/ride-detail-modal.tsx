@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import "leaflet/dist/leaflet.css";
+import { useEffect } from "react";
 import { Avatar } from "../_components";
 
 export type RideStatus =
@@ -33,15 +32,7 @@ export type RideDetail = {
     rating: number;
   } | null;
   pickup: string;
-  /** Optional until the backend admin API starts returning ride coordinates (currently only mobile does). */
-  pickupLat: number | null;
-  pickupLng: number | null;
   destination: string;
-  destLat: number | null;
-  destLng: number | null;
-  /** Driver's live position, if we have one (from the live-map endpoint, joined by driver id). */
-  driverLat: number | null;
-  driverLng: number | null;
   vehicleType: string;
   status: RideStatus;
   startedAt: string;
@@ -126,137 +117,53 @@ function ContactCard({
   );
 }
 
-const KIGALI_CENTER: [number, number] = [-1.9577, 30.0619];
-const KIGALI_ZOOM = 12;
-const PICKUP_HEX = "#007AFF";
-const DEST_HEX = "#1f2937";
-const DRIVER_HEX = "#f59e0b";
-
-function pointMarkerHtml(color: string): string {
-  return `<span style="display:block;width:14px;height:14px;border-radius:50%;background:${color};box-shadow:0 0 0 2px #fff;"></span>`;
-}
-
-function driverMarkerHtml(): string {
-  return `
-    <span style="position:relative;display:inline-block;width:14px;height:14px;">
-      <span style="position:absolute;inset:-6px;border-radius:50%;background:${DRIVER_HEX};opacity:.35;animation:rideRoutePulse 1.8s ease-out infinite;"></span>
-      <span style="position:relative;display:block;width:14px;height:14px;border-radius:50%;background:${DRIVER_HEX};box-shadow:0 0 0 2px #fff;"></span>
-    </span>
-  `;
-}
-
-function RideRouteMap({ ride }: { ride: RideDetail }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const layerRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const LRef = useRef<any>(null);
-  const [ready, setReady] = useState(false);
-
-  const hasPickup = ride.pickupLat != null && ride.pickupLng != null;
-  const hasDest = ride.destLat != null && ride.destLng != null;
-  const hasDriver = ride.driverLat != null && ride.driverLng != null;
-  const hasAnyPoint = hasPickup || hasDest || hasDriver;
-
-  useEffect(() => {
-    if (!hasAnyPoint) return;
-    let cancelled = false;
-    async function init() {
-      const L = (await import("leaflet")).default;
-      if (cancelled || !containerRef.current) return;
-      LRef.current = L;
-      const map = L.map(containerRef.current, {
-        center: KIGALI_CENTER,
-        zoom: KIGALI_ZOOM,
-        zoomControl: true,
-        attributionControl: true,
-        preferCanvas: true,
-      });
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap",
-      }).addTo(map);
-      layerRef.current = L.layerGroup().addTo(map);
-      mapRef.current = map;
-      setReady(true);
-    }
-    init();
-    return () => {
-      cancelled = true;
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-      setReady(false);
-    };
-  }, [ride.id, hasAnyPoint]);
-
-  useEffect(() => {
-    const L = LRef.current;
-    const map = mapRef.current;
-    if (!ready || !L || !map || !layerRef.current) return;
-
-    layerRef.current.clearLayers();
-    const points: [number, number][] = [];
-
-    if (hasPickup) {
-      const p: [number, number] = [ride.pickupLat!, ride.pickupLng!];
-      points.push(p);
-      L.marker(p, { icon: L.divIcon({ html: pointMarkerHtml(PICKUP_HEX), className: "", iconSize: [14, 14], iconAnchor: [7, 7] }) })
-        .bindTooltip("Pickup", { direction: "top", offset: [0, -8], permanent: false })
-        .addTo(layerRef.current);
-    }
-    if (hasDest) {
-      const p: [number, number] = [ride.destLat!, ride.destLng!];
-      points.push(p);
-      L.marker(p, { icon: L.divIcon({ html: pointMarkerHtml(DEST_HEX), className: "", iconSize: [14, 14], iconAnchor: [7, 7] }) })
-        .bindTooltip("Drop-off", { direction: "top", offset: [0, -8], permanent: false })
-        .addTo(layerRef.current);
-    }
-    if (hasDriver) {
-      const p: [number, number] = [ride.driverLat!, ride.driverLng!];
-      points.push(p);
-      L.marker(p, { icon: L.divIcon({ html: driverMarkerHtml(), className: "", iconSize: [14, 14], iconAnchor: [7, 7] }) })
-        .bindTooltip("Driver — current position", { direction: "top", offset: [0, -8] })
-        .addTo(layerRef.current);
-    }
-
-    if (points.length > 0) {
-      const bounds = L.latLngBounds(points);
-      if (bounds.isValid()) map.fitBounds(bounds.pad(0.3), { animate: false });
-    }
-  }, [ready, ride, hasPickup, hasDest, hasDriver]);
-
+function MiniMap({ pickup, destination }: { pickup: string; destination: string }) {
   return (
-    <div className="relative aspect-[16/7] overflow-hidden rounded-xl border border-border bg-surface">
-      {hasAnyPoint ? (
-        <div ref={containerRef} className="absolute inset-0 z-0" />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center text-center">
-          <p className="max-w-xs px-4 text-xs text-muted-foreground">
-            Location data isn&apos;t available for this ride yet.
-          </p>
+    <div className="relative aspect-[16/7] overflow-hidden rounded-xl border border-border">
+      <img
+        src="/maps/map.png"
+        alt=""
+        aria-hidden
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <div className="absolute z-10" style={{ top: "30%", left: "25%" }}>
+        <div className="flex flex-col items-center">
+          <span className="rounded-md bg-card px-2 py-0.5 text-[9px] font-bold text-foreground shadow-sm ring-1 ring-border">
+            Pickup
+          </span>
+          <span className="mt-1 block h-3 w-3 rounded-full bg-primary ring-[3px] ring-card shadow-sm" />
         </div>
-      )}
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[400] flex items-center justify-between gap-3 bg-card/85 px-3 py-2 text-[11px] backdrop-blur">
+      </div>
+      <div className="absolute z-10" style={{ top: "60%", left: "70%" }}>
+        <div className="flex flex-col items-center">
+          <span className="rounded-md bg-card px-2 py-0.5 text-[9px] font-bold text-foreground shadow-sm ring-1 ring-border">
+            Drop-off
+          </span>
+          <span className="mt-1 block h-3 w-3 rounded-full bg-foreground ring-[3px] ring-card shadow-sm" />
+        </div>
+      </div>
+      <svg
+        className="absolute inset-0 z-[5] h-full w-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <path
+          d="M 26 32 Q 50 25, 70 60"
+          stroke="rgb(16,185,129)"
+          strokeWidth="0.6"
+          strokeDasharray="1.2 1"
+          fill="none"
+        />
+      </svg>
+      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-card/85 px-3 py-2 text-[11px] backdrop-blur">
         <span className="truncate text-foreground">
-          <span className="text-muted-foreground">From</span> {ride.pickup}
+          <span className="text-muted-foreground">From</span> {pickup}
         </span>
         <span className="truncate text-foreground">
-          <span className="text-muted-foreground">To</span> {ride.destination}
+          <span className="text-muted-foreground">To</span> {destination}
         </span>
       </div>
-
-      <style>{`
-        @keyframes rideRoutePulse {
-          0% { transform: scale(.8); opacity: .55; }
-          70% { transform: scale(1.8); opacity: 0; }
-          100% { transform: scale(1.8); opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }
@@ -286,9 +193,15 @@ function TimelineRow({ event }: { event: TimelineEvent }) {
 export function RideDetailModal({
   ride,
   onClose,
+  onMessageCustomer,
+  onMessageDriver,
+  onCancelRide,
 }: {
   ride: RideDetail | null;
   onClose: () => void;
+  onMessageCustomer: (id: string) => void;
+  onMessageDriver: (id: string) => void;
+  onCancelRide: (id: string) => void;
 }) {
   useEffect(() => {
     if (!ride) return;
@@ -306,71 +219,45 @@ export function RideDetailModal({
 
   if (!ride) return null;
 
-  const shortId = ride.id.length > 12 ? `${ride.id.slice(0, 10)}…` : ride.id;
-
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center p-4 sm:p-6"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ride-detail-title"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/30 backdrop-blur-md"
         onClick={onClose}
         aria-hidden
       />
-
-      <div className="ride-detail-modal-panel relative z-10 flex max-h-[min(90vh,820px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl ring-1 ring-black/5">
-        <div className="border-b border-border bg-surface/30 px-5 py-4 sm:px-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1 text-center sm:text-left">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-                Trip inspection
-              </p>
-              <h2
-                id="ride-detail-title"
-                className="mt-1 truncate text-lg font-bold tracking-tight text-foreground"
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm font-bold text-foreground">
+                {ride.id}
+              </span>
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusStyles[ride.status]}`}
               >
-                {ride.pickup} → {ride.destination}
-              </h2>
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <span className="font-mono text-[11px] font-semibold text-muted-foreground">
-                  {shortId}
-                </span>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${statusStyles[ride.status]}`}
-                >
-                  {ride.status}
-                </span>
-                <span className="text-[11px] text-muted-foreground">{ride.vehicleType}</span>
-              </div>
+                {ride.status}
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="mx-auto mt-4 flex max-w-sm items-center justify-center rounded-xl border border-border bg-card px-4 py-2.5 sm:mx-0 sm:max-w-none sm:inline-flex">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-              Negotiated price
-            </p>
-            <p className="ml-3 text-base font-bold tracking-tight text-foreground">
-              {ride.fare === 0 ? "—" : formatRWF(ride.fare)}
+            <p className="mt-1 text-xs text-muted-foreground">
+              {ride.vehicleType} · Started {ride.startedAt} · {ride.district}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
-          <RideRouteMap ride={ride} />
+        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+          <MiniMap pickup={ride.pickup} destination={ride.destination} />
 
           <div className="grid gap-3 sm:grid-cols-2">
             <ContactCard
@@ -389,8 +276,35 @@ export function RideDetailModal({
                   ? `${ride.driver.vehicleType} · ${ride.driver.plate}`
                   : undefined
               }
-              emptyLabel="No driver on this trip"
+              emptyLabel="Searching for a nearby driver…"
             />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-border bg-surface/40 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                Current fare
+              </p>
+              <p className="mt-1 text-base font-bold tracking-tight text-foreground">
+                {ride.fare === 0 ? "Negotiating" : formatRWF(ride.fare)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-surface/40 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                Payment
+              </p>
+              <p className="mt-1 text-base font-bold tracking-tight text-foreground">
+                {ride.paymentMethod}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-surface/40 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                ETA
+              </p>
+              <p className="mt-1 text-base font-bold tracking-tight text-foreground">
+                {ride.eta ?? "—"}
+              </p>
+            </div>
           </div>
 
           {ride.negotiation.length > 0 ? (
@@ -421,36 +335,52 @@ export function RideDetailModal({
             </div>
           ) : null}
 
-          {ride.timeline.length > 0 ? (
-            <div>
-              <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                Trip timeline
-              </p>
-              <ol className="mt-2 space-y-3 border-l border-border pl-1">
-                {ride.timeline.map((e, i) => (
-                  <TimelineRow key={i} event={e} />
-                ))}
-              </ol>
-            </div>
-          ) : null}
+          <div>
+            <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+              Trip timeline
+            </p>
+            <ol className="mt-2 space-y-3 border-l border-border pl-1">
+              {ride.timeline.map((e, i) => (
+                <TimelineRow key={i} event={e} />
+              ))}
+            </ol>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 border-t border-border bg-surface/40 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-foreground transition-colors hover:bg-surface"
+          >
+            Close
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onMessageCustomer(ride.id)}
+              className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-foreground transition-colors hover:bg-surface"
+            >
+              Message customer
+            </button>
+            <button
+              type="button"
+              onClick={() => onMessageDriver(ride.id)}
+              disabled={!ride.driver}
+              className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-foreground transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Message driver
+            </button>
+            <button
+              type="button"
+              onClick={() => onCancelRide(ride.id)}
+              className="inline-flex h-9 items-center rounded-lg border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100"
+            >
+              Cancel ride
+            </button>
+          </div>
         </div>
       </div>
-
-      <style>{`
-        .ride-detail-modal-panel {
-          animation: rideDetailModalIn 0.22s ease-out;
-        }
-        @keyframes rideDetailModalIn {
-          from {
-            opacity: 0;
-            transform: scale(0.97) translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 }

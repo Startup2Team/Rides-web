@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useAdminNotifications } from "@/context/admin-notifications-context";
-import { isDemandAlertsEnabled } from "@/lib/demand-alerts";
 import { getSettings, updateCommissionSettings, updateNegotiationSettings, updateFareSettings } from "@/lib/api";
 import { Card } from "../_components";
 
@@ -44,13 +42,12 @@ type State = {
     payoutSummary: boolean;
     weeklyDigest: boolean;
     incidentEscalation: boolean;
-    demandSpikeAlerts: boolean;
   };
 };
 
 const initial: State = {
   commission: { moto: "12", cab: "15", hilux: "16", fuso: "18" },
-  negotiation: { maxRounds: "3", responseTimeoutSec: "15", maskedCallSec: "30" },
+  negotiation: { maxRounds: "4", responseTimeoutSec: "15", maskedCallSec: "30" },
   fares: {
     motoBase: "500",
     motoPerKm: "180",
@@ -81,7 +78,6 @@ const initial: State = {
     payoutSummary: true,
     weeklyDigest: true,
     incidentEscalation: true,
-    demandSpikeAlerts: true,
   },
 };
 
@@ -182,11 +178,9 @@ export function SettingsConsole() {
   const [state, setState] = useState<State>(initial);
   const [savedState, setSavedState] = useState<State>(initial);
   const [toast, setToast] = useState<string | null>(null);
-  const { setDemandAlertsEnabled } = useAdminNotifications();
 
   // Load real settings from backend
   useEffect(() => {
-    const demandSpikeAlerts = isDemandAlertsEnabled();
     getSettings()
       .then((s) => {
         const mapped: Partial<State> = {};
@@ -229,15 +223,7 @@ export function SettingsConsole() {
             drivers: Number(r.driverCount ?? 0),
           }));
         }
-        const merged = {
-          ...initial,
-          ...mapped,
-          notifications: {
-            ...initial.notifications,
-            ...(mapped.notifications ?? {}),
-            demandSpikeAlerts,
-          },
-        };
+        const merged = { ...initial, ...mapped };
         setState(merged);
         setSavedState(merged);
       })
@@ -342,7 +328,7 @@ export function SettingsConsole() {
       {tab === "negotiation" ? (
         <Card title="Negotiation rules">
           <div className="grid gap-4 p-5 sm:grid-cols-3">
-            <Field label="Max fare chat offers">
+            <Field label="Max rounds">
               <NumberInput
                 value={state.negotiation.maxRounds}
                 onChange={(v) =>
@@ -362,7 +348,7 @@ export function SettingsConsole() {
                 suffix="sec"
               />
             </Field>
-            <Field label="Phone call log window" suffix="sec">
+            <Field label="Masked call max" suffix="sec">
               <NumberInput
                 value={state.negotiation.maskedCallSec}
                 onChange={(v) =>
@@ -373,10 +359,8 @@ export function SettingsConsole() {
             </Field>
           </div>
           <p className="border-t border-border px-5 py-3 text-[11px] text-muted-foreground">
-            Riders and drivers may send up to this many price offers in fare chat inside the app.
-            When negotiation ends — agreed or not — chat closes and{" "}
-            <span className="font-medium text-foreground">Call</span> unlocks so they can ring each
-            other on their phone (outside Taravelis, via the device dialer).
+            If a side doesn't respond within the timeout, negotiation auto-fails and
+            both parties can rebook.
           </p>
         </Card>
       ) : null}
@@ -560,15 +544,6 @@ export function SettingsConsole() {
       {tab === "notifications" ? (
         <Card title="Admin notification rules">
           <div className="space-y-2 p-4">
-            <Toggle
-              checked={state.notifications.demandSpikeAlerts}
-              onChange={(v) => {
-                set("notifications", { ...state.notifications, demandSpikeAlerts: v });
-                setDemandAlertsEnabled(v);
-              }}
-              label="Live demand spike alerts"
-              description="Auto-notify admins when many riders wait at the same pickup — runs in the background every 30s."
-            />
             <Toggle
               checked={state.notifications.sosToOps}
               onChange={(v) =>

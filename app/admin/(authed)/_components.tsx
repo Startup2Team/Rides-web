@@ -79,11 +79,11 @@ export function Card({
   return (
     <div className="rounded-2xl border border-border bg-card">
       {title ? (
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 className="text-sm font-semibold tracking-tight text-foreground">
             {title}
           </h2>
-          {action ? <div className="w-full sm:w-auto">{action}</div> : null}
+          {action ? <div>{action}</div> : null}
         </div>
       ) : null}
       <div className={bodyClass}>{children}</div>
@@ -118,28 +118,12 @@ export function Avatar({
   name,
   tone = "primary",
   size = "md",
-  url,
 }: {
   name: string;
   tone?: "primary" | "neutral";
-  size?: "sm" | "md" | "lg";
-  url?: string | null;
+  size?: "sm" | "md";
 }) {
-  const sizeClass =
-    size === "sm"
-      ? "h-7 w-7 text-[10px]"
-      : size === "lg"
-      ? "h-20 w-20 text-2xl"
-      : "h-9 w-9 text-xs";
-  if (url) {
-    return (
-      <img
-        src={url}
-        alt={name}
-        className={`shrink-0 rounded-full object-cover ${sizeClass}`}
-      />
-    );
-  }
+  const sizeClass = size === "sm" ? "h-7 w-7 text-[10px]" : "h-9 w-9 text-xs";
   return (
     <span
       className={`flex shrink-0 items-center justify-center rounded-full font-bold ${sizeClass} ${
@@ -148,7 +132,7 @@ export function Avatar({
           : "bg-muted text-foreground/80 ring-1 ring-inset ring-border"
       }`}
     >
-      {name ? name.charAt(0).toUpperCase() : ""}
+      {name.charAt(0).toUpperCase()}
     </span>
   );
 }

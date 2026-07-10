@@ -1265,7 +1265,7 @@ Response `200`:
     "fuso": 18
   },
   "negotiation": {
-    "maxRounds": 3,
+    "maxRounds": 4,
     "responseTimeoutSec": 15,
     "maskedCallSec": 30
   },

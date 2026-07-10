@@ -1,25 +1,12 @@
 "use client";
 
-import { Fragment, useState, type ReactNode } from "react";
+import { useState } from "react";
 import { submitContact } from "@/lib/api";
-import { useTranslations } from "../i18n/context";
 
 type State = "idle" | "sending" | "success" | "error";
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-// Fills a "{token}" template with arbitrary React nodes, independent of token order —
-// translated templates may reorder tokens to fit the target language's grammar.
-function renderTemplate(template: string, values: Record<string, ReactNode>) {
-  return template.split(/(\{[a-zA-Z]+\})/g).map((part, i) => {
-    const match = part.match(/^\{([a-zA-Z]+)\}$/);
-    if (match && match[1] in values) {
-      return <Fragment key={i}>{values[match[1]]}</Fragment>;
-    }
-    return part;
-  });
 }
 
 // Derive a subject from the first sentence (or first 60 chars) of the message.
@@ -33,7 +20,6 @@ function deriveSubject(message: string): string {
 }
 
 export function ContactForm() {
-  const t = useTranslations("contactForm");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -43,16 +29,16 @@ export function ContactForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const errors: Record<"name" | "email" | "message", string | null> = {
-    name: !name.trim() ? t("errNameRequired") : null,
+    name: !name.trim() ? "Please enter your name." : null,
     email: !email.trim()
-      ? t("errEmailRequired")
+      ? "Please enter your email."
       : !isValidEmail(email)
-        ? t("errEmailInvalid")
+        ? "Enter a valid email address."
         : null,
     message: !message.trim()
-      ? t("errMessageRequired")
+      ? "Tell us what we can help with."
       : message.trim().length < 10
-        ? t("errMessageShort")
+        ? "Add a bit more detail (at least 10 characters)."
         : null,
   };
 
@@ -80,7 +66,7 @@ export function ContactForm() {
       setSubmittedId(receipt.id);
       setState("success");
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : t("genericErrorFallback"));
+      setErrorMessage(err instanceof Error ? err.message : "Could not send message.");
       setState("error");
     }
   }
@@ -104,27 +90,22 @@ export function ContactForm() {
           </svg>
         </div>
         <h3 className="mt-5 text-xl font-bold tracking-[-0.02em] text-foreground">
-          {t("successTitle")}
+          Message received
         </h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          {renderTemplate(t("successBody"), {
-            name: name.split(" ")[0],
-            id: (
-              <span className="font-mono text-xs font-semibold text-foreground">
-                {submittedId?.slice(0, 8)}
-              </span>
-            ),
-            email: (
-              <span className="font-semibold text-foreground">{email}</span>
-            ),
-          })}
+          Thanks {name.split(" ")[0]} — we&apos;ve logged your message as{" "}
+          <span className="font-mono text-xs font-semibold text-foreground">
+            {submittedId?.slice(0, 8)}
+          </span>
+          . We&apos;ll write back to{" "}
+          <span className="font-semibold text-foreground">{email}</span>.
         </p>
         <button
           type="button"
           onClick={resetForm}
           className="mt-6 inline-flex h-11 items-center rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-alt"
         >
-          {t("sendAnother")}
+          Send another
         </button>
       </div>
     );
@@ -141,7 +122,7 @@ export function ContactForm() {
     <form onSubmit={handleSubmit} noValidate className="space-y-6">
       <label className="block">
         <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          {t("nameLabel")}
+          Your name
         </span>
         <input
           value={name}
@@ -158,7 +139,7 @@ export function ContactForm() {
 
       <label className="block">
         <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          {t("emailLabel")}
+          Your email
         </span>
         <input
           type="email"
@@ -176,7 +157,7 @@ export function ContactForm() {
 
       <label className="block">
         <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          {t("messageLabel")}
+          Enter your message
         </span>
         <textarea
           value={message}
@@ -200,17 +181,17 @@ export function ContactForm() {
           {state === "sending" ? (
             <>
               <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground" />
-              {t("sending")}
+              Sending…
             </>
           ) : (
-            t("submit")
+            "Submit now"
           )}
         </button>
       </div>
 
       {state === "error" ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
-          {errorMessage ?? t("genericErrorFallback")}
+          {errorMessage ?? "Something went wrong. Please try again."}
         </p>
       ) : null}
     </form>

@@ -1,7 +1,66 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSection, useTranslations } from "../../i18n/context";
+
+// ── Data ─────────────────────────────────────────────────────────────────────
+
+const ABOUT_BULLETS = [
+  {
+    title: "Transparency from the first tap",
+    body: "Riders see the route, estimated time, distance, and fare before the trip begins. Drivers know what they're earning before they accept a ride. No surprises. No hidden calculations.",
+  },
+  {
+    title: "Fairness through choice",
+    body: "Pricing should be a conversation, not a decision made by an algorithm alone. Riders and drivers can negotiate the fare before the journey starts, reaching an agreement that works for both sides.",
+  },
+  {
+    title: "Safety within reach",
+    body: "Safety isn't an afterthought. One-tap SOS support, verified identities, document checks, and a responsive support team — every ride built on a safer foundation.",
+  },
+  {
+    title: "Mutual respect by design",
+    body: "Rides is built for the people who make every journey possible — riders and drivers alike. Trust, respect, and fairness are part of every interaction.",
+  },
+  {
+    title: "Trust through action",
+    body: "Anyone can claim to care about transparency and fairness. We demonstrate it through the choices we make, the features we build, and the way we serve our community every day.",
+  },
+];
+
+const FAQS = [
+  {
+    q: "What is Rides?",
+    a: "Rides is an app designed to make transportation more transparent, fair, and safe for both riders and drivers.",
+  },
+  {
+    q: "Is Rides available now?",
+    a: "Yes. Rides is officially live and available for users.",
+  },
+  {
+    q: "How is Rides different from other apps?",
+    a: "Rides focuses on transparency and fairness. Riders see clear trip details before confirming a ride, and drivers understand their earnings upfront. We also allow fare negotiation between riders and drivers.",
+  },
+  {
+    q: "How does price negotiation work?",
+    a: "Before a trip starts, riders and drivers agree on a fare. Once both sides accept, the ride is confirmed. This ensures both parties agree on the price before the journey begins.",
+  },
+  {
+    q: "How does safety work on Rides?",
+    a: "Verified IDs, document checks on every driver, a one-tap emergency button, and a 24/7 support team you can reach during or after a trip.",
+  },
+  {
+    q: "Do I need a wallet to use Rides?",
+    a: "No wallet is required. Payments are handled directly between riders and drivers based on the agreed fare.",
+  },
+  {
+    q: "Where is Rides available?",
+    a: "Rides is currently available in selected cities, with more locations being added as we grow.",
+  },
+  {
+    q: "How can I start using Rides?",
+    a: "You can download the app, create an account, and start booking rides immediately where the service is available.",
+  },
+];
 
 // ── Reveal on scroll ─────────────────────────────────────────────────────────
 
@@ -130,8 +189,6 @@ export default function AboutPage() {
   const r1 = useReveal();
   const r2 = useReveal();
   const r3 = useReveal();
-  const t = useTranslations("about");
-  const about = useSection("about");
 
   return (
     <main className="flex-1 overflow-x-hidden bg-background">
@@ -154,10 +211,10 @@ export default function AboutPage() {
           {/* Left — copy. One focal moment: the headline. */}
           <div className="relative z-10">
             <h1 className="text-balance text-[2rem] font-semibold leading-[1.05] tracking-[-0.022em] text-muted-foreground sm:text-[3.25rem] lg:text-[3.75rem]">
-              {t("heroHeadline")}
+              A better way to move. Designed for real journeys.
             </h1>
             <p className="mt-8 max-w-lg text-pretty text-base leading-[1.5] text-muted-foreground lg:text-[1.0625rem]">
-              {t("heroSub")}
+              Transparent pricing. Fair negotiation. Safer rides.
             </p>
           </div>
 
@@ -220,13 +277,16 @@ export default function AboutPage() {
 
           <div className="lg:pl-8">
             <h2 className="text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[3.25rem]">
-              {t("welcomeHeading")}
+              Why we built Rides.
             </h2>
             <p className="mt-5 text-pretty text-base leading-[1.55] text-muted-foreground lg:text-[1.0625rem]">
-              {t("welcomeP1")}
+              Transportation should be fair, transparent, and built around the
+              people who use it not the other way around.
             </p>
             <p className="mt-4 text-pretty text-base leading-[1.55] text-muted-foreground lg:text-[1.0625rem]">
-              {t("welcomeP2")}
+              Rides gives riders and drivers the trip details, the fare logic,
+              and the freedom to negotiate before the trip begins. Trust comes
+              from transparency. Fairness comes from choice.
             </p>
           </div>
         </div>
@@ -250,10 +310,10 @@ export default function AboutPage() {
           </div>
           <div>
             <h2 className="text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[3.25rem]">
-              {t("standForHeading")}
+              What we stand for.
             </h2>
             <ul className="mt-8 space-y-5">
-              {about.bullets.map((b) => (
+              {ABOUT_BULLETS.map((b) => (
                 <li key={b.title} className="flex gap-4">
                   <span className="mt-1.5 flex h-2.5 w-2.5 shrink-0 rounded-full bg-primary ring-4 ring-primary/15" />
                   <div>
@@ -280,11 +340,11 @@ export default function AboutPage() {
           }`}
         >
           <h2 className="text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[3.25rem]">
-            {t("faqHeading")}
+            Frequently asked questions.
           </h2>
 
           <ul className="mt-10 divide-y divide-border border-y border-border">
-            {about.faqs.map((item) => (
+            {FAQS.map((item) => (
               <li key={item.q}>
                 <details className="group">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-base font-semibold text-foreground transition-colors hover:text-primary sm:text-lg [&::-webkit-details-marker]:hidden">

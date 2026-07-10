@@ -113,12 +113,6 @@ const icons = {
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </Icon>
   ),
-  profile: (
-    <Icon>
-      <circle cx="12" cy="8" r="4" />
-      <path d="M5 20a7 7 0 0 1 14 0" />
-    </Icon>
-  ),
   packages: (
     <Icon>
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -209,6 +203,7 @@ const groups: {
   {
     label: "Trust",
     items: [
+      { label: "Safety Center", href: "/admin/safety-center", icon: icons.safety },
       { label: "Support", href: "/admin/support", icon: icons.support },
       { label: "Inbox", href: "/admin/inbox", icon: icons.inbox },
     ],
@@ -225,8 +220,10 @@ const groups: {
   {
     label: "System",
     items: [
-      { label: "Profile", href: "/admin/profile", icon: icons.profile },
+      { label: "System Settings", href: "/admin/settings", icon: icons.settings },
       { label: "Admins & Roles", href: "/admin/team", icon: icons.team },
+      { label: "API Docs", href: "/admin/api-docs", icon: icons.reports },
+      { label: "Audit Log", href: "/admin/audit", icon: icons.audit },
     ],
   },
 ];
@@ -273,12 +270,9 @@ export function AdminSidebar({
       for (const group of groups) {
         for (const item of group.items) {
           if (!item.children) continue;
-          const childMatch = item.children.some(
-            (child) => pathname === child.href || pathname.startsWith(`${child.href}/`),
-          );
           const parentMatch =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
-          if (parentMatch || childMatch) next.add(item.href);
+          if (parentMatch) next.add(item.href);
         }
       }
       return next;
@@ -340,10 +334,7 @@ export function AdminSidebar({
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-5">
         {groups.map((group) => {
           const items = ready
-            ? group.items.filter((item) => {
-                if (!item.children) return hasPermission(permissions, item.href);
-                return item.children.some((child) => hasPermission(permissions, child.href));
-              })
+            ? group.items.filter((item) => hasPermission(permissions, item.href))
             : group.items;
           if (items.length === 0) return null;
           return (
@@ -355,13 +346,10 @@ export function AdminSidebar({
                     ? pathname === "/admin"
                     : pathname === item.href ||
                       pathname.startsWith(`${item.href}/`);
-                const childMatch = item.children?.some(
-                  (child) => pathname === child.href || pathname.startsWith(`${child.href}/`),
-                );
 
                 if (item.children) {
                   const isOpen = expanded.has(item.href);
-                  const parentExactActive = parentMatch || childMatch;
+                  const parentExactActive = parentMatch;
                   return (
                     <li key={item.href}>
                       <div
@@ -404,7 +392,7 @@ export function AdminSidebar({
                       </div>
                       {isOpen ? (
                         <ul className="mt-0.5 space-y-0.5 pl-9">
-                          {item.children.filter((child) => !ready || hasPermission(permissions, child.href)).map((child) => {
+                          {item.children.map((child) => {
                             const childActive = isChildActive(
                               child.href,
                               pathname,

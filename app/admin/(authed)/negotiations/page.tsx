@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { AdminPageHeader } from "../_components";
 import { NegotiationsStatsCards } from "./negotiations-stats";
 import { NegotiationsConsole } from "./negotiations-console";
@@ -14,14 +13,12 @@ export default function AdminNegotiationsPage() {
       <AdminPageHeader
         eyebrow="Operations"
         title="Fare negotiations"
-        subtitle="Clean agreed prices between riders and drivers — rider offer, final fare, and who was involved."
+        subtitle="Audit every offer, counter-offer, and outcome across the platform."
       />
 
       <NegotiationsStatsCards />
 
-      <Suspense fallback={null}>
-        <NegotiationsConsole />
-      </Suspense>
+      <NegotiationsConsole />
     </div>
   );
 }

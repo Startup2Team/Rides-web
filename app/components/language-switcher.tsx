@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useLocale } from "../i18n/context";
-import type { Locale } from "../i18n/config";
 
 /* ── Language metadata ───────────────────────────────────────────────────── */
 
+type LangCode = "en" | "fr" | "rw";
+
 const LANGUAGES: ReadonlyArray<{
-  code: Locale;
+  code: LangCode;
   label: string;
   Flag: () => React.JSX.Element;
 }> = [
@@ -16,13 +16,23 @@ const LANGUAGES: ReadonlyArray<{
   { code: "rw", label: "Kinyarwanda", Flag: FlagRW },
 ];
 
+const STORAGE_KEY = "rides-language";
+
 /* ── Component ───────────────────────────────────────────────────────────── */
 
 export function LanguageSwitcher() {
   const [open, setOpen] = useState(false);
-  const { locale: current, setLocale } = useLocale();
+  const [current, setCurrent] = useState<LangCode>("en");
   const wrapperRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Restore previously-selected language on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === "en" || saved === "fr" || saved === "rw") {
+      setCurrent(saved);
+    }
+  }, []);
 
   // Close on click-outside / Escape
   useEffect(() => {
@@ -46,9 +56,11 @@ export function LanguageSwitcher() {
     };
   }, [open]);
 
-  function selectLanguage(code: Locale) {
-    setLocale(code);
+  function selectLanguage(code: LangCode) {
+    setCurrent(code);
     setOpen(false);
+    localStorage.setItem(STORAGE_KEY, code);
+    // i18next.changeLanguage(code) — wire up when translation pipeline is added
   }
 
   const active = LANGUAGES.find((l) => l.code === current) ?? LANGUAGES[0];

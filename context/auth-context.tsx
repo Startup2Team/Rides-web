@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getAccount, getRoles, type AdminAccount, NO_BACKEND } from "@/lib/api";
+import { getAccount, getRoles, type AdminAccount } from "@/lib/api";
 import { clearToken } from "@/lib/auth";
 import {
   type Permission,
@@ -19,7 +19,7 @@ import {
 
 export type AuthUser = Pick<
   AdminAccount,
-  "id" | "name" | "email" | "role_id" | "role_name" | "two_factor" | "phone" | "photo_url" | "photoUrl"
+  "id" | "name" | "email" | "role_id" | "role_name" | "two_factor"
 >;
 
 type AuthContextValue = {
@@ -42,6 +42,8 @@ const AuthContext = createContext<AuthContextValue>({
   refreshUser: async () => {},
 });
 
+const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+
 const MOCK_USER: AuthUser = {
   id: "mock-admin",
   name: "Admin (Mock)",
@@ -49,9 +51,6 @@ const MOCK_USER: AuthUser = {
   role_id: "mock-role",
   role_name: "super_admin",
   two_factor: false,
-  phone: "+250 788 123 456",
-  photo_url: null,
-  photoUrl: null,
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -80,9 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: account.id,
         name: account.name,
         email: account.email,
-        phone: account.phone,
-        photo_url: account.photo_url || account.photoUrl || null,
-        photoUrl: account.photo_url || account.photoUrl || null,
         role_id: account.role_id,
         role_name: account.role_name,
         two_factor: account.two_factor,

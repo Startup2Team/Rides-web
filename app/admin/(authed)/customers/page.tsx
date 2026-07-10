@@ -1,4 +1,5 @@
 import { AdminPageHeader } from "../_components";
+import { CustomerStats } from "./customer-stats";
 import { CustomersTable } from "./customers-table";
 
 export const metadata = {
@@ -14,6 +15,8 @@ export default function AdminCustomersPage() {
         title="Customer accounts"
         subtitle="Search, segment, and manage riders across the platform."
       />
+
+      <CustomerStats />
 
       <CustomersTable />
     </div>

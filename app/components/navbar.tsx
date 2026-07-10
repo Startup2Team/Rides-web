@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LanguageSwitcher } from "./language-switcher";
-import { useTranslations } from "../i18n/context";
 
 function isLinkActive(
   href: string,
@@ -21,13 +20,13 @@ function isLinkActive(
 }
 
 const navLinks = [
-  { labelKey: "home", href: "/" },
-  { labelKey: "features", href: "/#features" },
-  { labelKey: "howItWorks", href: "/#how-it-works" },
-  { labelKey: "drivers", href: "/drivers" },
-  { labelKey: "about", href: "/about" },
-  { labelKey: "contact", href: "/contact" },
-] as const;
+  { label: "Home", href: "/" },
+  { label: "Features", href: "/#features" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Drivers", href: "/drivers" },
+  { label: "About", href: "/about" },
+  { label: "Contact", href: "/contact" },
+];
 
 const SCROLL_STASH_KEY = "rides-pending-scroll";
 
@@ -41,7 +40,6 @@ function smoothScrollToId(id: string) {
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const t = useTranslations("nav");
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navRef = useRef<HTMLElement>(null);
@@ -204,7 +202,7 @@ export default function Navbar() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t(link.labelKey)}
+                {link.label}
               </Link>
             );
           })}
@@ -228,7 +226,7 @@ export default function Navbar() {
             onClick={(e) => handleNavClick(e, "/#download")}
             className="hidden h-11 items-center justify-center rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:scale-[1.02] hover:bg-foreground active:scale-[0.98] sm:inline-flex"
           >
-            {t("download")}
+            Download App
           </Link>
 
           <button
@@ -304,7 +302,7 @@ export default function Navbar() {
                       className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary"
                     />
                   ) : null}
-                  {t(link.labelKey)}
+                  {link.label}
                 </Link>
               );
             })}
@@ -317,7 +315,7 @@ export default function Navbar() {
               tabIndex={mobileOpen ? 0 : -1}
               className="mt-3 flex h-12 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-md shadow-primary/30 sm:hidden"
             >
-              {t("download")}
+              Download App
             </Link>
           </nav>
         </div>
