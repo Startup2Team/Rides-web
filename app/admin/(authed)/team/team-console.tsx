@@ -19,6 +19,7 @@ import {
   resetMember2FA,
   updateRolePermissions,
   getStaffAnalytics,
+  sendWelcomeEmail,
   type TeamMember,
   type StaffAnalytics,
 } from "@/lib/api";
@@ -838,10 +839,14 @@ export function TeamConsole() {
               },
               ...prev,
             ]);
+            if (tempPassword) {
+              const loginUrl = `${window.location.origin}/admin/login`;
+              sendWelcomeEmail(member.id, tempPassword, loginUrl).catch(() => {});
+            }
             setToast(
               status === "Active"
-                ? `${name} can sign in — share the temporary password you set`
-                : `${name} invited — set a password before they can sign in`,
+                ? `${name} invited — welcome email sent with credentials`
+                : `${name} invited — welcome email sent`,
             );
           } catch {
             setToast("Invite failed — check email is unique and try again");
