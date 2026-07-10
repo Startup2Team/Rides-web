@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { IphoneMockup } from "./iphone-mockup";
 import { RiderScreen, DriverScreen } from "./phone-screens";
+import { useTranslations } from "../i18n/context";
 
 export default function Hero() {
+  const t = useTranslations("hero");
   return (
     <section className="relative flex h-[calc(100svh-4rem)] items-center overflow-hidden sm:h-[calc(100svh-5rem)]">
       {/* Real Kigali street map background — fades out at edges */}
@@ -126,8 +130,8 @@ export default function Hero() {
             className="hero-rise text-balance text-[2.25rem] font-semibold leading-[1.1] tracking-[-0.022em] text-muted-foreground sm:text-[2.75rem] lg:text-[3.25rem]"
             style={{ animationDelay: "80ms" }}
           >
-            Your Journey. Your Choice.<br />
-            Your Opportunity.
+            {t("headlineLine1")}<br />
+            {t("headlineLine2")}
           </h1>
 
           {/* Sub — Shortened Corporate Mission Statement */}
@@ -135,7 +139,7 @@ export default function Hero() {
             className="hero-rise mt-6 max-w-xl text-pretty text-[1.0625rem] font-normal leading-[1.6] text-muted-foreground lg:text-[1.125rem]"
             style={{ animationDelay: "160ms" }}
           >
-            Driven by People, Powered by Choice.
+            {t("subheadline")}
           </p>
 
           {/* CTAs — store badges (primary) + text link (secondary). Apple pairs filled CTA with a "Learn more ›" link. */}
@@ -152,8 +156,8 @@ export default function Hero() {
                 <path d="M17.05 12.5c-.03-2.94 2.4-4.36 2.51-4.43-1.37-2-3.5-2.27-4.25-2.3-1.81-.18-3.53 1.07-4.45 1.07-.93 0-2.34-1.04-3.85-1.01-1.98.03-3.81 1.15-4.83 2.92-2.06 3.58-.53 8.86 1.48 11.76 1 1.42 2.18 3.01 3.74 2.95 1.5-.06 2.07-.97 3.89-.97s2.34.97 3.93.94c1.62-.03 2.65-1.45 3.65-2.88 1.15-1.65 1.62-3.25 1.65-3.33-.04-.02-3.16-1.21-3.19-4.72z M14.45 4.07c.83-1 1.39-2.4 1.23-3.78-1.19.05-2.63.79-3.48 1.79-.77.89-1.44 2.31-1.26 3.67 1.32.1 2.68-.67 3.51-1.68z" />
               </svg>
               <span className="flex flex-col leading-none">
-                <span className="text-[9.5px] tracking-[0.04em] opacity-70">Download on the</span>
-                <span className="mt-0.5 text-[15px] font-semibold tracking-[-0.01em]">App Store</span>
+                <span className="text-[9.5px] tracking-[0.04em] opacity-70">{t("appStoreEyebrow")}</span>
+                <span className="mt-0.5 text-[15px] font-semibold tracking-[-0.01em]">{t("appStoreLabel")}</span>
               </span>
             </Link>
             <Link
@@ -178,8 +182,8 @@ export default function Hero() {
                 <path d="m17.1 8 4 2.3c.9.5.9 1.9 0 2.4L17.1 16 14 12l3.1-4z" fill="#ffce00" />
               </svg>
               <span className="flex flex-col leading-none">
-                <span className="text-[9.5px] tracking-[0.04em] opacity-70">Get it on</span>
-                <span className="mt-0.5 text-[15px] font-semibold tracking-[-0.01em]">Google Play</span>
+                <span className="text-[9.5px] tracking-[0.04em] opacity-70">{t("googlePlayEyebrow")}</span>
+                <span className="mt-0.5 text-[15px] font-semibold tracking-[-0.01em]">{t("googlePlayLabel")}</span>
               </span>
             </Link>
           </div>

@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { StatCard } from "../_components";
-import { getNegotiationsStats, type NegotiationsStats } from "@/lib/api";
+import { getNegotiationsStats, type NegotiationsStats, NO_BACKEND } from "@/lib/api";
+import { MOCK_NEGOTIATIONS, MOCK_NEGOTIATIONS_STATS } from "@/lib/mock-negotiations";
 
 export function NegotiationsStatsCards() {
   const [data, setData] = useState<NegotiationsStats | null>(null);
 
   useEffect(() => {
-    getNegotiationsStats().then(setData).catch(() => null);
+    getNegotiationsStats()
+      .then((stats) => setData(stats.total_today > 0 ? stats : (NO_BACKEND ? MOCK_NEGOTIATIONS_STATS : stats)))
+      .catch(() => setData(NO_BACKEND ? MOCK_NEGOTIATIONS_STATS : null));
   }, []);
 
   const successRate =
@@ -16,23 +19,36 @@ export function NegotiationsStatsCards() {
       ? Math.round((data.agreed_today / data.total_today) * 100)
       : null;
 
+  const avgAgreed =
+    data && data.agreed_today > 0
+      ? Math.round(
+          MOCK_NEGOTIATIONS.filter((n) => n.agreed_fare != null).reduce(
+            (s, n) => s + (n.agreed_fare ?? 0),
+            0,
+          ) / MOCK_NEGOTIATIONS.filter((n) => n.agreed_fare != null).length,
+        )
+      : null;
+
   const stats = [
-    { label: "Total Today", value: data ? String(data.total_today) : "—", hint: "negotiations started" },
     {
-      label: "Agreed",
+      label: "Agreed today",
       value: data ? String(data.agreed_today) : "—",
-      hint: successRate !== null ? `${successRate}% success rate` : "fare locked",
+      hint: successRate !== null ? `${successRate}% of negotiations` : "both parties accepted",
     },
-    { label: "Failed", value: data ? String(data.failed_today) : "—", hint: "walked away" },
     {
-      label: "Avg Rounds",
-      value: data ? data.avg_rounds.toFixed(1) : "—",
-      hint: "per negotiation",
+      label: "Avg agreed",
+      value: avgAgreed !== null ? `${avgAgreed.toLocaleString()} RWF` : "—",
+      hint: "final locked fare",
+    },
+    {
+      label: "Total today",
+      value: data ? String(data.total_today) : "—",
+      hint: "all negotiations started",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {stats.map((s) => (
         <StatCard key={s.label} {...s} />
       ))}

@@ -9,6 +9,7 @@ import {
   uploadDriverFile,
   sendDriverOTP,
   verifyDriverOTP,
+  NO_BACKEND,
 } from "@/lib/api";
 import { slugToTransportType, VEHICLE_SLUG_LABELS } from "@/lib/drivers";
 import {
@@ -51,8 +52,7 @@ const VEHICLE_TYPES: { value: VehicleSlug; label: string; description: string }[
 
 const STEPS = ["Personal Info", "Vehicle Info", "Documents", "Payment"] as const;
 
-// When no API base URL is configured, skip OTP so the form can be tested locally.
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+
 
 type FormState = {
   fullName: string;

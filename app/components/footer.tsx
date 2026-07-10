@@ -1,24 +1,28 @@
+"use client";
+
 import Link from "next/link";
+import { useTranslations } from "../i18n/context";
 
 const productLinks = [
-  { label: "Features", href: "/#features" },
-  { label: "How It Works", href: "/#how-it-works" },
-  { label: "Drivers", href: "/drivers" },
-  { label: "Download App", href: "/#download" },
-];
+  { labelKey: "features", href: "/#features" },
+  { labelKey: "howItWorks", href: "/#how-it-works" },
+  { labelKey: "drivers", href: "/drivers" },
+  { labelKey: "download", href: "/#download" },
+] as const;
 
 const companyLinks = [
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
-];
-
-const legalLinks = [
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Terms of Service", href: "/terms" },
-];
+  { labelKey: "about", href: "/about" },
+  { labelKey: "contact", href: "/contact" },
+] as const;
 
 export default function Footer() {
   const year = new Date().getFullYear();
+  const t = useTranslations("nav");
+  const tf = useTranslations("footer");
+  const legalLinks = [
+    { label: tf("privacyPolicy"), href: "/privacy" },
+    { label: tf("termsOfService"), href: "/terms" },
+  ];
 
   return (
     <footer className="border-t border-border bg-background">
@@ -32,11 +36,10 @@ export default function Footer() {
               </span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              People-powered mobility and logistics — connecting riders,
-              drivers, and communities across Africa and beyond.
+              {tf("tagline")}
             </p>
             <p className="mt-2 text-xs italic text-muted-foreground/60">
-              &ldquo;Driven by People, Powered by Choice.&rdquo;
+              {tf("quote")}
             </p>
 
             <div className="mt-6 flex items-center gap-2">
@@ -75,7 +78,7 @@ export default function Footer() {
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-7">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
-                Product
+                {tf("product")}
               </p>
               <ul className="mt-4 space-y-3">
                 {productLinks.map((link) => (
@@ -84,7 +87,7 @@ export default function Footer() {
                       href={link.href}
                       className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
-                      {link.label}
+                      {t(link.labelKey)}
                     </Link>
                   </li>
                 ))}
@@ -93,7 +96,7 @@ export default function Footer() {
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
-                Company
+                {tf("company")}
               </p>
               <ul className="mt-4 space-y-3">
                 {companyLinks.map((link) => (
@@ -102,7 +105,7 @@ export default function Footer() {
                       href={link.href}
                       className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
-                      {link.label}
+                      {t(link.labelKey)}
                     </Link>
                   </li>
                 ))}
@@ -111,7 +114,7 @@ export default function Footer() {
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
-                Legal
+                {tf("legal")}
               </p>
               <ul className="mt-4 space-y-3">
                 {legalLinks.map((link) => (
@@ -131,19 +134,19 @@ export default function Footer() {
 
         <div className="mt-12 flex flex-col-reverse items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
           <p className="text-xs text-muted-foreground">
-            © {year} Rides. All rights reserved.
+            © {year} Rides. {tf("rightsReserved")}
           </p>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
-              Privacy
+              {tf("privacy")}
             </Link>
             <span className="h-3 w-px bg-border" />
             <Link href="/terms" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
-              Terms
+              {tf("terms")}
             </Link>
             <span className="h-3 w-px bg-border" />
             <Link href="/about" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
-              About
+              {t("about")}
             </Link>
           </div>
         </div>

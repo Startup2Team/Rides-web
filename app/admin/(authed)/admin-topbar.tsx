@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
+import { useAdminNotifications } from "@/context/admin-notifications-context";
 import { getDrivers, getCustomers, getRides } from "@/lib/api";
 
 function initialsFrom(name: string | undefined, email: string | undefined): string {
@@ -88,63 +89,6 @@ function Icon({ children }: { children: ReactNode }) {
   );
 }
 
-type Notification = {
-  id: string;
-  tone: "danger" | "warn" | "info";
-  title: string;
-  detail: string;
-  time: string;
-  unread: boolean;
-  href: string;
-};
-
-const notifications: Notification[] = [
-  {
-    id: "n1",
-    tone: "danger",
-    title: "SOS triggered on ride #4821",
-    detail: "Aiden M. · Kimironko area",
-    time: "Just now",
-    unread: true,
-    href: "/admin/safety-center",
-  },
-  {
-    id: "n2",
-    tone: "warn",
-    title: "Driver complaint received",
-    detail: "Unsafe driving · Trip #4815",
-    time: "14m ago",
-    unread: true,
-    href: "/admin/support",
-  },
-  {
-    id: "n3",
-    tone: "warn",
-    title: "Possible fraud detected",
-    detail: "Unusual cancellation pattern · 3 accounts",
-    time: "32m ago",
-    unread: true,
-    href: "/admin/safety-center",
-  },
-  {
-    id: "n4",
-    tone: "info",
-    title: "Payment gateway latency",
-    detail: "MoMo API responding above threshold",
-    time: "1h ago",
-    unread: false,
-    href: "/admin/settings",
-  },
-  {
-    id: "n5",
-    tone: "info",
-    title: "New driver application",
-    detail: "Florence I. submitted documents",
-    time: "2h ago",
-    unread: false,
-    href: "/admin/drivers",
-  },
-];
 
 export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}) {
   const router = useRouter();
@@ -158,6 +102,7 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
   const [signingOut, setSigningOut] = useState(false);
 
   const { user, ready } = useAuth();
+  const { notifications, unreadCount, markAllRead, markRead } = useAdminNotifications();
   const displayName = user?.name?.trim() || user?.email?.split("@")[0] || "Account";
   const displayEmail = user?.email ?? "";
   const initials = useMemo(() => initialsFrom(user?.name, user?.email), [user?.name, user?.email]);
@@ -166,6 +111,8 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+
+
 
   // Debounced global search
   useEffect(() => {
@@ -229,8 +176,6 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
-
-  const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
     <header className="sticky top-0 z-30 grid h-20 shrink-0 grid-cols-[1fr_minmax(0,28rem)_1fr] items-center gap-4 border-b border-border/60 bg-card/70 px-4 backdrop-blur-xl backdrop-saturate-150 lg:px-6">
@@ -356,7 +301,11 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                     </span>
                   ) : null}
                 </div>
-                <button className="text-[11px] font-medium text-muted-foreground hover:text-primary">
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="text-[11px] font-medium text-muted-foreground hover:text-primary"
+                >
                   Mark all read
                 </button>
               </div>
@@ -365,7 +314,10 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                   <li key={n.id}>
                     <Link
                       href={n.href}
-                      onClick={() => setOpenNotif(false)}
+                      onClick={() => {
+                        markRead(n.id);
+                        setOpenNotif(false);
+                      }}
                       className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface ${
                         n.unread ? "bg-primary/[0.02]" : ""
                       }`}
@@ -427,9 +379,17 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
             }}
             className="flex h-10 items-center gap-2.5 rounded-full border border-border bg-card pl-1 pr-3 transition-colors hover:bg-surface"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
+            <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
               {ready ? (
-                <span className="text-xs font-bold tracking-tight">{initials}</span>
+                user?.photo_url || user?.photoUrl ? (
+                  <img
+                    src={(user.photo_url || user.photoUrl) ?? undefined}
+                    alt={displayName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xs font-bold tracking-tight">{initials}</span>
+                )
               ) : (
                 <span className="block h-3 w-3 animate-pulse rounded-full bg-white/40" aria-hidden />
               )}
@@ -444,8 +404,16 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
           {openUser ? (
             <div className="absolute right-0 top-full mt-2 w-64 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
               <div className="flex items-center gap-3 border-b border-border bg-surface/40 px-4 py-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
-                  <span className="text-sm font-bold tracking-tight">{initials}</span>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
+                  {user?.photo_url || user?.photoUrl ? (
+                    <img
+                      src={(user.photo_url || user.photoUrl) ?? undefined}
+                      alt={displayName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-sm font-bold tracking-tight">{initials}</span>
+                  )}
                 </span>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold tracking-tight text-foreground">
@@ -469,7 +437,7 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                         <path d="M5 20a7 7 0 0 1 14 0" />
                       </Icon>
                     </span>
-                    Account settings
+                    Profile
                   </Link>
                 </li>
                 <li>
@@ -486,40 +454,6 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                     </span>
                     Settings
                   </Link>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="flex items-center justify-between gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <span className="text-muted-foreground">
-                        <Icon>
-                          <rect x="2" y="4" width="20" height="16" rx="2" />
-                          <path d="M6 8h.01M10 8h.01M14 8h.01M6 12h12M6 16h8" />
-                        </Icon>
-                      </span>
-                      Keyboard shortcuts
-                    </span>
-                    <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
-                      ?
-                    </kbd>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface"
-                  >
-                    <span className="text-muted-foreground">
-                      <Icon>
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                        <line x1="12" y1="17" x2="12.01" y2="17" />
-                      </Icon>
-                    </span>
-                    Help & support
-                  </a>
                 </li>
               </ul>
               <div className="border-t border-border p-1.5">

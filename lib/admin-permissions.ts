@@ -22,6 +22,7 @@ export type Permission =
   | "/admin/purchases"
   | "/admin/entitlements"
   | "/admin/audit-logs"
+  | "/admin/profile"
   | "/admin/settings"
   | "/admin/team"
   | "/admin/packages"
@@ -67,6 +68,7 @@ export const SIDEBAR_ITEMS: {
   { href: "/admin/purchases", label: "Purchases", group: "Monetization" },
   { href: "/admin/entitlements", label: "Entitlements", group: "Monetization" },
   { href: "/admin/audit-logs", label: "Audit Logs", group: "Monetization" },
+  { href: "/admin/profile", label: "Profile", group: "System" },
   { href: "/admin/settings", label: "System Settings", group: "System" },
   { href: "/admin/team", label: "Admins & Roles", group: "System" },
   { href: "/admin/packages", label: "Ride Packages", group: "System" },
@@ -165,6 +167,7 @@ export function normalizePermissions(raw: unknown): Permission[] {
     "/admin/purchases",
     "/admin/entitlements",
     "/admin/audit-logs",
+    "/admin/profile",
     "/admin/settings",
     "/admin/team",
     "/admin/packages",
@@ -196,7 +199,17 @@ export function resolveRole(
 export function hasPermission(permissions: Permission[], href: string): boolean {
   if (permissions.includes("*")) return true;
   const base = href.split("?")[0] ?? href;
+  if (base === "/admin/profile") {
+    return (
+      permissions.includes("/admin/profile") ||
+      permissions.includes("/admin/settings") ||
+      permissions.includes("/admin/audit")
+    );
+  }
   if (permissions.includes(base as Permission)) return true;
+  if (base.startsWith("/admin/drivers/") && permissions.includes("/admin/drivers")) {
+    return true;
+  }
   return false;
 }
 
