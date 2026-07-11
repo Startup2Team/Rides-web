@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Card } from "../_components";
 import {
@@ -9,22 +8,25 @@ import {
   periodLabel,
   readCustomRange,
   readPeriod,
+  type Period,
 } from "../_period-filter";
 import { exportGeneratedReport } from "./download-report";
 import { generateReport, type GeneratedReport, type ReportMeta } from "./report-content";
 import type { ReportFormat } from "./new-report-modal";
 import { NewReportModal, type ReportTemplate } from "./new-report-modal";
+import { CreateReportModal } from "./create-report-modal";
 import {
   buildScopeLabel,
   defaultReportFilters,
   EXPORT_TEMPLATES,
-  filterLabel,
   REPORT_CATEGORIES,
   type ExportTemplate,
   type ReportCategory,
 } from "./reports-templates";
 import { deleteReport, generateReport as logReportToBackend, getReports, type BackendReport } from "@/lib/api";
 import { MOCK_REPORTS } from "@/lib/mock-reports";
+import { useAuth } from "@/context/auth-context";
+import { saveReport, listSavedReports, getSavedReport, removeSavedReport } from "@/lib/report-store";
 
 const PAGE_SIZE = 12;
 
@@ -59,6 +61,7 @@ type DownloadRow = {
   generatedAtMs: number;
   size: string;
   createdBy: string;
+  hasContent?: boolean;
 };
 
 function readTemplateId(params: { get(k: string): string | null }): string {
@@ -85,8 +88,7 @@ function mapBackendReport(r: BackendReport): DownloadRow {
   };
 }
 
-function newLocalReport(template: ExportTemplate, scope: string, format: ReportFormat): DownloadRow {
-  const id = `RPT-${Date.now().toString(36).toUpperCase()}`;
+function newLocalReport(template: ExportTemplate, scope: string, format: ReportFormat, id: string): DownloadRow {
   const now = Date.now();
   return {
     id,
@@ -99,6 +101,23 @@ function newLocalReport(template: ExportTemplate, scope: string, format: ReportF
     generatedAtMs: now,
     size: format === "PDF" ? "~840 KB" : "~160 KB",
     createdBy: "You",
+    hasContent: true,
+  };
+}
+
+function mapSavedReport(r: ReturnType<typeof listSavedReports>[number]): DownloadRow {
+  return {
+    id: r.id,
+    templateId: r.templateId,
+    name: r.name,
+    category: (r.category as ReportCategory) ?? "Operations",
+    scope: r.scope,
+    format: r.format,
+    generatedAt: new Date(r.generatedAtMs).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
+    generatedAtMs: r.generatedAtMs,
+    size: r.format === "PDF" ? "~840 KB" : "~160 KB",
+    createdBy: r.createdBy,
+    hasContent: true,
   };
 }
 
@@ -112,10 +131,22 @@ function FormatIcon({ format }: { format: ReportFormat }) {
   );
 }
 
+function readUrlFilters(template: ExportTemplate, searchParams: any): Record<string, string> {
+  const out = defaultReportFilters(template);
+  for (const f of template.filters ?? []) {
+    const urlVal = searchParams.get(`f_${f.id}`);
+    if (urlVal !== null) {
+      out[f.id] = urlVal;
+    }
+  }
+  return out;
+}
+
 export function ReportsConsole() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { user, roleName } = useAuth();
 
   const period = readPeriod(searchParams);
   const customRange = readCustomRange(searchParams);
@@ -134,7 +165,7 @@ export function ReportsConsole() {
   );
 
   const [reportFilters, setReportFilters] = useState<Record<string, string>>(() =>
-    defaultReportFilters(selectedTemplate),
+    readUrlFilters(selectedTemplate, searchParams),
   );
   const [generatedReport, setGeneratedReport] = useState<GeneratedReport | null>(null);
   const [generatedForKey, setGeneratedForKey] = useState<string | null>(null);
@@ -149,6 +180,8 @@ export function ReportsConsole() {
   const [historyQuery, setHistoryQuery] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<"all" | ReportCategory>("all");
 
   const configKey = useMemo(
     () => JSON.stringify({ templateId, period, customRange, reportFilters }),
@@ -190,23 +223,31 @@ export function ReportsConsole() {
   );
 
   useEffect(() => {
-    setReportFilters(defaultReportFilters(selectedTemplate));
+    const openmodal = searchParams.get("openmodal");
+    if (openmodal === "true") {
+      setReportFilters(readUrlFilters(selectedTemplate, searchParams));
+    } else {
+      setReportFilters(defaultReportFilters(selectedTemplate));
+    }
     setGeneratedReport(null);
     setGeneratedForKey(null);
     setPreviewPage(1);
     setTableSearch("");
-  }, [templateId, selectedTemplate]);
+  }, [templateId, selectedTemplate, searchParams]);
 
   useEffect(() => {
+    const local = listSavedReports().map(mapSavedReport);
+    const localIds = new Set(local.map((r) => r.id));
+
     getReports({ limit: "50", offset: "0" })
       .then((res) => {
-        const list =
+        const backend =
           (res.reports ?? []).length > 0
             ? res.reports!.map(mapBackendReport)
             : MOCK_REPORTS.map(mapBackendReport);
-        setDownloads(list);
+        setDownloads([...local, ...backend.filter((r) => !localIds.has(r.id))]);
       })
-      .catch(() => setDownloads(MOCK_REPORTS.map(mapBackendReport)))
+      .catch(() => setDownloads([...local, ...MOCK_REPORTS.map(mapBackendReport).filter((r) => !localIds.has(r.id))]))
       .finally(() => setHistoryLoading(false));
   }, []);
 
@@ -269,13 +310,45 @@ export function ReportsConsole() {
     }
   }
 
+  useEffect(() => {
+    const openmodal = searchParams.get("openmodal");
+    if (openmodal === "true") {
+      setCreateOpen(true);
+      // Clean query parameter from browser URL bar without reloading
+      const next = new URLSearchParams(window.location.search);
+      next.delete("openmodal");
+      const qs = next.toString();
+      window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+    }
+  }, [searchParams]);
+
   async function handleExport(format: ReportFormat) {
     if (!generatedReport || isStale) return;
     setExporting(true);
     try {
       const slug = scopeLabel.replace(/\s+/g, "-").replace(/·/g, "").toLowerCase();
-      exportGeneratedReport(generatedReport, `${templateId}-${slug}`, format);
-      const row = newLocalReport(selectedTemplate, scopeLabel, format);
+      const id = `RPT-${Date.now().toString(36).toUpperCase()}`;
+      const pdfMeta = {
+        logoSrc: "/ridelogo-primary.png",
+        generatedByName: user?.name,
+        generatedByEmail: user?.email,
+        generatedByRole: roleName ?? undefined,
+      };
+      await exportGeneratedReport(generatedReport, `${templateId}-${slug}`, format, pdfMeta);
+
+      saveReport({
+        id,
+        templateId,
+        name: selectedTemplate.name,
+        category: selectedTemplate.category,
+        scope: scopeLabel,
+        format,
+        generatedAtMs: Date.now(),
+        createdBy: user?.name ?? "Admin",
+        report: generatedReport,
+        pdfMeta,
+      });
+      const row = newLocalReport(selectedTemplate, scopeLabel, format, id);
       setDownloads((prev) => [row, ...prev]);
       setToast(`${selectedTemplate.name} downloaded (${format})`);
 
@@ -283,15 +356,27 @@ export function ReportsConsole() {
         template: templateId,
         format,
         date_range: scopeLabel,
-        created_by: "Admin",
+        created_by: user?.name ?? "Admin",
       }).catch(() => {});
     } finally {
       setExporting(false);
     }
   }
 
+  async function redownload(row: DownloadRow) {
+    const saved = getSavedReport(row.id);
+    if (!saved) {
+      setToast("Original file isn't available for re-download on this device.");
+      return;
+    }
+    const slug = saved.scope.replace(/\s+/g, "-").replace(/·/g, "").toLowerCase();
+    await exportGeneratedReport(saved.report, `${saved.templateId}-${slug}`, saved.format, saved.pdfMeta);
+    setToast(`${saved.name} downloaded again`);
+  }
+
   function removeDownload(id: string) {
     setDownloads((prev) => prev.filter((r) => r.id !== id));
+    removeSavedReport(id);
     deleteReport(id).catch(() => {});
     setToast("Removed from download history");
   }
@@ -300,184 +385,135 @@ export function ReportsConsole() {
     setReportFilters((prev) => ({ ...prev, [fieldId]: value }));
   }
 
+  async function handleCreateCustomReport(payload: {
+    title: string;
+    description: string;
+    templateId: string;
+    period: Period;
+    customRange: { from: string; to: string } | null;
+    filters: Record<string, string>;
+    format: ReportFormat;
+  }) {
+    setCreateOpen(false);
+    setGenerating(true);
+    try {
+      const template = EXPORT_TEMPLATES.find((t) => t.id === payload.templateId) ?? EXPORT_TEMPLATES[0]!;
+      const rangeLabel = periodLabel(payload.period, payload.customRange);
+      
+      const vehicleFilter = payload.filters.vehicle;
+      const vehicle =
+        vehicleFilter && vehicleFilter !== "all"
+          ? (template.filters?.find((f) => f.id === "vehicle")?.options.find((o) => o.id === vehicleFilter)?.label ?? vehicleFilter)
+           : undefined;
+      const scopeLabel = buildScopeLabel({ range: rangeLabel, vehicle });
+
+      const meta = {
+        scopeLabel,
+        period: payload.period,
+        customRange: payload.customRange,
+        filters: payload.filters,
+      };
+
+      const report = await generateReport(payload.templateId, meta);
+      const customReport: GeneratedReport = {
+        ...report,
+        title: payload.title,
+        subtitle: payload.description || report.subtitle,
+      };
+
+      const id = `RPT-${Date.now().toString(36).toUpperCase()}`;
+      const pdfMeta = {
+        logoSrc: "/ridelogo-primary.png",
+        generatedByName: user?.name,
+        generatedByEmail: user?.email,
+        generatedByRole: roleName ?? undefined,
+      };
+
+      // Auto-download PDF/CSV immediately!
+      await exportGeneratedReport(customReport, `${payload.templateId}-${payload.title.toLowerCase().replace(/\s+/g, "-")}`, payload.format, pdfMeta);
+
+      saveReport({
+        id,
+        templateId: payload.templateId,
+        name: payload.title,
+        category: template.category,
+        scope: scopeLabel,
+        format: payload.format,
+        generatedAtMs: Date.now(),
+        createdBy: user?.name ?? "Admin",
+        report: customReport,
+        pdfMeta,
+      });
+
+      const row = {
+        id,
+        templateId: payload.templateId,
+        name: payload.title,
+        category: template.category,
+        scope: scopeLabel,
+        format: payload.format,
+        generatedAt: new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
+        generatedAtMs: Date.now(),
+        size: payload.format === "PDF" ? "~840 KB" : "~160 KB",
+        createdBy: user?.name ?? "Admin",
+        hasContent: true,
+      };
+
+      setDownloads((prev) => [row, ...prev]);
+      setGeneratedReport(customReport);
+      setGeneratedForKey(JSON.stringify({
+        templateId: payload.templateId,
+        period: payload.period,
+        customRange: payload.customRange,
+        reportFilters: payload.filters,
+      }));
+      setPreviewPage(1);
+      setTableSearch("");
+      setToast(`Custom report "${payload.title}" generated & exported!`);
+    } catch {
+      setToast("Failed to generate custom report.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   const generatedAtDisplay = generatedReport?.generatedAt
     ? new Date(generatedReport.generatedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
     : null;
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] via-card to-card p-5">
-        <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-primary/10 blur-2xl" aria-hidden />
-        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Report generation</p>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-foreground/90">
-              Select a report type, set the period and filters, then click{" "}
-              <span className="font-semibold text-foreground">Generate Report</span>. Review the preview before
-              exporting — the PDF matches exactly what you see on screen.
-            </p>
-          </div>
-          <Link
-            href="/admin/analytics"
-            className="inline-flex h-9 shrink-0 items-center rounded-xl border border-border bg-card px-4 text-xs font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary"
-          >
-            View analytics →
-          </Link>
+      {/* Top action bar */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4 bg-card/40 p-5 rounded-2xl border">
+        <div>
+          <p className="text-xs font-semibold text-primary uppercase tracking-[0.15em]">Tailored Exports</p>
+          <h2 className="text-xl font-bold text-foreground mt-1">Stakeholder Data Delivery</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Generate customized snapshots for third-party partners and organizations.</p>
         </div>
+        <button
+          type="button"
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/30 hover:scale-[1.01] active:scale-[0.99] shrink-0"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4.5 w-4.5" aria-hidden>
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Create Custom Report
+        </button>
       </div>
 
-      {/* Step 1–3: Configuration */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="border-b border-border bg-surface/30 px-5 py-4">
-          <p className="text-xs font-semibold text-foreground">Configure report</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Step 1 — report type · Step 2 — period · Step 3 — optional filters
-          </p>
-        </div>
-
-        <div className="space-y-5 p-5">
-          <div>
-            <label htmlFor="report-type" className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              1. Report type
-            </label>
-            <select
-              id="report-type"
-              value={templateId}
-              onChange={(e) => setUrlParam("type", e.target.value)}
-              className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm font-medium text-foreground outline-none focus:border-primary sm:max-w-md"
-            >
-              {REPORT_CATEGORIES.filter((c) => c.id !== "all").map((cat) => {
-                const templates = EXPORT_TEMPLATES.filter((t) => t.category === cat.id);
-                if (templates.length === 0) return null;
-                return (
-                  <optgroup key={cat.id} label={cat.label}>
-                    {templates.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                );
-              })}
-            </select>
-            <p className="mt-1.5 text-[11px] text-muted-foreground">{selectedTemplate.description}</p>
-            <span
-              className={`mt-2 inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase ring-1 ring-inset ${CATEGORY_STYLES[selectedTemplate.category]}`}
-            >
-              {selectedTemplate.category}
-            </span>
-          </div>
-
-          <div>
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              2. Reporting period
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <PeriodFilter />
-              <span className="text-[11px] text-muted-foreground">
-                Scope: <span className="font-semibold text-foreground">{rangeLabel}</span>
-              </span>
-            </div>
-          </div>
-
-          {(selectedTemplate.filters?.length ?? 0) > 0 ? (
-            <div>
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                3. Optional filters
-              </p>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {selectedTemplate.filters!.map((field) => (
-                  <div key={field.id}>
-                    <label
-                      htmlFor={`filter-${field.id}`}
-                      className="mb-1.5 block text-[11px] font-medium text-foreground"
-                    >
-                      {field.label}
-                    </label>
-                    <select
-                      id={`filter-${field.id}`}
-                      value={reportFilters[field.id] ?? field.defaultValue ?? "all"}
-                      onChange={(e) => updateFilter(field.id, e.target.value)}
-                      className="h-9 w-full rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary"
-                    >
-                      {field.options.map((opt) => (
-                        <option key={opt.id} value={opt.id}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p className="text-[11px] text-muted-foreground">No additional filters for this report type.</p>
-          )}
-
-          <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[11px] text-muted-foreground">
-              {isStale ? (
-                <span className="font-medium text-amber-600">Filters changed — regenerate to update the preview.</span>
-              ) : generatedReport ? (
-                <span>Report ready for export.</span>
-              ) : (
-                <span>Configure options above, then generate.</span>
-              )}
-            </p>
-            <button
-              type="button"
-              disabled={generating}
-              onClick={handleGenerate}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              {generating ? (
-                <>
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
-                  Generating…
-                </>
-              ) : (
-                <>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden>
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                  </svg>
-                  Generate Report
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Step 4–6: Preview */}
-      <Card
-        title="Report preview"
-        action={
-          generatedReport ? (
+      {/* Active Report Preview Card */}
+      {generatedReport ? (
+        <Card
+          title="Report preview"
+          action={
             <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase ring-1 ring-inset ${CATEGORY_STYLES[selectedTemplate.category]}`}>
               {selectedTemplate.category}
             </span>
-          ) : null
-        }
-        bodyClass="p-0"
-      >
-        {!generatedReport ? (
-          <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/60 text-muted-foreground">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-7 w-7" aria-hidden>
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
-            </div>
-            <p className="mt-4 text-sm font-medium text-foreground">No report generated yet</p>
-            <p className="mt-1 max-w-sm text-[11px] text-muted-foreground">
-              Select your options above and click Generate Report. A structured preview with summary metrics and
-              detailed data will appear here.
-            </p>
-          </div>
-        ) : (
+          }
+          bodyClass="p-0"
+        >
           <div className="flex flex-col">
             <div className="border-b border-border px-5 py-4">
               <p className="text-base font-semibold text-foreground">{generatedReport.title}</p>
@@ -500,12 +536,6 @@ export function ReportsConsole() {
                   </span>
                 ) : null}
               </div>
-              {isStale ? (
-                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200">
-                  Configuration has changed since this report was generated. Regenerate to refresh, or export this
-                  snapshot as-is.
-                </p>
-              ) : null}
             </div>
 
             <div className="grid grid-cols-2 gap-3 border-b border-border p-4 sm:grid-cols-4">
@@ -617,16 +647,6 @@ export function ReportsConsole() {
                 Export uses the exact data shown above — no second fetch.
               </p>
               <div className="flex gap-2">
-                {selectedTemplate.formats.includes("CSV") ? (
-                  <button
-                    type="button"
-                    disabled={exporting}
-                    onClick={() => handleExport("CSV")}
-                    className="inline-flex h-9 items-center rounded-xl border border-border bg-card px-4 text-xs font-semibold text-foreground hover:border-primary/30 disabled:opacity-40"
-                  >
-                    Export CSV
-                  </button>
-                ) : null}
                 {selectedTemplate.formats.includes("PDF") ? (
                   <button
                     type="button"
@@ -656,123 +676,119 @@ export function ReportsConsole() {
               </div>
             </div>
           </div>
-        )}
-      </Card>
+        </Card>
+      ) : null}
 
-      {/* Download history — secondary */}
+      {/* Download history — primary list card */}
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
-        <button
-          type="button"
-          onClick={() => setHistoryOpen((o) => !o)}
-          className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-surface/40"
-        >
-          <div>
-            <p className="text-xs font-semibold text-foreground">Download history</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {downloads.length} past export{downloads.length === 1 ? "" : "s"}
-            </p>
+        <div className="border-b border-border bg-surface/30 px-5 py-4">
+          <p className="text-xs font-semibold text-foreground">Saved reports & export history</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {downloads.length} past export{downloads.length === 1 ? "" : "s"} · Generate a new report from any dashboard page to see it here.
+          </p>
+        </div>
+
+        <div className="border-t border-border">
+          <div className="border-b border-border px-4 py-3">
+            <input
+              type="search"
+              value={historyQuery}
+              onChange={(e) => {
+                setHistoryQuery(e.target.value);
+                setHistoryPage(1);
+              }}
+              placeholder="Search name, ID, scope…"
+              className="h-8 w-full rounded-lg border border-border bg-surface px-3 text-xs outline-none focus:border-primary sm:max-w-xs"
+            />
           </div>
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className={`h-4 w-4 text-muted-foreground transition-transform ${historyOpen ? "rotate-180" : ""}`}
-            aria-hidden
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
 
-        {historyOpen ? (
-          <div className="border-t border-border">
-            <div className="border-b border-border px-4 py-3">
-              <input
-                type="search"
-                value={historyQuery}
-                onChange={(e) => {
-                  setHistoryQuery(e.target.value);
-                  setHistoryPage(1);
-                }}
-                placeholder="Search name, ID, scope…"
-                className="h-8 w-full rounded-lg border border-border bg-surface px-3 text-xs outline-none focus:border-primary sm:max-w-xs"
-              />
+          {historyLoading ? (
+            <div className="flex justify-center py-12">
+              <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
             </div>
-
-            {historyLoading ? (
-              <div className="flex justify-center py-12">
-                <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
-              </div>
-            ) : filteredHistory.length === 0 ? (
-              <p className="px-4 py-12 text-center text-sm text-muted-foreground">
-                No exports yet — generate and download your first report above.
-              </p>
-            ) : (
-              <>
-                <ul className="divide-y divide-border">
-                  {historyPaginated.map((r) => (
-                    <li key={r.id}>
-                      <div className="flex items-center gap-3 px-4 py-3.5 sm:gap-4">
-                        <FormatIcon format={r.format} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="truncate text-sm font-semibold text-foreground">{r.name}</p>
-                            <span
-                              className={`rounded px-1 py-0.5 text-[9px] font-bold uppercase ring-1 ring-inset ${CATEGORY_STYLES[r.category]}`}
-                            >
-                              {r.category}
-                            </span>
-                          </div>
-                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                            {r.scope} · {r.generatedAt} · {r.size}
-                          </p>
+          ) : filteredHistory.length === 0 ? (
+            <p className="px-4 py-12 text-center text-sm text-muted-foreground">
+              No exports yet — generate a report from any dashboard page to see it here.
+            </p>
+          ) : (
+            <>
+              <ul className="divide-y divide-border">
+                {historyPaginated.map((r) => (
+                  <li key={r.id}>
+                    <div className="flex items-center gap-3 px-4 py-3.5 sm:gap-4">
+                      <FormatIcon format={r.format} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-foreground">{r.name}</p>
+                          <span
+                            className={`rounded px-1 py-0.5 text-[9px] font-bold uppercase ring-1 ring-inset ${CATEGORY_STYLES[r.category]}`}
+                          >
+                            {r.category}
+                          </span>
                         </div>
+                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                          {r.scope} · {r.generatedAt} · {r.size}
+                        </p>
+                      </div>
+                      {r.hasContent ? (
                         <button
                           type="button"
-                          onClick={() => removeDownload(r.id)}
-                          aria-label="Remove"
-                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                          onClick={() => redownload(r)}
+                          aria-label="Download"
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5" aria-hidden>
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
                           </svg>
                         </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-
-                {filteredHistory.length > PAGE_SIZE ? (
-                  <div className="flex items-center justify-between border-t border-border px-4 py-3">
-                    <p className="text-xs text-muted-foreground">
-                      {historyStart + 1}–{Math.min(historyStart + PAGE_SIZE, filteredHistory.length)} of{" "}
-                      {filteredHistory.length}
-                    </p>
-                    <div className="flex gap-2">
+                      ) : null}
                       <button
                         type="button"
-                        onClick={() => setHistoryPage(Math.max(1, safeHistoryPage - 1))}
-                        disabled={safeHistoryPage === 1}
-                        className="h-8 rounded-lg border border-border px-3 text-xs disabled:opacity-40"
+                        onClick={() => removeDownload(r.id)}
+                        aria-label="Remove"
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                       >
-                        Prev
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setHistoryPage(Math.min(historyTotalPages, safeHistoryPage + 1))}
-                        disabled={safeHistoryPage === historyTotalPages}
-                        className="h-8 rounded-lg border border-border px-3 text-xs disabled:opacity-40"
-                      >
-                        Next
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5" aria-hidden>
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
                       </button>
                     </div>
+                  </li>
+                ))}
+              </ul>
+
+              {filteredHistory.length > PAGE_SIZE ? (
+                <div className="flex items-center justify-between border-t border-border px-4 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    {historyStart + 1}–{Math.min(historyStart + PAGE_SIZE, filteredHistory.length)} of{" "}
+                    {filteredHistory.length}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryPage(Math.max(1, safeHistoryPage - 1))}
+                      disabled={safeHistoryPage === 1}
+                      className="h-8 rounded-lg border border-border px-3 text-xs disabled:opacity-40"
+                    >
+                      Prev
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryPage(Math.min(historyTotalPages, safeHistoryPage + 1))}
+                      disabled={safeHistoryPage === historyTotalPages}
+                      className="h-8 rounded-lg border border-border px-3 text-xs disabled:opacity-40"
+                    >
+                      Next
+                    </button>
                   </div>
-                ) : null}
-              </>
-            )}
-          </div>
-        ) : null}
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
       </div>
 
       <NewReportModal
@@ -784,6 +800,16 @@ export function ReportsConsole() {
           setScheduleOpen(false);
           setToast("Scheduled report saved (demo)");
         }}
+      />
+
+      <CreateReportModal
+        open={createOpen}
+        initialTemplateId={templateId}
+        initialPeriod={period}
+        initialFilters={reportFilters}
+        generating={generating}
+        onClose={() => setCreateOpen(false)}
+        onGenerate={handleCreateCustomReport}
       />
 
       {toast ? (

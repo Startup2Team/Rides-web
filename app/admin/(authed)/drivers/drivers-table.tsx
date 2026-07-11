@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar, Card } from "../_components";
 // VerifyDriverModal removed in favor of /drivers/[id] page
@@ -24,6 +24,15 @@ import {
 import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
 import { getLocalApiDrivers } from "@/lib/local-drivers";
 import { ReferralCountLink, ReferralStatTile } from "./referred-drivers-section";
+import { GenerateReportButton } from "../reports/generate-report-button";
+import type { ReportMeta } from "../reports/report-content";
+
+function driverStatusToReportStatus(statusFilter: string): string {
+  if (statusFilter === "Pending") return "pending";
+  if (statusFilter === "ApprovedEligible" || statusFilter === "ApprovedNonCompliant") return "approved";
+  if (statusFilter === "Rejected") return "rejected";
+  return "all";
+}
 
 type Driver = DriverRow;
 
@@ -369,6 +378,8 @@ export function DriversTable() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -377,7 +388,7 @@ export function DriversTable() {
 
   useEffect(() => {
     setPage(1);
-  }, [vehicleSlug, debouncedQuery, statusFilter, dateFilter]);
+  }, [vehicleSlug, debouncedQuery, statusFilter, dateFilter, customFrom, customTo]);
 
   const loadDrivers = useCallback(async () => {
     setLoading(true);
@@ -480,6 +491,21 @@ export function DriversTable() {
       } else if (dateFilter === "month") {
         const oneMonth = 30 * 24 * 60 * 60 * 1000;
         if (now - createdTime > oneMonth) return false;
+      } else if (dateFilter === "custom") {
+        let cutoffFrom: number | null = null;
+        let cutoffTo: number | null = null;
+        if (customFrom) {
+          const fromDate = new Date(customFrom);
+          fromDate.setHours(0, 0, 0, 0);
+          cutoffFrom = fromDate.getTime();
+        }
+        if (customTo) {
+          const toDate = new Date(customTo);
+          toDate.setHours(23, 59, 59, 999);
+          cutoffTo = toDate.getTime();
+        }
+        if (cutoffFrom && createdTime < cutoffFrom) return false;
+        if (cutoffTo && createdTime > cutoffTo) return false;
       }
     }
 
@@ -607,6 +633,26 @@ export function DriversTable() {
     />
   );
 
+  const reportMeta: ReportMeta = useMemo(() => {
+    const scopeLabel =
+      dateFilter === "custom" && customFrom && customTo
+        ? `${customFrom} – ${customTo}`
+        : dateFilter === "all"
+          ? "All time"
+          : dateFilter[0]!.toUpperCase() + dateFilter.slice(1);
+    const period = dateFilter === "today" || dateFilter === "week" || dateFilter === "month" ? dateFilter : "month";
+    const customRange = dateFilter === "custom" && customFrom && customTo ? { from: customFrom, to: customTo } : null;
+    return {
+      scopeLabel,
+      period,
+      customRange,
+      filters: {
+        status: driverStatusToReportStatus(statusFilter),
+        vehicle: vehicleType ?? "all",
+      },
+    };
+  }, [dateFilter, customFrom, customTo, statusFilter, vehicleType]);
+
   return (
     <Card
       title={
@@ -651,6 +697,7 @@ export function DriversTable() {
               <option value="today">Joined: Today</option>
               <option value="week">Joined: Last 7 days</option>
               <option value="month">Joined: Last 30 days</option>
+              <option value="custom">Joined: Custom Range</option>
             </select>
           </div>
 
@@ -664,6 +711,8 @@ export function DriversTable() {
             }}
             className="h-8 flex-1 sm:flex-initial sm:w-48 rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary"
           />
+
+          <GenerateReportButton templateId="driver-registrations" meta={reportMeta} />
         </div>
       }
     >
@@ -680,7 +729,50 @@ export function DriversTable() {
         </div>
       ) : null}
 
-
+      {dateFilter === "custom" ? (
+        <div className="border-b border-border bg-muted/10 p-3 text-xs text-muted-foreground flex flex-wrap items-center gap-3">
+          <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+            Registration range:
+          </span>
+          <label className="flex items-center gap-1.5">
+            <span>From</span>
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => {
+                setCustomFrom(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          <label className="flex items-center gap-1.5">
+            <span>To</span>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => {
+                setCustomTo(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          {(customFrom || customTo) && (
+            <button
+              type="button"
+              onClick={() => {
+                setCustomFrom("");
+                setCustomTo("");
+                setPage(1);
+              }}
+              className="font-semibold text-primary hover:underline ml-auto"
+            >
+              Clear dates
+            </button>
+          )}
+        </div>
+      ) : null}
 
       {viewMode === "table" ? (
       <div className="overflow-x-auto">

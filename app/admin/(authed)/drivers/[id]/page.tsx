@@ -9,6 +9,7 @@ import {
   approveDriver,
   rejectDriver,
   requestDriverMoreInfo,
+  resolveBackendUrl,
 } from "@/lib/api";
 import { mapDriverDetailToVerify } from "@/lib/drivers";
 import { getMockDriverById, isMockDriverId, isMockReferredId, setMockDriverStatus, type MockDriverId } from "@/lib/mock-drivers";
@@ -111,7 +112,7 @@ function findDocUrl(driver: VerifyDriver, types: string[]): string | null {
   const doc = driver.documents?.find((d) =>
     types.some((t) => d.document_type.toUpperCase() === t.toUpperCase()),
   );
-  return doc?.file_url?.trim() || null;
+  return resolveBackendUrl(doc?.file_url?.trim()) || null;
 }
 
 function docFacesFor(driver: VerifyDriver, kind: DocKey): { front: string | null; back: string | null } {
@@ -925,7 +926,7 @@ export default function DriverReviewPage() {
     const t = d.document_type.toUpperCase();
     return t === "PROFILE_SELFIE" || t.includes("SELFIE") || t.includes("PROFILE");
   });
-  const profilePicUrl = profilePicDoc?.file_url || null;
+  const profilePicUrl = resolveBackendUrl(profilePicDoc?.file_url) || null;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">

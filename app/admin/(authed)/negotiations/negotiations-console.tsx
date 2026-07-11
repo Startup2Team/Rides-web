@@ -28,6 +28,8 @@ import {
   communicationMode,
   matchesCommFilter,
 } from "@/lib/negotiation-rules";
+import { GenerateReportButton } from "../reports/generate-report-button";
+import type { ReportMeta } from "../reports/report-content";
 
 const TRANSPORT_DISPLAY: Record<string, string> = {
   MOTO_BIKE: "Moto Bike", CAB_TAXI: "Cab Taxi",
@@ -423,6 +425,16 @@ export function NegotiationsConsole() {
 
   const viewing = viewingId ? negotiations.find((n) => n.id === viewingId) ?? null : null;
 
+  const reportMeta: ReportMeta = useMemo(
+    () => ({
+      scopeLabel: periodText,
+      period,
+      customRange,
+      filters: { vehicle: vehicleFilter, status: "all" },
+    }),
+    [periodText, period, customRange, vehicleFilter],
+  );
+
   return (
     <>
       <Card
@@ -494,16 +506,19 @@ export function NegotiationsConsole() {
               })}
             </div>
           </div>
-          <input
-            type="search"
-            placeholder="Search ID, rider, driver, route…"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(1);
-            }}
-            className="h-8 w-full shrink-0 rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary lg:w-64"
-          />
+          <div className="flex shrink-0 items-center gap-2">
+            <input
+              type="search"
+              placeholder="Search ID, rider, driver, route…"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 w-full rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary lg:w-64"
+            />
+            <GenerateReportButton templateId="negotiation-stats" meta={reportMeta} />
+          </div>
         </div>
 
         {viewMode === "grid" ? (

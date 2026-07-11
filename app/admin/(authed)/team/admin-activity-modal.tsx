@@ -16,9 +16,11 @@ const FALLBACK: AdminActivity[] = [
 export function AdminActivityModal({
   admin,
   onClose,
+  onBack,
 }: {
   admin: { id: string; name: string; email: string } | null;
   onClose: () => void;
+  onBack?: () => void;
 }) {
   const [activity, setActivity] = useState<AdminActivity[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,6 +60,18 @@ export function AdminActivityModal({
       <div className="relative z-10 flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
           <div className="flex items-center gap-3">
+            {onBack ? (
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label="Back"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-surface hover:text-foreground"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+            ) : null}
             <Avatar name={admin.name} />
             <div>
               <h2 className="text-base font-bold tracking-tight text-foreground">
@@ -74,16 +88,7 @@ export function AdminActivityModal({
             aria-label="Close"
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-4 w-4"
-              aria-hidden
-            >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>

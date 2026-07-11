@@ -1,15 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import type { ApiEnvelope } from "@/lib/api-envelope";
 import { OtpQrCode } from "@/lib/otp-qr-code";
 import { resolvePostLoginRedirect } from "@/lib/post-login-redirect";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type CredentialsStep = "credentials";
 type TotpStep = "totp_setup" | "totp_verify";
-type Step = CredentialsStep | TotpStep;
+type Step = CredentialsStep | TotpStep | "change_password";
 
 type LoginPayload = {
   status?: string;
@@ -117,6 +116,16 @@ function CodeBoxes({
   );
 }
 
+function isSessionExpiredError(message: string, code?: string) {
+  const lower = message.toLowerCase();
+  return (
+    code === "TOKEN_EXPIRED" ||
+    code === "INVALID_PRE_AUTH_TOKEN" ||
+    lower.includes("expired") ||
+    lower.includes("pre-auth")
+  );
+}
+
 export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -128,6 +137,11 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
   const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [challengeToken, setChallengeToken] = useState("");
   const [otpauthUrl, setOtpauthUrl] = useState("");
@@ -228,89 +242,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
   const fullCode = code.join("");
   const codeReady = fullCode.length === 6;
 
-  useEffect(() => {
-    if (codeReady && !busy && !provisioningLoading && !loadProvisioningFailed && lastSubmittedCode.current !== fullCode) {
-      lastSubmittedCode.current = fullCode;
-      void handleTotpComplete();
-    }
-  }, [fullCode, codeReady, busy, provisioningLoading, loadProvisioningFailed]);
-
-  async function handleCredentials(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    const em = email.trim();
-    if (!em) return setError("Enter your email to continue.");
-    if (!password) return setError("Enter your password.");
-
-    setBusy(true);
-    try {
-      const r = await fetch("/api/admin/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: em, password }),
-      });
-
-      const j = (await r.json()) as ApiEnvelope<LoginPayload>;
-
-      if (!r.ok) {
-        const code = j.error?.code;
-        const msg = j.error?.message ?? "Could not sign in.";
-        if (code === "PASSWORD_NOT_SET") {
-          setError(
-            msg ||
-              "No password is set for this account yet. Ask a Super Admin to open Admins & Roles → your user → Set password, then try again.",
-          );
-          return;
-        }
-        setError(msg);
-        return;
-      }
-
-      const status = j.data?.status;
-
-      // 2FA removed: signed straight in → go to the dashboard.
-      if (status === "success") {
-        const dest = await resolvePostLoginRedirect(nextPath);
-        router.replace(dest);
-        router.refresh();
-        return;
-      }
-
-      const token = j.data?.challenge_token ?? "";
-
-      // Dev: backend authenticated directly (2FA skipped) — go straight in.
-      if (status === "success") {
-        const dest = await resolvePostLoginRedirect(nextPath);
-        router.replace(dest);
-        router.refresh();
-        return;
-      }
-
-      if (!token || (status !== "totp_required" && status !== "totp_setup_required")) {
-        setError("Unexpected response from server.");
-        return;
-      }
-
-      setChallengeToken(token);
-      setPassword("");
-      setCode(["", "", "", "", "", ""]);
-
-      if (status === "totp_setup_required") {
-        setOtpauthUrl("");
-        setSetupSecret("");
-        setStep("totp_setup");
-      } else {
-        setStep("totp_verify");
-      }
-    } catch {
-      setError("Network error. Is the backend running?");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleTotpComplete(e?: React.FormEvent) {
+  const handleTotpComplete = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
     lastSubmittedCode.current = fullCode;
@@ -364,6 +296,143 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
     } finally {
       setBusy(false);
     }
+  }, [challengeToken, fullCode, nextPath, router, setupSecret, step]);
+
+  useEffect(() => {
+    if (codeReady && !busy && !provisioningLoading && !loadProvisioningFailed && lastSubmittedCode.current !== fullCode) {
+      lastSubmittedCode.current = fullCode;
+      void handleTotpComplete();
+    }
+  }, [fullCode, codeReady, busy, provisioningLoading, loadProvisioningFailed, handleTotpComplete]);
+
+  async function handleCredentials(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    const em = email.trim();
+    if (!em) return setError("Enter your email to continue.");
+    if (!password) return setError("Enter your password.");
+
+    setBusy(true);
+    try {
+      const r = await fetch("/api/admin/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: em, password }),
+      });
+
+      const j = (await r.json()) as ApiEnvelope<LoginPayload>;
+
+      if (!r.ok) {
+        const code = j.error?.code;
+        const msg = j.error?.message ?? "Could not sign in.";
+        if (code === "PASSWORD_NOT_SET") {
+          setError(
+            msg ||
+              "No password is set for this account yet. Ask a Super Admin to open Admins & Roles → your user → Set password, then try again.",
+          );
+          return;
+        }
+        setError(msg);
+        return;
+      }
+
+      const status = j.data?.status;
+
+      if (status === "password_change_required") {
+        const token = j.data?.challenge_token ?? "";
+        if (!token) { setError("Unexpected response from server."); return; }
+        setChallengeToken(token);
+        setPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setStep("change_password");
+        return;
+      }
+
+      // 2FA removed: signed straight in → go to the dashboard.
+      if (status === "success") {
+        const dest = await resolvePostLoginRedirect(nextPath);
+        router.replace(dest);
+        router.refresh();
+        return;
+      }
+
+      const token = j.data?.challenge_token ?? "";
+
+      // Dev: backend authenticated directly (2FA skipped) — go straight in.
+      if (status === "success") {
+        const dest = await resolvePostLoginRedirect(nextPath);
+        router.replace(dest);
+        router.refresh();
+        return;
+      }
+
+      if (!token || (status !== "totp_required" && status !== "totp_setup_required")) {
+        setError("Unexpected response from server.");
+        return;
+      }
+
+      setChallengeToken(token);
+      setPassword("");
+      setCode(["", "", "", "", "", ""]);
+
+      if (status === "totp_setup_required") {
+        setOtpauthUrl("");
+        setSetupSecret("");
+        setStep("totp_setup");
+      } else {
+        setStep("totp_verify");
+      }
+    } catch {
+      setError("Network error. Is the backend running?");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (newPassword.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (newPassword !== confirmPassword) { setError("Passwords do not match."); return; }
+    setBusy(true);
+    try {
+      const r = await fetch("/api/admin/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge_token: challengeToken, new_password: newPassword }),
+      });
+      const j = (await r.json()) as ApiEnvelope<LoginPayload>;
+      if (!r.ok) { setError(j.error?.message ?? "Could not change password."); return; }
+      const status = j.data?.status;
+      const token = j.data?.challenge_token ?? "";
+      setNewPassword("");
+      setConfirmPassword("");
+      if (status === "success") {
+        const dest = await resolvePostLoginRedirect(nextPath);
+        router.replace(dest);
+        router.refresh();
+        return;
+      }
+      if (!token || (status !== "totp_required" && status !== "totp_setup_required")) {
+        setError("Unexpected response from server.");
+        return;
+      }
+      setChallengeToken(token);
+      setCode(["", "", "", "", "", ""]);
+      if (status === "totp_setup_required") {
+        setOtpauthUrl("");
+        setSetupSecret("");
+        setStep("totp_setup");
+      } else {
+        setStep("totp_verify");
+      }
+    } catch {
+      setError("Network error. Is the backend running?");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function resetToCredentials() {
@@ -373,20 +442,12 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
     setCode(["", "", "", "", "", ""]);
     setOtpauthUrl("");
     setSetupSecret("");
+    setNewPassword("");
+    setConfirmPassword("");
     setLoadProvisioningFailed(null);
     setProvisioningLoading(false);
     provisioningFired.current = false;
     lastSubmittedCode.current = "";
-  }
-
-  function isSessionExpiredError(message: string, code?: string) {
-    const lower = message.toLowerCase();
-    return (
-      code === "TOKEN_EXPIRED" ||
-      code === "INVALID_PRE_AUTH_TOKEN" ||
-      lower.includes("expired") ||
-      lower.includes("pre-auth")
-    );
   }
 
   function copySecret() {
@@ -464,6 +525,77 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
           className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold tracking-[-0.01em] text-primary-foreground transition duration-200 hover:scale-[1.01] hover:bg-foreground active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Signing in…" : "Continue"}
+        </button>
+      </form>
+    );
+  }
+
+  if (step === "change_password") {
+    const newPasswordValid = newPassword.length >= 8;
+    const confirmValid = newPassword === confirmPassword;
+    return (
+      <form onSubmit={handleChangePassword} className="mt-8 space-y-5">
+        <div>
+          <h1 className="text-3xl font-bold tracking-[-0.02em] text-foreground">Set your password</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            You&apos;re signing in for the first time. Choose a new password to secure your account.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <label className="block">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">New password</span>
+            <div className="relative">
+              <input
+                autoFocus
+                type={showNewPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Min. 8 characters"
+                className="mt-2 block w-full border-0 border-b border-border bg-transparent pl-0 pr-10 py-3 text-base text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-foreground"
+              />
+              <button type="button" onClick={() => setShowNewPassword((v) => !v)} aria-label={showNewPassword ? "Hide" : "Show"}
+                className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground">
+                {showNewPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+              </button>
+            </div>
+          </label>
+
+          <label className="block">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Confirm password</span>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repeat your password"
+                className={`mt-2 block w-full border-0 border-b bg-transparent pl-0 pr-10 py-3 text-base text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-foreground ${
+                  confirmPassword && !confirmValid ? "border-red-400" : "border-border"
+                }`}
+              />
+              <button type="button" onClick={() => setShowConfirmPassword((v) => !v)} aria-label={showConfirmPassword ? "Hide" : "Show"}
+                className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground">
+                {showConfirmPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+              </button>
+            </div>
+            {confirmPassword && !confirmValid ? (
+              <p className="mt-1 text-[11px] text-red-600">Passwords do not match.</p>
+            ) : null}
+          </label>
+        </div>
+
+        {error ? (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">{error}</p>
+        ) : null}
+
+        <button type="submit" disabled={!newPasswordValid || !confirmValid || busy}
+          className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold tracking-[-0.01em] text-primary-foreground transition duration-200 hover:scale-[1.01] hover:bg-foreground active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
+          {busy ? "Saving…" : "Set password & continue"}
+        </button>
+
+        <button type="button" onClick={() => resetToCredentials()}
+          className="block w-full text-center text-xs font-medium text-muted-foreground transition-colors hover:text-primary">
+          ← Back to sign in
         </button>
       </form>
     );

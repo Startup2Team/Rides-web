@@ -13,6 +13,8 @@ import {
   disbursePayouts,
   type Transaction as ApiTransaction,
 } from "@/lib/api";
+import { GenerateReportButton } from "../reports/generate-report-button";
+import type { ReportMeta } from "../reports/report-content";
 
 const TRANSPORT_DISPLAY: Record<string, string> = {
   MOTO_BIKE: "Moto Bike", CAB_TAXI: "Cab Taxi",
@@ -50,7 +52,7 @@ function mapApiTransaction(t: ApiTransaction): Transaction {
   };
 }
 
-type Period = "today" | "week" | "month" | "quarter" | "year";
+type Period = "today" | "week" | "month" | "quarter" | "year" | "custom";
 
 const periodLabels: Record<Period, string> = {
   today: "Today",
@@ -58,7 +60,27 @@ const periodLabels: Record<Period, string> = {
   month: "This month",
   quarter: "This quarter",
   year: "This year",
+  custom: "Custom",
 };
+
+/** Maps this page's local period (which includes quarter/year) onto the shared
+ * report period shape (today/week/month/custom) that report-content.ts understands. */
+function toReportMeta(period: Period, customFrom: string, customTo: string): ReportMeta {
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const today = new Date();
+  if (period === "custom") {
+    if (customFrom && customTo) {
+      return { scopeLabel: `${customFrom} – ${customTo}`, period: "custom", customRange: { from: customFrom, to: customTo } };
+    }
+    return { scopeLabel: periodLabels.month, period: "month", customRange: null };
+  }
+  if (period === "quarter" || period === "year") {
+    const from = new Date(today);
+    from.setDate(from.getDate() - (period === "quarter" ? 90 : 365));
+    return { scopeLabel: periodLabels[period], period: "custom", customRange: { from: iso(from), to: iso(today) } };
+  }
+  return { scopeLabel: periodLabels[period], period, customRange: null };
+}
 
 const periodCompareLabel: Record<Period, string> = {
   today: "vs yesterday",
@@ -66,6 +88,7 @@ const periodCompareLabel: Record<Period, string> = {
   month: "vs last month",
   quarter: "vs last quarter",
   year: "vs last year",
+  custom: "for custom duration",
 };
 
 type PeriodData = {
@@ -368,6 +391,8 @@ const emptyPeriodData: PeriodData = {
 
 export function RevenueConsole() {
   const [period, setPeriod] = useState<Period>("month");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [periodData, setPeriodData] = useState<PeriodData>(emptyPeriodData);
   const [txTab, setTxTab] = useState<"all" | TransactionStatus>("all");
   const [txQuery, setTxQuery] = useState("");
@@ -377,10 +402,11 @@ export function RevenueConsole() {
   const [txList, setTxList] = useState<Transaction[]>([]);
 
   useEffect(() => {
-    getRevenue(period)
+    if (period === "custom" && (!customFrom || !customTo)) return;
+    getRevenue(period, customFrom || undefined, customTo || undefined)
       .then((res) => setPeriodData(mapRevenueToPeriodData(res as unknown as Record<string, unknown>)))
       .catch(() => null);
-  }, [period]);
+  }, [period, customFrom, customTo]);
 
   useEffect(() => {
     getTransactions({ limit: "100", offset: "0" })
@@ -464,31 +490,79 @@ export function RevenueConsole() {
 
   const avgFare = Math.round(p.gross / p.trips);
 
+  const reportMeta = useMemo(
+    () => toReportMeta(period, customFrom, customTo),
+    [period, customFrom, customTo],
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-4 py-3">
-        <div className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-          Period
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-4 py-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            Period
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 overflow-x-auto rounded-lg border border-border bg-surface p-0.5">
+              {(Object.keys(periodLabels) as Period[]).map((id) => {
+                const active = period === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setPeriod(id)}
+                    className={`shrink-0 rounded-md px-3 py-1 text-[11px] font-medium transition-colors ${
+                      active
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {periodLabels[id]}
+                  </button>
+                );
+              })}
+            </div>
+            <GenerateReportButton templateId="revenue-breakdown" meta={reportMeta} />
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 overflow-x-auto rounded-lg border border-border bg-surface p-0.5">
-          {(Object.keys(periodLabels) as Period[]).map((id) => {
-            const active = period === id;
-            return (
+
+        {period === "custom" ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl bg-card p-3 text-xs text-muted-foreground border border-border">
+            <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+              Custom duration range:
+            </span>
+            <label className="flex items-center gap-1.5">
+              <span>From</span>
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+              />
+            </label>
+            <label className="flex items-center gap-1.5">
+              <span>To</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+              />
+            </label>
+            {(customFrom || customTo) && (
               <button
-                key={id}
                 type="button"
-                onClick={() => setPeriod(id)}
-                className={`shrink-0 rounded-md px-3 py-1 text-[11px] font-medium transition-colors ${
-                  active
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                onClick={() => {
+                  setCustomFrom("");
+                  setCustomTo("");
+                }}
+                className="font-semibold text-primary hover:underline ml-auto"
               >
-                {periodLabels[id]}
+                Clear dates
               </button>
-            );
-          })}
-        </div>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

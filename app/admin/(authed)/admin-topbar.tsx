@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useAdminNotifications } from "@/context/admin-notifications-context";
-import { getDrivers, getCustomers, getRides } from "@/lib/api";
+import { getDrivers, getCustomers, getRides, resolveBackendUrl } from "@/lib/api";
 
 function initialsFrom(name: string | undefined, email: string | undefined): string {
   const source = (name?.trim() || email?.split("@")[0] || "").replace(/[._-]+/g, " ");
@@ -380,7 +380,7 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
               {ready ? (
                 user?.photo_url || user?.photoUrl ? (
                   <img
-                    src={(user.photo_url || user.photoUrl) ?? undefined}
+                    src={resolveBackendUrl(user.photo_url || user.photoUrl) ?? undefined}
                     alt={displayName}
                     className="h-full w-full object-cover"
                   />
@@ -404,7 +404,7 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
                   {user?.photo_url || user?.photoUrl ? (
                     <img
-                      src={(user.photo_url || user.photoUrl) ?? undefined}
+                      src={resolveBackendUrl(user.photo_url || user.photoUrl) ?? undefined}
                       alt={displayName}
                       className="h-full w-full object-cover"
                     />

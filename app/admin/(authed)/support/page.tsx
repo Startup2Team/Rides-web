@@ -1,5 +1,4 @@
 import { AdminPageHeader } from "../_components";
-import { SupportStatsCards } from "./support-stats";
 import { SupportConsole } from "./support-console";
 
 export const metadata = {
@@ -9,14 +8,15 @@ export const metadata = {
 
 export default function AdminSupportPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 flex flex-col h-full flex-1 overflow-hidden">
       <AdminPageHeader
-        eyebrow="Trust"
-        title="Customer support"
-        subtitle="Handle support tickets from riders and drivers — reply, assign, and resolve."
+        eyebrow=""
+        title="Support"
+        subtitle="Listen to our community, resolve issues, and build trust."
       />
-      <SupportStatsCards />
-      <SupportConsole />
+      <div className="flex-1 min-h-0">
+        <SupportConsole />
+      </div>
     </div>
   );
 }

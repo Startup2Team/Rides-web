@@ -99,6 +99,12 @@ const icons = {
       <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
     </Icon>
   ),
+  notifications: (
+    <Icon>
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </Icon>
+  ),
   reports: (
     <Icon>
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -130,6 +136,16 @@ const icons = {
     <Icon>
       <path d="M3 11l18-5v12L3 14v-3z" />
       <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+    </Icon>
+  ),
+  partners: (
+    <Icon>
+      <rect x="3" y="3" width="18" height="12" rx="2" />
+      <path d="M7 21h10" />
+      <path d="M9 17v4" />
+      <path d="M15 17v4" />
+      <circle cx="9" cy="9" r="1.5" />
+      <path d="m14 11 2-2 3 3" />
     </Icon>
   ),
   purchases: (
@@ -203,7 +219,6 @@ const groups: {
     items: [
       { label: "Revenue", href: "/admin/revenue", icon: icons.revenue },
       { label: "Analytics", href: "/admin/analytics", icon: icons.analytics },
-      { label: "Reports", href: "/admin/reports", icon: icons.reports },
     ],
   },
   {
@@ -211,6 +226,7 @@ const groups: {
     items: [
       { label: "Support", href: "/admin/support", icon: icons.support },
       { label: "Inbox", href: "/admin/inbox", icon: icons.inbox },
+      { label: "Notifications", href: "/admin/notifications", icon: icons.notifications },
     ],
   },
   {
@@ -218,6 +234,7 @@ const groups: {
     items: [
       { label: "Packages", href: "/admin/packages", icon: icons.packages },
       { label: "Campaigns", href: "/admin/campaigns", icon: icons.campaigns },
+      { label: "Partners", href: "/admin/partners", icon: icons.partners },
       { label: "Purchases", href: "/admin/purchases", icon: icons.purchases },
       { label: "Entitlements", href: "/admin/entitlements", icon: icons.entitlements },
     ],
