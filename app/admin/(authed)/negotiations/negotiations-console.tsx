@@ -21,6 +21,7 @@ import {
   getNegotiation,
   type Negotiation as ApiNegotiation,
   type RideDetail as ApiRideDetail,
+  NO_BACKEND,
 } from "@/lib/api";
 import { MOCK_NEGOTIATIONS, MOCK_NEGOTIATION_DETAILS } from "@/lib/mock-negotiations";
 import {
@@ -358,24 +359,10 @@ export function NegotiationsConsole() {
   useEffect(() => {
     getNegotiations({ limit: "100", offset: "0" })
       .then((res) => {
-        const rows = res.negotiations?.length ? res.negotiations : MOCK_NEGOTIATIONS;
-        setNegotiations(
-          rows.map((n) => {
-            const base = mapApiNegotiation(n);
-            const detail = MOCK_NEGOTIATION_DETAILS[n.id];
-            return detail ? mergeDetail(base, detail) : base;
-          }),
-        );
+        const rows = res.negotiations?.length ? res.negotiations : (NO_BACKEND ? MOCK_NEGOTIATIONS : []);
+        setNegotiations(rows.map(mapApiNegotiation));
       })
-      .catch(() =>
-        setNegotiations(
-          MOCK_NEGOTIATIONS.map((n) => {
-            const base = mapApiNegotiation(n);
-            const detail = MOCK_NEGOTIATION_DETAILS[n.id];
-            return detail ? mergeDetail(base, detail) : base;
-          }),
-        ),
-      );
+      .catch(() => setNegotiations(NO_BACKEND ? MOCK_NEGOTIATIONS.map(mapApiNegotiation) : []));
   }, []);
 
   const openNegotiation = (id: string) => {
@@ -387,6 +374,7 @@ export function NegotiationsConsole() {
         );
       })
       .catch(() => {
+        if (!NO_BACKEND) return;
         const detail = MOCK_NEGOTIATION_DETAILS[id];
         if (!detail) return;
         setNegotiations((prev) =>

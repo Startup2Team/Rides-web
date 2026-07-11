@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { getDriversOverview } from "@/lib/api";
+import { getDriversOverview, NO_BACKEND } from "@/lib/api";
 import {
   isVehicleSlug,
   vehicleTypeFromSlug,
@@ -166,10 +166,10 @@ export function DriversOverview() {
 
         const res = await getDriversOverview(params);
         if (cancelled) return;
-        const extras = [
+        const extras = NO_BACKEND ? [
           ...MOCK_API_DRIVERS,
           ...getLocalApiDrivers(),
-        ].filter((d) => !vehicleType || d.transport_type === vehicleType);
+        ].filter((d) => !vehicleType || d.transport_type === vehicleType) : [];
         const isPending = (d: { approval_status?: string }) =>
           ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
         const isOnline = (d: { is_online?: boolean }) => !!d.is_online;
@@ -210,9 +210,9 @@ export function DriversOverview() {
           if (vehicleType) params.vehicle_type = vehicleType;
           const res = await getDriversOverview(params);
           if (cancelled) return;
-          const extras = [...MOCK_API_DRIVERS, ...getLocalApiDrivers()].filter(
+          const extras = NO_BACKEND ? [...MOCK_API_DRIVERS, ...getLocalApiDrivers()].filter(
             (d) => !vehicleType || d.transport_type === vehicleType,
-          );
+          ) : [];
           const isPending = (d: { approval_status?: string }) =>
             ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
           const isOnline = (d: { is_online?: boolean }) => !!d.is_online;

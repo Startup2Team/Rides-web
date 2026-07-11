@@ -89,6 +89,7 @@ function Icon({ children }: { children: ReactNode }) {
   );
 }
 
+
 export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}) {
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -110,6 +111,8 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+
+
 
   // Debounced global search
   useEffect(() => {
