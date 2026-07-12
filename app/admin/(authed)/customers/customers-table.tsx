@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Avatar, Card, StatusPill } from "../_components";
+import { AdminPageHeader, Avatar, Card, StatusPill } from "../_components";
 import {
   type CustomerProfile,
   type CustomerStatus,
@@ -562,6 +562,13 @@ export function CustomersTable() {
 
   return (
     <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Operations"
+        title="Customer accounts"
+        subtitle="Search, segment, and manage riders across the platform."
+        action={<GenerateReportButton templateId="customer-overview" meta={reportMeta} />}
+      />
+
       <CustomerStats
         total={counts.all}
         active={counts.Active}
@@ -606,8 +613,6 @@ export function CustomersTable() {
                 }}
                 className="h-8 flex-1 sm:flex-initial sm:w-64 rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary"
               />
-
-              <GenerateReportButton templateId="customer-overview" meta={reportMeta} />
             </div>
           </div>
         }

@@ -121,11 +121,11 @@ export function GenerateReportButton({
         onClick={() => setOpen(true)}
         className={
           className ??
-          "inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground transition-all hover:border-primary/30 hover:bg-primary/[0.04] hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          "inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         }
       >
         {busy ? (
-          <span className="h-3 w-3 animate-spin rounded-full border-2 border-muted border-t-primary" />
+          <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" />
         ) : (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />

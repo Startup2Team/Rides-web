@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Avatar, Card } from "../_components";
+import { AdminPageHeader, Avatar, Card } from "../_components";
+import { NegotiationsStatsCards } from "./negotiations-stats";
 import {
   PeriodFilter,
   periodLabel,
@@ -424,7 +425,16 @@ export function NegotiationsConsole() {
   );
 
   return (
-    <>
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Operations"
+        title="Fare negotiations"
+        subtitle="Clean agreed prices between riders and drivers — rider offer, final fare, and who was involved."
+        action={<GenerateReportButton templateId="negotiation-stats" meta={reportMeta} />}
+      />
+
+      <NegotiationsStatsCards />
+
       <Card
       title={listTitle}
       action={
@@ -505,7 +515,6 @@ export function NegotiationsConsole() {
               }}
               className="h-8 w-full rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary lg:w-64"
             />
-            <GenerateReportButton templateId="negotiation-stats" meta={reportMeta} />
           </div>
         </div>
 
@@ -693,6 +702,6 @@ export function NegotiationsConsole() {
       </Card>
 
       <NegotiationModal negotiation={viewing} onClose={() => setViewingId(null)} />
-    </>
+    </div>
   );
 }

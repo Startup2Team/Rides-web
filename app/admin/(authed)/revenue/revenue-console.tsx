@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Avatar, Card, StatCard } from "../_components";
+import { AdminPageHeader, Avatar, Card, StatCard } from "../_components";
 import {
   TransactionModal,
   type Transaction,
@@ -497,32 +497,36 @@ export function RevenueConsole() {
 
   return (
     <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Insights"
+        title="Revenue & financials"
+        subtitle="Track platform earnings, commission take, and driver payout flow."
+        action={<GenerateReportButton templateId="revenue-breakdown" meta={reportMeta} />}
+      />
+
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-4 py-3">
           <div className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             Period
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 overflow-x-auto rounded-lg border border-border bg-surface p-0.5">
-              {(Object.keys(periodLabels) as Period[]).map((id) => {
-                const active = period === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setPeriod(id)}
-                    className={`shrink-0 rounded-md px-3 py-1 text-[11px] font-medium transition-colors ${
-                      active
-                        ? "bg-card text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {periodLabels[id]}
-                  </button>
-                );
-              })}
-            </div>
-            <GenerateReportButton templateId="revenue-breakdown" meta={reportMeta} />
+          <div className="flex items-center gap-1.5 overflow-x-auto rounded-lg border border-border bg-surface p-0.5">
+            {(Object.keys(periodLabels) as Period[]).map((id) => {
+              const active = period === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setPeriod(id)}
+                  className={`shrink-0 rounded-md px-3 py-1 text-[11px] font-medium transition-colors ${
+                    active
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {periodLabels[id]}
+                </button>
+              );
+            })}
           </div>
         </div>
 

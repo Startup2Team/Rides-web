@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar, Card } from "../_components";
 // VerifyDriverModal removed in favor of /drivers/[id] page
@@ -25,15 +25,6 @@ import {
 import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
 import { getLocalApiDrivers } from "@/lib/local-drivers";
 import { ReferralCountLink, ReferralStatTile } from "./referred-drivers-section";
-import { GenerateReportButton } from "../reports/generate-report-button";
-import type { ReportMeta } from "../reports/report-content";
-
-function driverStatusToReportStatus(statusFilter: string): string {
-  if (statusFilter === "Pending") return "pending";
-  if (statusFilter === "ApprovedEligible" || statusFilter === "ApprovedNonCompliant") return "approved";
-  if (statusFilter === "Rejected") return "rejected";
-  return "all";
-}
 
 type Driver = DriverRow;
 
@@ -639,26 +630,6 @@ export function DriversTable() {
     />
   );
 
-  const reportMeta: ReportMeta = useMemo(() => {
-    const scopeLabel =
-      dateFilter === "custom" && customFrom && customTo
-        ? `${customFrom} – ${customTo}`
-        : dateFilter === "all"
-          ? "All time"
-          : dateFilter[0]!.toUpperCase() + dateFilter.slice(1);
-    const period = dateFilter === "today" || dateFilter === "week" || dateFilter === "month" ? dateFilter : "month";
-    const customRange = dateFilter === "custom" && customFrom && customTo ? { from: customFrom, to: customTo } : null;
-    return {
-      scopeLabel,
-      period,
-      customRange,
-      filters: {
-        status: driverStatusToReportStatus(statusFilter),
-        vehicle: vehicleType ?? "all",
-      },
-    };
-  }, [dateFilter, customFrom, customTo, statusFilter, vehicleType]);
-
   return (
     <Card
       title={
@@ -717,8 +688,6 @@ export function DriversTable() {
             }}
             className="h-8 flex-1 sm:flex-initial sm:w-48 rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary"
           />
-
-          <GenerateReportButton templateId="driver-registrations" meta={reportMeta} />
         </div>
       }
     >

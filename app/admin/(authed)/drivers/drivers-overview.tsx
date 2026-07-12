@@ -14,6 +14,7 @@ import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
 import { getLocalApiDrivers } from "@/lib/local-drivers";
 import { AdminPageHeader, StatCard } from "../_components";
 import { AddDriverButton } from "./add-driver-button";
+import { GenerateReportButton } from "../reports/generate-report-button";
 
 type Card = { label: string; value: string; hint: string };
 
@@ -247,15 +248,21 @@ export function DriversOverview() {
         title={view.title}
         subtitle={view.subtitle}
         action={
-          <AddDriverButton
-            key={slug ?? "all"}
-            label={view.addLabel}
-            defaultVehicle={
-              slug
-                ? (slug as DriverFormSlug)
-                : undefined
-            }
-          />
+          <div className="flex items-center gap-2">
+            <GenerateReportButton
+              templateId="driver-registrations"
+              meta={{ scopeLabel: "This month", period: "month", customRange: null, filters: {} }}
+            />
+            <AddDriverButton
+              key={slug ?? "all"}
+              label={view.addLabel}
+              defaultVehicle={
+                slug
+                  ? (slug as DriverFormSlug)
+                  : undefined
+              }
+            />
+          </div>
         }
       />
 
