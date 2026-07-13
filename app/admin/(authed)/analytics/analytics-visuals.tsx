@@ -223,34 +223,32 @@ function StatIcon({ type }: { type: StatItem["icon"] }) {
 
 export function AnalyticsStatGrid({ stats }: { stats: StatItem[] }) {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {stats.map((s, i) => {
-        const toneRing =
+        const toneCls =
           s.tone === "success"
-            ? "from-primary/40"
+            ? "border-emerald-500/20 bg-gradient-to-br from-card via-card to-emerald-500/[0.02]"
             : s.tone === "warn"
-              ? "from-amber-400/50"
-              : "from-primary/25";
+              ? "border-amber-500/20 bg-gradient-to-br from-card via-card to-amber-500/[0.02]"
+              : s.tone === "primary"
+                ? "border-primary/25 bg-gradient-to-br from-card via-card to-primary/[0.03]"
+                : "border-border bg-card";
         return (
           <div
             key={s.label}
-            className="analytics-fade-in group relative overflow-hidden rounded-2xl border border-border bg-card p-4 transition-shadow hover:shadow-lg hover:shadow-primary/5"
+            className={`analytics-fade-in group relative overflow-hidden rounded-2xl border p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:shadow-primary/5 hover:border-primary/30 ${toneCls}`}
             style={{ animationDelay: `${i * 60}ms` }}
           >
-            <div
-              className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${toneRing} to-transparent`}
-              aria-hidden
-            />
             <div className="flex items-start justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
                 {s.label}
               </p>
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary transition-all duration-300 group-hover:scale-110 group-hover:bg-primary/20">
                 <StatIcon type={s.icon} />
               </span>
             </div>
             <p
-              className={`mt-2 text-2xl font-bold tracking-tight ${
+              className={`mt-3 text-3xl font-extrabold tracking-tight transition-colors duration-300 ${
                 s.tone === "primary" || s.tone === "success"
                   ? "text-primary"
                   : s.tone === "warn"
@@ -260,7 +258,7 @@ export function AnalyticsStatGrid({ stats }: { stats: StatItem[] }) {
             >
               {s.value}
             </p>
-            {s.hint ? <div className="mt-1.5 text-[11px] text-muted-foreground">{s.hint}</div> : null}
+            {s.hint ? <div className="mt-2 text-[11px] font-medium text-muted-foreground">{s.hint}</div> : null}
           </div>
         );
       })}
@@ -275,37 +273,46 @@ export function TrendChart({ data }: { data: { label: string; value: number }[] 
   }
 
   return (
-    <div className="relative pt-2">
-      <div className="pointer-events-none absolute inset-x-0 top-2 bottom-8 flex flex-col justify-between">
+    <div className="relative pt-6">
+      <div className="pointer-events-none absolute inset-x-0 top-6 bottom-8 flex flex-col justify-between">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="border-t border-dashed border-border/60" />
+          <div key={i} className="border-t border-dashed border-border/40" />
         ))}
       </div>
-      <div className="relative flex h-48 items-end gap-1.5 sm:gap-2.5">
+      <div className="relative flex h-52 items-end gap-2.5 sm:gap-3.5 px-2">
         {data.map((d, i) => {
           const isPeak = d.value === max;
           const h = Math.max(6, (d.value / max) * 100);
           return (
             <div
               key={`${d.label}-${i}`}
-              className="group relative flex h-full flex-1 flex-col items-center justify-end gap-2"
+              className="group relative flex h-full flex-1 flex-col items-center justify-end gap-2.5"
             >
-              <span className="pointer-events-none absolute bottom-full mb-2 hidden whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1 text-[10px] font-semibold text-foreground shadow-lg group-hover:block">
-                {d.label} · {formatBigNumber(d.value)} trips
-              </span>
+              {/* Premium Tooltip */}
+              <div className="pointer-events-none absolute bottom-full mb-2.5 hidden z-20 flex-col items-center group-hover:flex">
+                <div className="whitespace-nowrap rounded-xl border border-primary/20 bg-card/95 backdrop-blur-md px-3.5 py-1.5 text-xs font-bold text-foreground shadow-xl shadow-primary/5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  <span>{d.label}:</span>
+                  <span className="text-primary">{formatBigNumber(d.value)} trips</span>
+                </div>
+                <div className="w-2 h-2 rotate-45 bg-card border-r border-b border-primary/10 -mt-1" />
+              </div>
+              
               <div
-                className={`analytics-bar-grow w-full max-w-[2.5rem] rounded-t-lg ${
+                className={`analytics-bar-grow w-full max-w-[2.25rem] rounded-t-xl transition-all duration-300 group-hover:scale-x-110 ${
                   isPeak
-                    ? "bg-gradient-to-t from-primary to-primary/70 shadow-md shadow-primary/25"
-                    : "bg-gradient-to-t from-primary/50 to-primary/20"
+                    ? "bg-gradient-to-t from-primary via-primary/90 to-primary/75 shadow-lg shadow-primary/20 group-hover:brightness-110"
+                    : "bg-gradient-to-t from-primary/30 to-primary/10 group-hover:from-primary/50 group-hover:to-primary/20"
                 }`}
                 style={{
                   height: `${h}%`,
-                  animationDelay: `${i * 40}ms`,
+                  animationDelay: `${i * 35}ms`,
                 }}
               />
               <span
-                className={`max-w-full truncate text-[10px] ${isPeak ? "font-bold text-primary" : "text-muted-foreground"}`}
+                className={`max-w-full truncate text-[10px] tracking-wide uppercase font-bold transition-colors ${
+                  isPeak ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                }`}
               >
                 {d.label}
               </span>
@@ -323,48 +330,51 @@ export function FunnelChart({ funnel }: { funnel: { stage: string; value: number
   }
 
   return (
-    <ul className="space-y-1 p-4">
+    <ul className="space-y-2.5 p-4">
       {funnel.map((f, i) => {
         const prev = i > 0 ? funnel[i - 1].pct : 100;
         const dropoff = prev - f.pct;
         const isLast = i === funnel.length - 1;
         return (
           <li key={f.stage} className="relative">
-            <div className="flex items-center gap-3 py-2.5">
+            <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-surface/30 p-3.5 transition-all hover:border-primary/20 hover:bg-primary/[0.01]">
               <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ring-2 ring-inset ${
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-4 ring-offset-2 ring-offset-card ${
                   isLast
-                    ? "bg-primary text-primary-foreground ring-primary/30"
-                    : "bg-surface text-foreground ring-border"
+                    ? "bg-primary text-primary-foreground ring-primary/20"
+                    : "bg-muted text-foreground ring-muted"
                 }`}
               >
-                {i + 1}
+                0{i + 1}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium text-foreground">{f.stage}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
+                  <span className="text-sm font-semibold tracking-tight text-foreground">{f.stage}</span>
+                  <span className="shrink-0 text-xs font-bold text-foreground">
                     {f.value.toLocaleString()}{" "}
-                    <span className="font-bold text-foreground">{f.pct}%</span>
+                    <span className="text-primary ml-1">{f.pct}%</span>
                   </span>
                 </div>
-                <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
+                <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-muted">
                   <div
-                    className="analytics-bar-grow h-full rounded-full bg-gradient-to-r from-primary/80 to-primary"
+                    className="analytics-bar-grow h-full rounded-full bg-gradient-to-r from-primary/60 to-primary shadow-sm"
                     style={{ width: `${f.pct}%`, animationDelay: `${i * 80}ms` }}
                   />
                 </div>
                 {dropoff > 0 ? (
-                  <p
-                    className={`mt-1 text-[10px] font-semibold ${dropoff > 5 ? "text-red-600" : "text-amber-600"}`}
-                  >
-                    −{dropoff}% from previous step
-                  </p>
+                  <div className="flex items-center gap-1 mt-1.5">
+                    <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                      dropoff > 5 ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
+                    }`}>
+                      ↓ {dropoff}% drop
+                    </span>
+                    <span className="text-[9px] text-muted-foreground">from previous stage</span>
+                  </div>
                 ) : null}
               </div>
             </div>
             {!isLast ? (
-              <div className="ml-4 h-3 border-l border-dashed border-border/80" aria-hidden />
+              <div className="absolute left-[30px] top-[50px] bottom-[-22px] w-0.5 border-l-2 border-dashed border-border/80 z-0" aria-hidden />
             ) : null}
           </li>
         );
@@ -386,24 +396,24 @@ export function ActivityHeatmapChart({
   const max = Math.max(...flat, 1);
 
   const cellColor = (v: number, isPeak: boolean) => {
-    if (isPeak) return "bg-primary ring-2 ring-primary/40 ring-offset-1 ring-offset-card";
+    if (isPeak) return "bg-primary ring-2 ring-primary/35 ring-offset-2 ring-offset-card";
     const intensity = v / max;
-    if (intensity > 0.85) return "bg-primary/90";
-    if (intensity > 0.65) return "bg-primary/70";
-    if (intensity > 0.45) return "bg-primary/45";
-    if (intensity > 0.25) return "bg-primary/25";
-    if (intensity > 0.08) return "bg-primary/12";
-    return "bg-muted/80";
+    if (intensity > 0.85) return "bg-primary";
+    if (intensity > 0.65) return "bg-primary/80";
+    if (intensity > 0.45) return "bg-primary/60";
+    if (intensity > 0.25) return "bg-primary/40";
+    if (intensity > 0.08) return "bg-primary/20";
+    return "bg-muted/80 dark:bg-muted/30";
   };
 
   const peak = peakActivityLabel(grid);
 
   return (
     <div className="p-4">
-      <div className="flex gap-2.5">
+      <div className="flex gap-3">
         <div className="flex shrink-0 flex-col justify-between py-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
           {daysOfWeek.map((d) => (
-            <span key={d} className="flex h-[18px] items-center leading-none sm:h-5">
+            <span key={d} className="flex h-5 items-center leading-none">
               {d}
             </span>
           ))}
@@ -417,38 +427,44 @@ export function ActivityHeatmapChart({
                   return (
                     <div
                       key={hourIdx}
-                      className={`group relative h-[18px] flex-1 rounded-sm transition-transform hover:scale-110 sm:h-5 sm:rounded ${cellColor(v, isPeak)}`}
+                      className={`group relative h-5 flex-1 rounded transition-all duration-200 hover:scale-125 hover:z-10 ${cellColor(v, isPeak)}`}
                     >
-                      <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-2 py-1 text-[9px] font-semibold text-foreground shadow-lg group-hover:block">
-                        {daysOfWeek[dayIdx]} {hourIdx.toString().padStart(2, "0")}:00 · {v} trips
-                      </span>
+                      {/* Interactive Popover */}
+                      <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 hidden -translate-x-1/2 flex-col items-center group-hover:flex">
+                        <div className="whitespace-nowrap rounded-xl border border-primary/20 bg-card/95 backdrop-blur-md px-3 py-1.5 text-[9px] font-bold text-foreground shadow-lg flex items-center gap-1">
+                          <span className="text-primary">{daysOfWeek[dayIdx]} {hourIdx.toString().padStart(2, "0")}:00</span>
+                          <span className="text-muted-foreground">·</span>
+                          <span>{v} completed trips</span>
+                        </div>
+                        <div className="w-1.5 h-1.5 rotate-45 bg-card border-r border-b border-primary/10 -mt-1" />
+                      </div>
                     </div>
                   );
                 })}
               </div>
             ))}
           </div>
-          <div className="mt-2.5 flex justify-between px-0.5 text-[9px] font-medium text-muted-foreground">
-            <span>00</span>
-            <span>06</span>
-            <span>12</span>
-            <span>18</span>
-            <span>23</span>
+          <div className="mt-3 flex justify-between px-1 text-[9px] font-bold tracking-widest text-muted-foreground">
+            <span>00:00</span>
+            <span>06:00</span>
+            <span>12:00</span>
+            <span>18:00</span>
+            <span>23:00</span>
           </div>
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground border-t border-border/40 pt-4">
         <div className="flex items-center gap-1.5">
-          <span>Quiet</span>
-          {["bg-muted/80", "bg-primary/12", "bg-primary/25", "bg-primary/45", "bg-primary/70", "bg-primary"].map(
+          <span className="font-semibold mr-1">Quiet</span>
+          {["bg-muted/80", "bg-primary/20", "bg-primary/40", "bg-primary/60", "bg-primary/80", "bg-primary"].map(
             (c) => (
-              <span key={c} className={`block h-3 w-3 rounded-sm ${c}`} />
+              <span key={c} className={`block h-3.5 w-3.5 rounded-sm ${c}`} />
             ),
           )}
-          <span>Busy</span>
+          <span className="font-semibold ml-1">Busy</span>
         </div>
         {peak ? (
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">
+          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 font-bold text-primary">
             Peak · {peak}
           </span>
         ) : null}
@@ -466,10 +482,13 @@ export function VehicleMixDonut({
 }) {
   let offset = 0;
   return (
-    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
-      <div className="relative h-36 w-36 shrink-0">
-        <svg viewBox="0 0 40 40" aria-hidden className="h-full w-full -rotate-90">
-          <circle cx="20" cy="20" r="14" fill="none" strokeWidth="5" className="stroke-muted" />
+    <div className="flex flex-col items-center gap-6 sm:flex-row">
+      <div className="relative h-40 w-40 shrink-0 flex items-center justify-center">
+        {/* Inner ambient glow */}
+        <div className="absolute inset-4 rounded-full bg-primary/5 blur-lg" />
+        
+        <svg viewBox="0 0 40 40" aria-hidden className="h-full w-full -rotate-90 relative z-10">
+          <circle cx="20" cy="20" r="14" fill="none" strokeWidth="4" className="stroke-muted" />
           {items.map((s, i) => {
             const length = s.pct;
             const dasharray = `${length} 100`;
@@ -482,38 +501,38 @@ export function VehicleMixDonut({
                 cy="20"
                 r="14"
                 fill="none"
-                strokeWidth="5"
+                strokeWidth="4"
                 strokeDasharray={dasharray}
                 strokeDashoffset={dashoffset}
-                className={`analytics-donut-segment ${VEHICLE_STROKE[s.colorKey] ?? "stroke-muted"}`}
+                className={`analytics-donut-segment transition-all duration-300 hover:stroke-[5] ${VEHICLE_STROKE[s.colorKey] ?? "stroke-muted"}`}
                 style={{ animationDelay: `${i * 120}ms` }}
                 strokeLinecap="round"
               />
             );
           })}
         </svg>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Trips</span>
-          <span className="text-lg font-bold text-foreground">{centerValue}</span>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center z-10">
+          <span className="text-[9px] font-extrabold uppercase tracking-widest text-muted-foreground">Trips</span>
+          <span className="text-xl font-extrabold tracking-tight text-foreground">{centerValue}</span>
         </div>
       </div>
-      <ul className="w-full flex-1 space-y-3">
+      <ul className="w-full flex-1 space-y-4">
         {items.map((v) => (
-          <li key={v.vehicle}>
+          <li key={v.vehicle} className="group p-2.5 rounded-xl border border-border/40 bg-surface/30 transition-all hover:bg-primary/[0.01] hover:border-primary/20">
             <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-2 font-medium text-foreground">
+              <span className="flex items-center gap-2 font-semibold text-foreground">
                 <span className={`block h-2.5 w-2.5 rounded-full ${VEHICLE_COLORS[v.colorKey] ?? "bg-muted"}`} />
                 {v.vehicle}
               </span>
-              <span className="font-bold text-foreground">{v.pct}%</span>
+              <span className="font-extrabold text-primary">{v.pct}%</span>
             </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
               <div
                 className={`analytics-bar-grow h-full rounded-full ${VEHICLE_COLORS[v.colorKey] ?? "bg-muted"}`}
                 style={{ width: `${v.pct}%` }}
               />
             </div>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">{formatBigNumber(v.rides)} trips</p>
+            <p className="mt-1 text-[10px] font-semibold text-muted-foreground">{formatBigNumber(v.rides)} completed trips</p>
           </li>
         ))}
       </ul>
@@ -562,7 +581,7 @@ export function VehicleFilteredSummary({
 
 export function TopDriversList({ drivers }: { drivers: DriverPerf[] }) {
   return (
-    <ul className="divide-y divide-border">
+    <ul className="divide-y divide-border/60">
       {drivers.map((d, i) => {
         const name = d.full_name ?? d.phone;
         const rankStyle = i < 3 ? RANK_STYLES[i] : "bg-primary/10 text-primary ring-primary/20";
@@ -570,27 +589,27 @@ export function TopDriversList({ drivers }: { drivers: DriverPerf[] }) {
           <li key={d.driver_id}>
             <Link
               href={`/admin/drivers/${d.driver_id}`}
-              className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-primary/[0.03]"
+              className="group flex items-center gap-3.5 px-4 py-4 transition-all hover:bg-primary/[0.02]"
             >
               <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ring-1 ring-inset ${rankStyle}`}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-1 ring-inset ${rankStyle}`}
               >
                 {i + 1}
               </span>
-              <Avatar name={name} size="sm" />
+              <Avatar name={name} size="md" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold tracking-tight text-foreground group-hover:text-primary">
+                <p className="truncate text-sm font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">
                   {name}
                 </p>
-                <p className="truncate text-[11px] text-muted-foreground">
+                <p className="truncate text-[11px] font-semibold text-muted-foreground">
                   {TRANSPORT_DISPLAY[d.transport_type] ?? d.transport_type}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-bold text-foreground">{d.total_rides}</p>
-                <p className="text-[10px] text-muted-foreground">{d.acceptance_rate.toFixed(0)}% accept</p>
+                <p className="text-sm font-extrabold text-foreground">{d.total_rides} trips</p>
+                <p className="text-[10px] font-semibold text-muted-foreground">{d.acceptance_rate.toFixed(0)}% accept</p>
               </div>
-              <span className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">→</span>
+              <span className="text-muted-foreground opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-1">→</span>
             </Link>
           </li>
         );

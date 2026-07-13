@@ -16,6 +16,8 @@ type GrantTarget = {
   entitlementId: string;
   driverName: string;
   vehicleLabel: string;
+  currentRides: number;
+  currentBonus: number;
 } | null;
 
 const TXN_LABEL: Record<EntitlementTransactionKind, string> = {
@@ -38,6 +40,11 @@ export function EntitlementsConsole() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [grantTarget, setGrantTarget] = useState<GrantTarget>(null);
   const [error, setError] = useState<string | null>(null);
+  const [vehicleFilter, setVehicleFilter] = useState("all");
+  const [balanceFilter, setBalanceFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   const refresh = useCallback(() => {
     getAdminEntitlements()
@@ -50,15 +57,70 @@ export function EntitlementsConsole() {
   }, [refresh]);
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return entitlements;
-    const q = query.toLowerCase().trim();
-    return entitlements.filter((e) =>
-      [e.driverName, e.driverPhone, e.vehiclePlate]
-        .join(" ")
-        .toLowerCase()
-        .includes(q),
-    );
-  }, [entitlements, query]);
+    let list = entitlements;
+
+    // Search query
+    if (query.trim()) {
+      const q = query.toLowerCase().trim();
+      list = list.filter((e) =>
+        [e.driverName, e.driverPhone, e.vehiclePlate]
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      );
+    }
+
+    // Vehicle type filter
+    if (vehicleFilter !== "all") {
+      list = list.filter((e) => e.vehicleType === vehicleFilter);
+    }
+
+    // Balance level filter
+    if (balanceFilter === "low") {
+      list = list.filter((e) => e.ridesRemaining + e.bonusRidesRemaining < 10);
+    } else if (balanceFilter === "empty") {
+      list = list.filter((e) => e.ridesRemaining + e.bonusRidesRemaining === 0);
+    } else if (balanceFilter === "high") {
+      list = list.filter((e) => e.ridesRemaining >= 50);
+    }
+
+    // Period activity filter
+    if (periodFilter !== "all") {
+      let cutoffFrom: Date | null = null;
+      let cutoffTo: Date | null = null;
+
+      if (periodFilter === "today") {
+        cutoffFrom = new Date();
+        cutoffFrom.setDate(cutoffFrom.getDate() - 1);
+      } else if (periodFilter === "week") {
+        cutoffFrom = new Date();
+        cutoffFrom.setDate(cutoffFrom.getDate() - 7);
+      } else if (periodFilter === "month") {
+        cutoffFrom = new Date();
+        cutoffFrom.setDate(cutoffFrom.getDate() - 30);
+      } else if (periodFilter === "custom") {
+        if (customFrom) {
+          cutoffFrom = new Date(customFrom);
+          cutoffFrom.setHours(0, 0, 0, 0);
+        }
+        if (customTo) {
+          cutoffTo = new Date(customTo);
+          cutoffTo.setHours(23, 59, 59, 999);
+        }
+      }
+
+      list = list.filter((e) =>
+        e.transactions.some((t) => {
+          const tDate = new Date(t.createdAt);
+          if (cutoffFrom && tDate < cutoffFrom) return false;
+          if (cutoffTo && tDate > cutoffTo) return false;
+          return true;
+        }),
+      );
+    }
+
+    return list;
+  }, [entitlements, query, vehicleFilter, balanceFilter, periodFilter, customFrom, customTo]);
 
   const openEntitlement = openId
     ? entitlements.find((e) => e.id === openId) ?? null
@@ -98,19 +160,95 @@ export function EntitlementsConsole() {
 
       <Card>
         <div className="border-b border-border px-4 py-3">
-          <div className="relative">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden>
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search driver by name, phone or plate…"
-              className="block min-h-[44px] w-full rounded-xl border border-border bg-card pl-10 pr-4 text-base outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary sm:text-sm"
-            />
+          <div className="grid gap-3 md:grid-cols-[1fr,auto,auto]">
+            <div className="relative">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden>
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search driver by name, phone or plate…"
+                className="block min-h-[44px] w-full rounded-xl border border-border bg-card pl-10 pr-4 text-base outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary sm:text-sm"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <select
+                value={vehicleFilter}
+                onChange={(e) => setVehicleFilter(e.target.value)}
+                className="block h-11 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+              >
+                <option value="all">All Vehicle Types</option>
+                <option value="moto">Moto</option>
+                <option value="cab">Cab</option>
+                <option value="hilux">Hilux</option>
+                <option value="fuso">Fuso</option>
+              </select>
+
+              <select
+                value={balanceFilter}
+                onChange={(e) => setBalanceFilter(e.target.value)}
+                className="block h-11 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+              >
+                <option value="all">All Balances</option>
+                <option value="low">Low Balance (&lt; 10)</option>
+                <option value="empty">Out of Rides (0)</option>
+                <option value="high">High Balance (&ge; 50)</option>
+              </select>
+
+              <select
+                value={periodFilter}
+                onChange={(e) => setPeriodFilter(e.target.value)}
+                className="block h-11 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+              >
+                <option value="all">All Time (Activity)</option>
+                <option value="today">Active Today</option>
+                <option value="week">Active This Week</option>
+                <option value="month">Active This Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
           </div>
+          {periodFilter === "custom" ? (
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-muted/30 p-3 text-xs text-muted-foreground border border-border">
+              <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+                Activity range:
+              </span>
+              <label className="flex items-center gap-1.5">
+                <span>From</span>
+                <input
+                  type="date"
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+                />
+              </label>
+              <label className="flex items-center gap-1.5">
+                <span>To</span>
+                <input
+                  type="date"
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+                />
+              </label>
+              {(customFrom || customTo) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomFrom("");
+                    setCustomTo("");
+                  }}
+                  className="font-semibold text-primary hover:underline ml-auto"
+                >
+                  Clear dates
+                </button>
+              )}
+            </div>
+          ) : null}
         </div>
 
         <div className="overflow-x-auto">
@@ -184,6 +322,8 @@ export function EntitlementsConsole() {
                               entitlementId: e.id,
                               driverName: e.driverName,
                               vehicleLabel: `${VEHICLE_LABELS[e.vehicleType]} · ${e.vehiclePlate}`,
+                              currentRides: e.ridesRemaining,
+                              currentBonus: e.bonusRidesRemaining,
                             });
                           }}
                           className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
@@ -205,11 +345,16 @@ export function EntitlementsConsole() {
         <DetailDrawer
           entitlement={openEntitlement}
           onClose={() => setOpenId(null)}
+          defaultPeriod={periodFilter}
+          initialFrom={customFrom}
+          initialTo={customTo}
           onGrant={() =>
             setGrantTarget({
               entitlementId: openEntitlement.id,
               driverName: openEntitlement.driverName,
               vehicleLabel: `${VEHICLE_LABELS[openEntitlement.vehicleType]} · ${openEntitlement.vehiclePlate}`,
+              currentRides: openEntitlement.ridesRemaining,
+              currentBonus: openEntitlement.bonusRidesRemaining,
             })
           }
         />
@@ -234,11 +379,63 @@ function DetailDrawer({
   entitlement,
   onClose,
   onGrant,
+  defaultPeriod = "all",
+  initialFrom = "",
+  initialTo = "",
 }: {
   entitlement: Entitlement;
   onClose: () => void;
   onGrant: () => void;
+  defaultPeriod?: string;
+  initialFrom?: string;
+  initialTo?: string;
 }) {
+  const [txPeriod, setTxPeriod] = useState(defaultPeriod);
+  const [txCustomFrom, setTxCustomFrom] = useState(initialFrom);
+  const [txCustomTo, setTxCustomTo] = useState(initialTo);
+
+  useEffect(() => {
+    setTxPeriod(defaultPeriod);
+    setTxCustomFrom(initialFrom);
+    setTxCustomTo(initialTo);
+  }, [defaultPeriod, initialFrom, initialTo]);
+
+  const filteredTx = useMemo(() => {
+    if (txPeriod === "all") return entitlement.transactions;
+    let cutoffFrom: Date | null = null;
+    let cutoffTo: Date | null = null;
+
+    if (txPeriod === "today") {
+      cutoffFrom = new Date();
+      cutoffFrom.setDate(cutoffFrom.getDate() - 1);
+    } else if (txPeriod === "week") {
+      cutoffFrom = new Date();
+      cutoffFrom.setDate(cutoffFrom.getDate() - 7);
+    } else if (txPeriod === "month") {
+      cutoffFrom = new Date();
+      cutoffFrom.setDate(cutoffFrom.getDate() - 30);
+    } else if (txPeriod === "year") {
+      cutoffFrom = new Date();
+      cutoffFrom.setDate(cutoffFrom.getDate() - 365);
+    } else if (txPeriod === "custom") {
+      if (txCustomFrom) {
+        cutoffFrom = new Date(txCustomFrom);
+        cutoffFrom.setHours(0, 0, 0, 0);
+      }
+      if (txCustomTo) {
+        cutoffTo = new Date(txCustomTo);
+        cutoffTo.setHours(23, 59, 59, 999);
+      }
+    }
+
+    return entitlement.transactions.filter((t) => {
+      const tDate = new Date(t.createdAt);
+      if (cutoffFrom && tDate < cutoffFrom) return false;
+      if (cutoffTo && tDate > cutoffTo) return false;
+      return true;
+    });
+  }, [entitlement.transactions, txPeriod, txCustomFrom, txCustomTo]);
+
   return (
     <div className="fixed inset-0 z-50 flex">
       <button
@@ -326,19 +523,57 @@ function DetailDrawer({
 
           {/* Transaction log */}
           <section>
-            <h3 className="text-sm font-semibold tracking-tight text-foreground">
-              Transaction history
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Every balance change comes from one of these transactions.
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold tracking-tight text-foreground">
+                  Transaction history
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Every balance change comes from one of these transactions.
+                </p>
+              </div>
+              <select
+                value={txPeriod}
+                onChange={(e) => setTxPeriod(e.target.value)}
+                className="block h-9 rounded-xl border border-border bg-card px-2 text-xs text-foreground outline-none transition-colors focus:border-primary"
+              >
+                <option value="all">All time</option>
+                <option value="today">Last 24 hours</option>
+                <option value="week">Last 7 days</option>
+                <option value="month">Last 30 days</option>
+                <option value="year">Last 1 year</option>
+                <option value="custom">Custom range</option>
+              </select>
+            </div>
+            {txPeriod === "custom" ? (
+              <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-muted/30 p-3 text-xs text-muted-foreground border border-border">
+                <label className="flex items-center gap-1.5">
+                  <span>From</span>
+                  <input
+                    type="date"
+                    value={txCustomFrom}
+                    onChange={(e) => setTxCustomFrom(e.target.value)}
+                    className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+                  />
+                </label>
+                <label className="flex items-center gap-1.5">
+                  <span>To</span>
+                  <input
+                    type="date"
+                    value={txCustomTo}
+                    onChange={(e) => setTxCustomTo(e.target.value)}
+                    className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+                  />
+                </label>
+              </div>
+            ) : null}
             <ol className="mt-4 space-y-2.5">
-              {entitlement.transactions.length === 0 ? (
+              {filteredTx.length === 0 ? (
                 <li className="rounded-xl border border-dashed border-border bg-muted/10 p-4 text-center text-xs text-muted-foreground">
-                  No transactions yet.
+                  No transactions for this period.
                 </li>
               ) : (
-                entitlement.transactions.map((t) => <TxnRow key={t.id} txn={t} />)
+                filteredTx.map((t) => <TxnRow key={t.id} txn={t} />)
               )}
             </ol>
           </section>

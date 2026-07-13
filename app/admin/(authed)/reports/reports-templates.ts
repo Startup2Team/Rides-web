@@ -58,7 +58,7 @@ export const EXPORT_TEMPLATES: ExportTemplate[] = [
     name: "Ride activity report",
     description: "Daily rides completed and cancelled for the selected period.",
     category: "Operations",
-    formats: ["PDF", "CSV"],
+    formats: ["PDF"],
     filters: [
       {
         id: "vehicle",
@@ -69,11 +69,30 @@ export const EXPORT_TEMPLATES: ExportTemplate[] = [
     ],
   },
   {
+    id: "support-resolution",
+    name: "Support case resolution report",
+    description: "Audit log of solved and closed support cases, including resolving agent and reason.",
+    category: "Operations",
+    formats: ["PDF"],
+    filters: [
+      {
+        id: "status",
+        label: "Case status",
+        options: [
+          { id: "all", label: "All resolved/closed" },
+          { id: "Resolved", label: "Solved" },
+          { id: "Closed", label: "Closed" },
+        ],
+        defaultValue: "all",
+      },
+    ],
+  },
+  {
     id: "ride-completion",
     name: "Trip completion report",
     description: "Request-to-complete funnel for the selected period.",
     category: "Operations",
-    formats: ["PDF", "CSV"],
+    formats: ["PDF"],
     filters: [
       {
         id: "vehicle",
@@ -88,7 +107,7 @@ export const EXPORT_TEMPLATES: ExportTemplate[] = [
     name: "Driver performance report",
     description: "Trips, acceptance rate, and earnings per driver.",
     category: "Drivers",
-    formats: ["PDF", "CSV"],
+    formats: ["PDF"],
     filters: [
       {
         id: "vehicle",
@@ -103,7 +122,7 @@ export const EXPORT_TEMPLATES: ExportTemplate[] = [
     name: "Driver registration report",
     description: "New driver sign-ups, approval status, and verification backlog.",
     category: "Drivers",
-    formats: ["PDF", "CSV"],
+    formats: ["PDF"],
     filters: [
       {
         id: "status",
@@ -124,7 +143,7 @@ export const EXPORT_TEMPLATES: ExportTemplate[] = [
     name: "Revenue report",
     description: "Gross revenue and ride volume by vehicle category.",
     category: "Finance",
-    formats: ["PDF", "CSV"],
+    formats: ["PDF"],
     filters: [
       {
         id: "vehicle",
@@ -139,7 +158,7 @@ export const EXPORT_TEMPLATES: ExportTemplate[] = [
     name: "Customer registration report",
     description: "Registered, active, and suspended customers with recent sign-ups.",
     category: "Customers",
-    formats: ["PDF", "CSV"],
+    formats: ["PDF"],
     filters: [
       {
         id: "status",
@@ -152,9 +171,9 @@ export const EXPORT_TEMPLATES: ExportTemplate[] = [
   {
     id: "negotiation-stats",
     name: "Negotiation report",
-    description: "Round counts, outcomes, and fare uplift for the selected period.",
+    description: "Round outcomes, outcomes, and fare uplift for the selected period.",
     category: "Negotiations",
-    formats: ["PDF", "CSV"],
+    formats: ["PDF"],
     filters: [
       {
         id: "vehicle",

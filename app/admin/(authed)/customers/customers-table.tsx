@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Avatar, Card, StatusPill } from "../_components";
+import { AdminPageHeader, Avatar, Card, StatusPill } from "../_components";
 import {
   type CustomerProfile,
   type CustomerStatus,
@@ -16,6 +16,8 @@ import {
 } from "@/lib/api";
 import { MOCK_API_CUSTOMERS } from "@/lib/mock-customers";
 import { CustomerStats } from "./customer-stats";
+import { GenerateReportButton } from "../reports/generate-report-button";
+import type { ReportMeta } from "../reports/report-content";
 
 function mapApiCustomer(c: ApiCustomer): Customer {
   return {
@@ -380,6 +382,8 @@ export function CustomersTable() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab["id"]>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
@@ -443,6 +447,21 @@ export function CustomersTable() {
       } else if (dateFilter === "month") {
         const oneMonth = 30 * 24 * 60 * 60 * 1000;
         if (now - createdTime > oneMonth) return false;
+      } else if (dateFilter === "custom") {
+        let cutoffFrom: number | null = null;
+        let cutoffTo: number | null = null;
+        if (customFrom) {
+          const fromDate = new Date(customFrom);
+          fromDate.setHours(0, 0, 0, 0);
+          cutoffFrom = fromDate.getTime();
+        }
+        if (customTo) {
+          const toDate = new Date(customTo);
+          toDate.setHours(23, 59, 59, 999);
+          cutoffTo = toDate.getTime();
+        }
+        if (cutoffFrom && createdTime < cutoffFrom) return false;
+        if (cutoffTo && createdTime > cutoffTo) return false;
       }
     }
 
@@ -524,8 +543,32 @@ export function CustomersTable() {
     />
   );
 
+  const reportMeta: ReportMeta = useMemo(() => {
+    const scopeLabel =
+      dateFilter === "custom" && customFrom && customTo
+        ? `${customFrom} – ${customTo}`
+        : dateFilter === "all"
+          ? "All time"
+          : dateFilter[0]!.toUpperCase() + dateFilter.slice(1);
+    const period = dateFilter === "today" || dateFilter === "week" || dateFilter === "month" ? dateFilter : "month";
+    const customRange = dateFilter === "custom" && customFrom && customTo ? { from: customFrom, to: customTo } : null;
+    return {
+      scopeLabel,
+      period,
+      customRange,
+      filters: { status: tab === "all" ? "all" : tab.toLowerCase() },
+    };
+  }, [dateFilter, customFrom, customTo, tab]);
+
   return (
     <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Operations"
+        title="Customer accounts"
+        subtitle="Search, segment, and manage riders across the platform."
+        action={<GenerateReportButton templateId="customer-overview" meta={reportMeta} />}
+      />
+
       <CustomerStats
         total={counts.all}
         active={counts.Active}
@@ -556,6 +599,7 @@ export function CustomersTable() {
                 <option value="today">Joined: Today</option>
                 <option value="week">Joined: This week</option>
                 <option value="month">Joined: This month</option>
+                <option value="custom">Joined: Custom Range</option>
               </select>
 
               {/* Search input */}
@@ -573,6 +617,51 @@ export function CustomersTable() {
           </div>
         }
       >
+      {dateFilter === "custom" ? (
+        <div className="border-b border-border bg-muted/10 p-3 text-xs text-muted-foreground flex flex-wrap items-center gap-3">
+          <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+            Registration range:
+          </span>
+          <label className="flex items-center gap-1.5">
+            <span>From</span>
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => {
+                setCustomFrom(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          <label className="flex items-center gap-1.5">
+            <span>To</span>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => {
+                setCustomTo(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          {(customFrom || customTo) && (
+            <button
+              type="button"
+              onClick={() => {
+                setCustomFrom("");
+                setCustomTo("");
+                setPage(1);
+              }}
+              className="font-semibold text-primary hover:underline ml-auto"
+            >
+              Clear dates
+            </button>
+          )}
+        </div>
+      ) : null}
+
       <div className="flex items-center gap-1 overflow-x-auto border-b border-border px-3 py-2">
         {tabs.map((t) => {
           const active = tab === t.id;

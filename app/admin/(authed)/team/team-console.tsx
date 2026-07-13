@@ -1,23 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Avatar, Card } from "../_components";
 import { InviteAdminModal } from "./invite-admin-modal";
 import { SetPasswordModal } from "./set-password-modal";
 import { AdminActivityModal } from "./admin-activity-modal";
-import { DEFAULT_ROLES, SIDEBAR_ITEMS, type Role } from "./roles";
+import { DEFAULT_ROLES, type Role } from "./roles";
+import { RoleDrawer } from "./role-drawer";
 import {
   getTeam,
   getRoles,
   inviteAdmin,
+  sendWelcomeEmail,
   setMemberPassword,
   suspendMember,
   reinstateMember,
-  removeMember,
   updateMemberRole,
   resendInvite,
   resetMember2FA,
-  updateRolePermissions,
   type TeamMember,
 } from "@/lib/api";
 
@@ -31,8 +31,9 @@ type Admin = {
   status: AdminStatus;
   lastActive: string;
   twoFactor: boolean;
-  notes?: string;
+  photoUrl?: string | null;
   invitedAt?: string;
+  invitedBy?: string;
 };
 
 const statusStyles: Record<AdminStatus, string> = {
@@ -44,76 +45,12 @@ const statusStyles: Record<AdminStatus, string> = {
     "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200",
 };
 
-type Tab = "team" | "roles" | "matrix";
+type Tab = "team" | "roles";
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "team", label: "Team" },
   { id: "roles", label: "Roles" },
-  { id: "matrix", label: "Permissions matrix" },
 ];
-
-function RowMenu({
-  open,
-  onToggle,
-  onClose,
-  actions,
-}: {
-  open: boolean;
-  onToggle: () => void;
-  onClose: () => void;
-  actions: { label: string; onClick: () => void; tone?: "danger" }[];
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open, onClose]);
-
-  return (
-    <div ref={ref} className="relative inline-block">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label="Actions"
-        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
-      >
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden>
-          <circle cx="12" cy="5" r="1.5" />
-          <circle cx="12" cy="12" r="1.5" />
-          <circle cx="12" cy="19" r="1.5" />
-        </svg>
-      </button>
-      {open ? (
-        <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded-lg border border-border bg-card p-1 shadow-lg">
-          <ul className="space-y-0.5">
-            {actions.map((a) => (
-              <li key={a.label}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    a.onClick();
-                  }}
-                  className={`block w-full rounded-md px-2.5 py-1.5 text-left text-xs transition-colors ${
-                    a.tone === "danger"
-                      ? "text-red-600 hover:bg-red-50"
-                      : "text-foreground hover:bg-surface"
-                  }`}
-                >
-                  {a.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 export function TeamConsole() {
   const [admins, setAdmins] = useState<Admin[]>([]);
@@ -133,6 +70,7 @@ export function TeamConsole() {
               name: m.name,
               email: m.email,
               roleId: m.role_id,
+              photoUrl: (m as TeamMember & { photo_url?: string | null }).photo_url ?? null,
               status: (m.status === "SUSPENDED"
                 ? "Suspended"
                 : m.status === "ACTIVE"
@@ -179,10 +117,12 @@ export function TeamConsole() {
   const [statusFilter, setStatusFilter] = useState<"all" | AdminStatus>("all");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [passwordFor, setPasswordFor] = useState<Admin | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
-  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
+  const [actionFor, setActionFor] = useState<Admin | null>(null);
+  const [drawerRole, setDrawerRole] = useState<Role | null>(null);
   const [activityForId, setActivityForId] = useState<string | null>(null);
+  const [activityBackAdmin, setActivityBackAdmin] = useState<Admin | null>(null);
+  const [passwordBackAdmin, setPasswordBackAdmin] = useState<Admin | null>(null);
+  const [confirmRoleChange, setConfirmRoleChange] = useState<{ adminId: string; adminName: string; fromRoleId: string; toRoleId: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -221,24 +161,66 @@ export function TeamConsole() {
     setAdmins((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
   };
 
-  const togglePermission = (roleId: string, href: string) => {
-    setRoles((prev) =>
-      prev.map((r) => {
-        if (r.id !== roleId) return r;
-        if (r.isSystem) return r;
-        const has = r.permissions.includes(href as never);
-        return {
-          ...r,
-          permissions: has
-            ? r.permissions.filter((p) => p !== href)
-            : [...r.permissions, href as never],
-        };
-      }),
-    );
-  };
+  const liveStats = useMemo(() => {
+    const total = admins.length;
+    const active = admins.filter((a) => a.status === "Active").length;
+    const pending = admins.filter((a) => a.status === "Invited").length;
+    const suspended = admins.filter((a) => a.status === "Suspended").length;
+    const roleCount = roles.length;
+    const firstName = roles[0]?.name ?? "";
+    const lastName = roles[roleCount - 1]?.name ?? "";
+    return [
+      {
+        label: "Total Admins",
+        value: loading ? "—" : String(total),
+        hint: `across ${roleCount} role${roleCount !== 1 ? "s" : ""}`,
+        tone: "primary" as const,
+      },
+      {
+        label: "Active",
+        value: loading ? "—" : String(active),
+        hint: suspended > 0 ? `${suspended} suspended` : "all in good standing",
+        tone: "default" as const,
+      },
+      {
+        label: "Roles Defined",
+        value: loading ? "—" : String(roleCount),
+        hint: firstName && lastName ? `${firstName} → ${lastName}` : "—",
+        tone: "default" as const,
+      },
+      {
+        label: "Pending Invites",
+        value: loading ? "—" : String(pending),
+        hint: pending === 0 ? "all accepted" : "awaiting acceptance",
+        tone: pending > 0 ? ("warning" as const) : ("default" as const),
+      },
+    ];
+  }, [admins, roles, loading]);
 
   return (
     <div className="space-y-6">
+      {/* Live stats */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {liveStats.map((s) => (
+          <div
+            key={s.label}
+            className="rounded-2xl border border-border bg-card p-4 transition-shadow hover:shadow-md hover:shadow-primary/5"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+              {s.label}
+            </p>
+            <p className={`mt-2 text-2xl font-bold tracking-tight ${
+              s.tone === "primary" ? "text-primary"
+              : s.tone === "warning" ? "text-amber-600"
+              : "text-foreground"
+            }`}>
+              {s.value}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">{s.hint}</p>
+          </div>
+        ))}
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-4 py-3">
         <div className="flex items-center gap-1">
           {tabs.map((t) => {
@@ -264,7 +246,7 @@ export function TeamConsole() {
           onClick={() => setInviteOpen(true)}
           className="inline-flex h-9 items-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98]"
         >
-          + Invite admin
+          + Add member
         </button>
       </div>
 
@@ -282,7 +264,8 @@ export function TeamConsole() {
       ) : null}
 
       {tab === "team" ? (
-        <Card
+        <>
+<Card
           title={`Admin team · ${admins.length}`}
           action={
             <div className="flex items-center gap-2">
@@ -382,7 +365,7 @@ export function TeamConsole() {
                         onClick={() => setInviteOpen(true)}
                         className="mt-4 inline-flex h-9 items-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30"
                       >
-                        + Invite first admin
+                        + Add first member
                       </button>
                     </td>
                   </tr>
@@ -397,7 +380,6 @@ export function TeamConsole() {
                   </tr>
                 ) : (
                   filtered.map((a) => {
-                    const role = rolesById[a.roleId];
                     return (
                       <tr key={a.id} className="hover:bg-surface/50">
                         <td className="px-4 py-3">
@@ -414,31 +396,23 @@ export function TeamConsole() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <select
-                            value={a.roleId}
-                            disabled={a.status === "Suspended"}
-                            onChange={async (e) => {
-                              const newRoleId = e.target.value;
-                              const prevRoleId = a.roleId;
-                              updateAdmin(a.id, { roleId: newRoleId });
-                              try {
-                                await updateMemberRole(a.id, newRoleId);
-                                setToast(
-                                  `${a.name} role updated to ${rolesById[newRoleId]?.name}`,
-                                );
-                              } catch {
-                                updateAdmin(a.id, { roleId: prevRoleId });
-                                setToast("Couldn't update role — try again");
-                              }
-                            }}
-                            className="h-8 rounded-lg border border-border bg-surface px-2 text-xs font-medium text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {roles.map((r) => (
-                              <option key={r.id} value={r.id}>
-                                {r.name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="relative">
+                            <select
+                              value={a.roleId}
+                              disabled={a.status === "Suspended"}
+                              onChange={(e) => {
+                                const toRoleId = e.target.value;
+                                if (toRoleId !== a.roleId) {
+                                  setConfirmRoleChange({ adminId: a.id, adminName: a.name, fromRoleId: a.roleId, toRoleId });
+                                }
+                              }}
+                              className="h-8 rounded-lg border border-border bg-surface px-2 text-xs font-medium text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {roles.map((r) => (
+                                <option key={r.id} value={r.id}>{r.name}</option>
+                              ))}
+                            </select>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -474,93 +448,13 @@ export function TeamConsole() {
                           {a.lastActive}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <RowMenu
-                            open={menuOpenId === a.id}
-                            onToggle={() =>
-                              setMenuOpenId(menuOpenId === a.id ? null : a.id)
-                            }
-                            onClose={() => setMenuOpenId(null)}
-                            actions={[
-                              {
-                                label: "View activity",
-                                onClick: () => setActivityForId(a.id),
-                              },
-                              ...(a.status === "Invited"
-                                ? [
-                                    {
-                                      label: "Set password",
-                                      onClick: () => setPasswordFor(a),
-                                    },
-                                    {
-                                      label: "Resend invite",
-                                      onClick: async () => {
-                                        try {
-                                          await resendInvite(a.id);
-                                        } catch {
-                                          /* ignore */
-                                        }
-                                        setToast(`Invite resent to ${a.email}`);
-                                      },
-                                    },
-                                  ]
-                                : a.status === "Active"
-                                  ? [
-                                      {
-                                        label: "Reset password",
-                                        onClick: () => setPasswordFor(a),
-                                      },
-                                    ]
-                                  : []),
-                              ...(a.twoFactor
-                                ? [
-                                    {
-                                      label: "Reset 2FA",
-                                      onClick: async () => {
-                                        try {
-                                          await resetMember2FA(a.id);
-                                        } catch {
-                                          /* ignore */
-                                        }
-                                        updateAdmin(a.id, { twoFactor: false });
-                                        setToast(
-                                          `${a.name} 2FA reset — they'll re-scan on next sign-in`,
-                                        );
-                                      },
-                                    },
-                                  ]
-                                : []),
-                              ...(a.status === "Suspended"
-                                ? [
-                                    {
-                                      label: "Reinstate",
-                                      onClick: async () => {
-                                        try {
-                                          await reinstateMember(a.id);
-                                        } catch {
-                                          /* ignore */
-                                        }
-                                        updateAdmin(a.id, { status: "Active" });
-                                        setToast(`${a.name} reinstated`);
-                                      },
-                                    },
-                                  ]
-                                : [
-                                    {
-                                      label: "Suspend",
-                                      tone: "danger" as const,
-                                      onClick: async () => {
-                                        try {
-                                          await suspendMember(a.id);
-                                        } catch {
-                                          /* ignore */
-                                        }
-                                        updateAdmin(a.id, { status: "Suspended" });
-                                        setToast(`${a.name} suspended`);
-                                      },
-                                    },
-                                  ]),
-                            ]}
-                          />
+                          <button
+                            type="button"
+                            onClick={() => setActionFor(a)}
+                            className="inline-flex h-7 items-center rounded-lg border border-border bg-surface px-2.5 text-[11px] font-medium text-foreground hover:border-primary/40 hover:text-primary"
+                          >
+                            Actions
+                          </button>
                         </td>
                       </tr>
                     );
@@ -570,216 +464,286 @@ export function TeamConsole() {
             </table>
           </div>
         </Card>
+        </>
       ) : null}
 
       {tab === "roles" ? (
-        <Card title={`Roles · ${roles.length}`}>
-          <ul className="divide-y divide-border">
-            {roles.map((r) => {
-              const sees =
-                r.permissions.includes("*")
-                  ? SIDEBAR_ITEMS.length
-                  : r.permissions.length;
-              return (
-                <li key={r.id} className="px-4 py-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold tracking-tight text-foreground">
-                          {r.name}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {roles.map((r) => {
+            const isFullAccess = r.permissions.includes("*");
+            const grantedCount = isFullAccess ? 22 : r.permissions.length;
+            const pct = Math.round((grantedCount / 22) * 100);
+            const memberCount = counts[r.id] ?? 0;
+            return (
+              <div
+                key={r.id}
+                className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 transition-shadow hover:shadow-md hover:shadow-primary/5"
+              >
+                {/* Card header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-bold tracking-tight text-foreground">{r.name}</p>
+                      {r.isSystem && (
+                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                          System
                         </span>
-                        {r.isSystem ? (
-                          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                            System
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {r.description}
-                      </p>
+                      )}
                     </div>
-                    <div className="flex items-center gap-3 text-[11px]">
-                      <span className="text-muted-foreground">
-                        Sees{" "}
-                        <span className="font-bold text-foreground">{sees}</span>{" "}
-                        pages
-                      </span>
-                      <span className="text-muted-foreground">
-                        ·{" "}
-                        <span className="font-bold text-foreground">
-                          {counts[r.id] ?? 0}
-                        </span>{" "}
-                        members
-                      </span>
-                    </div>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{r.description}</p>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {r.permissions.includes("*") ? (
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                        Full access
-                      </span>
-                    ) : (
-                      SIDEBAR_ITEMS.filter((s) =>
-                        r.permissions.includes(s.href),
-                      ).map((s) => (
-                        <span
-                          key={s.href}
-                          className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary"
-                        >
-                          {s.label}
-                        </span>
-                      ))
-                    )}
+                </div>
+
+                {/* Progress bar */}
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between text-[10px]">
+                    <span className="text-muted-foreground">
+                      {isFullAccess ? "Full access" : `${grantedCount} pages`}
+                    </span>
+                    <span className="font-semibold text-foreground">{pct}%</span>
                   </div>
-                  {!r.isSystem ? (
-                    <div className="mt-3 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEditingRoleId(editingRoleId === r.id ? null : r.id)
-                        }
-                        className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
-                      >
-                        {editingRoleId === r.id ? "Cancel" : "Edit permissions"}
-                      </button>
-                      {editingRoleId === r.id ? (
-                        <button
-                          type="button"
-                          disabled={savingRoleId === r.id}
-                          onClick={async () => {
-                            setSavingRoleId(r.id);
-                            try {
-                              await updateRolePermissions(
-                                r.id,
-                                r.permissions.filter((p) => p !== "*"),
-                              );
-                              setToast(`${r.name} permissions saved`);
-                              setEditingRoleId(null);
-                            } catch {
-                              setToast(
-                                "Couldn't save permissions — try again",
-                              );
-                            } finally {
-                              setSavingRoleId(null);
-                            }
-                          }}
-                          className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {savingRoleId === r.id ? "Saving…" : "Save"}
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  {editingRoleId === r.id && !r.isSystem ? (
-                    <div className="mt-3 grid gap-2 rounded-xl border border-border bg-surface/40 p-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {SIDEBAR_ITEMS.map((s) => {
-                        const has = r.permissions.includes(s.href);
-                        return (
-                          <label
-                            key={s.href}
-                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface"
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between border-t border-border pt-3">
+                  <div className="flex items-center gap-1.5">
+                    {/* Avatar stack placeholder */}
+                    {memberCount > 0 ? (
+                      <div className="flex -space-x-1.5">
+                        {Array.from({ length: Math.min(memberCount, 3) }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-card bg-primary/20 text-[9px] font-bold text-primary"
                           >
-                            <input
-                              type="checkbox"
-                              checked={has}
-                              onChange={() => togglePermission(r.id, s.href)}
-                              className="h-3.5 w-3.5 rounded border-border accent-primary"
-                            />
-                            <span className="text-xs text-foreground">
-                              {s.label}
-                            </span>
-                            <span className="ml-auto text-[9px] text-muted-foreground">
-                              {s.group}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
+                            {String.fromCharCode(65 + i)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    <span className="text-[11px] text-muted-foreground">
+                      {memberCount === 0 ? "No members" : `${memberCount} member${memberCount !== 1 ? "s" : ""}`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDrawerRole(r)}
+                    className="inline-flex h-7 items-center rounded-lg border border-border bg-surface px-2.5 text-[11px] font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  >
+                    {r.isSystem ? "View" : "Edit"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* New role card */}
+          <button
+            type="button"
+            onClick={() => setToast("Custom role creation coming soon")}
+            className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card p-4 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-dashed border-current">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden>
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </div>
+            <span className="text-xs font-medium">New role</span>
+          </button>
+        </div>
       ) : null}
 
-      {tab === "matrix" ? (
-        <Card title="Role permissions matrix">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border bg-surface/50 text-[10px] uppercase tracking-wider text-muted-foreground">
-                  <th className="sticky left-0 z-10 bg-surface/50 px-4 py-3 text-left font-semibold backdrop-blur">
-                    Page
-                  </th>
-                  {roles.map((r) => (
-                    <th
-                      key={r.id}
-                      className="px-3 py-3 text-center font-semibold"
-                    >
-                      <div className="text-foreground">{r.name}</div>
-                      <div className="mt-0.5 text-[9px] font-normal normal-case tracking-normal text-muted-foreground">
-                        {r.permissions.includes("*")
-                          ? "All pages"
-                          : `${r.permissions.length} pages`}
+      {/* Member action modal */}
+      {actionFor ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/25 backdrop-blur-sm" onClick={() => setActionFor(null)} aria-hidden />
+          <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+
+            {/* Header */}
+            <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+              <button type="button" onClick={() => setActionFor(null)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-surface hover:text-foreground">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+              <Avatar name={actionFor.name} url={actionFor.photoUrl} size="md" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-foreground">{actionFor.name}</p>
+                <p className="truncate text-[11px] text-muted-foreground">{actionFor.email}</p>
+              </div>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusStyles[actionFor.status]}`}>
+                {actionFor.status}
+              </span>
+            </div>
+
+            {/* Role + 2FA info strip */}
+            <div className="flex items-center gap-4 border-b border-border bg-surface/40 px-5 py-2.5 text-[11px] text-muted-foreground">
+              <span>Role: <span className="font-semibold text-foreground">{rolesById[actionFor.roleId]?.name ?? "—"}</span></span>
+              <span>2FA: <span className={`font-semibold ${actionFor.twoFactor ? "text-primary" : "text-amber-600"}`}>{actionFor.twoFactor ? "Enabled" : "Not set"}</span></span>
+              <span>Last active: <span className="font-semibold text-foreground">{actionFor.lastActive}</span></span>
+            </div>
+
+            {/* Actions list */}
+            <ul className="divide-y divide-border">
+              <li>
+                <button type="button" onClick={() => { const a = actionFor; setActionFor(null); setActivityBackAdmin(a); setActivityForId(a.id); }}
+                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-surface">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">View activity</p>
+                    <p className="text-[11px] text-muted-foreground">See login history and recent actions</p>
+                  </div>
+                </button>
+              </li>
+
+              {actionFor.status === "Invited" ? (
+                <>
+                  <li>
+                    <button type="button" onClick={() => { const a = actionFor; setActionFor(null); setPasswordBackAdmin(a); setPasswordFor(a); }}
+                      className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-surface">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">Set password</p>
+                        <p className="text-[11px] text-muted-foreground">Required before they can sign in</p>
                       </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {SIDEBAR_ITEMS.map((s, i) => (
-                  <tr
-                    key={s.href}
-                    className={`transition-colors hover:bg-surface/40 ${
-                      i % 2 === 1 ? "bg-surface/20" : ""
-                    }`}
-                  >
-                    <td className="sticky left-0 z-10 bg-card px-4 py-3">
-                      <div className="text-xs font-semibold text-foreground">
-                        {s.label}
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" onClick={async () => { setActionFor(null); try { await resendInvite(actionFor.id); } catch { /**/ } setToast(`Invite resent to ${actionFor.email}`); }}
+                      className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-surface">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">Resend invite</p>
+                        <p className="text-[11px] text-muted-foreground">Send the invite email again</p>
                       </div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {s.group}
-                      </div>
-                    </td>
-                    {roles.map((r) => {
-                      const allowed =
-                        r.permissions.includes("*") ||
-                        r.permissions.includes(s.href);
-                      return (
-                        <td
-                          key={r.id}
-                          className="px-3 py-3 text-center"
-                          title={`${r.name} · ${s.label}: ${allowed ? "Allowed" : "Blocked"}`}
-                        >
-                          {allowed ? (
-                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-inset ring-primary/20">
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="h-3 w-3"
-                                aria-hidden
-                              >
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            </span>
-                          ) : (
-                            <span className="inline-block h-5 w-5 rounded-full bg-muted/70 ring-1 ring-inset ring-border" />
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </button>
+                  </li>
+                </>
+              ) : actionFor.status === "Active" ? (
+                <li>
+                  <button type="button" onClick={() => { const a = actionFor; setActionFor(null); setPasswordBackAdmin(a); setPasswordFor(a); }}
+                    className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-surface">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">Reset password</p>
+                      <p className="text-[11px] text-muted-foreground">Set a new temporary password for them</p>
+                    </div>
+                  </button>
+                </li>
+              ) : null}
+
+              {actionFor.twoFactor ? (
+                <li>
+                  <button type="button" onClick={async () => { const a = actionFor; setActionFor(null); try { await resetMember2FA(a.id); } catch { /**/ } updateAdmin(a.id, { twoFactor: false }); setToast(`${a.name} 2FA reset`); }}
+                    className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-surface">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">Reset 2FA</p>
+                      <p className="text-[11px] text-muted-foreground">They'll re-scan the QR code on next sign-in</p>
+                    </div>
+                  </button>
+                </li>
+              ) : null}
+
+              {/* Divider before destructive */}
+              <li className="border-t border-border">
+                {actionFor.status === "Suspended" ? (
+                  <button type="button" onClick={async () => { const a = actionFor; setActionFor(null); try { await reinstateMember(a.id); } catch { /**/ } updateAdmin(a.id, { status: "Active" }); setToast(`${a.name} reinstated`); }}
+                    className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-surface">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden><polyline points="20 6 9 17 4 12"/></svg>
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">Reinstate</p>
+                      <p className="text-[11px] text-muted-foreground">Restore their access to the platform</p>
+                    </div>
+                  </button>
+                ) : (
+                  <button type="button" onClick={async () => { const a = actionFor; setActionFor(null); try { await suspendMember(a.id); } catch { /**/ } updateAdmin(a.id, { status: "Suspended" }); setToast(`${a.name} suspended`); }}
+                    className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-red-50">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-500">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold text-red-600">Suspend</p>
+                      <p className="text-[11px] text-muted-foreground">Block their access immediately</p>
+                    </div>
+                  </button>
+                )}
+              </li>
+            </ul>
           </div>
-        </Card>
+        </div>
+      ) : null}
+
+      {/* Role drawer */}
+      <RoleDrawer
+        role={drawerRole}
+        memberCount={drawerRole ? (counts[drawerRole.id] ?? 0) : 0}
+        onClose={() => setDrawerRole(null)}
+        onSaved={(updated) => {
+          setRoles((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+          setToast(`${updated.name} permissions saved`);
+          setDrawerRole(null);
+        }}
+      />
+
+      {/* Role change confirm popover */}
+      {confirmRoleChange ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setConfirmRoleChange(null)} aria-hidden />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-2xl">
+            <p className="text-sm font-bold text-foreground">Change role?</p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              Change <span className="font-semibold text-foreground">{confirmRoleChange.adminName}</span> from{" "}
+              <span className="font-semibold text-foreground">{rolesById[confirmRoleChange.fromRoleId]?.name}</span> to{" "}
+              <span className="font-semibold text-foreground">{rolesById[confirmRoleChange.toRoleId]?.name}</span>?
+              Their access changes immediately.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmRoleChange(null)}
+                className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-foreground hover:bg-surface"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const { adminId, adminName, toRoleId, fromRoleId } = confirmRoleChange;
+                  setConfirmRoleChange(null);
+                  updateAdmin(adminId, { roleId: toRoleId });
+                  try {
+                    await updateMemberRole(adminId, toRoleId);
+                    setToast(`${adminName} role updated to ${rolesById[toRoleId]?.name}`);
+                  } catch {
+                    updateAdmin(adminId, { roleId: fromRoleId });
+                    setToast("Couldn't update role — try again");
+                  }
+                }}
+                className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       <AdminActivityModal
@@ -791,20 +755,23 @@ export function TeamConsole() {
               })()
             : null
         }
-        onClose={() => setActivityForId(null)}
+        onClose={() => { setActivityForId(null); setActivityBackAdmin(null); }}
+        onBack={activityBackAdmin ? () => { setActivityForId(null); setActionFor(activityBackAdmin); setActivityBackAdmin(null); } : undefined}
       />
 
       <SetPasswordModal
         open={passwordFor !== null}
         adminName={passwordFor?.name ?? ""}
         adminEmail={passwordFor?.email ?? ""}
-        onClose={() => setPasswordFor(null)}
+        onClose={() => { setPasswordFor(null); setPasswordBackAdmin(null); }}
+        onBack={passwordBackAdmin ? () => { setPasswordFor(null); setActionFor(passwordBackAdmin); setPasswordBackAdmin(null); } : undefined}
         onSave={async (password) => {
           if (!passwordFor) return;
           await setMemberPassword(passwordFor.id, password);
           updateAdmin(passwordFor.id, { status: "Active", lastActive: "Just now" });
           setToast(`${passwordFor.name} can sign in — share the password securely`);
           setPasswordFor(null);
+          setPasswordBackAdmin(null);
         }}
       />
 
@@ -812,34 +779,24 @@ export function TeamConsole() {
         open={inviteOpen}
         roles={roles}
         onClose={() => setInviteOpen(false)}
-        onInvite={async ({ name, email, roleId, notes, tempPassword }) => {
-          try {
+        onInvite={async ({ name, email, roleId, tempPassword }) => {
             const member = await inviteAdmin(name, email, roleId, tempPassword);
-            const status: AdminStatus =
-              member.status === "ACTIVE" ? "Active" : "Invited";
             setAdmins((prev) => [
               {
                 id: member.id,
                 name: member.name,
                 email: member.email,
                 roleId: member.role_id,
-                status,
-                lastActive: status === "Active" ? "Just now" : "Pending",
+                status: "Active",
+                lastActive: "Just now",
                 twoFactor: false,
-                invitedAt: "Just now",
-                notes,
+                photoUrl: null,
               },
               ...prev,
             ]);
-            setToast(
-              status === "Active"
-                ? `${name} can sign in — share the temporary password you set`
-                : `${name} invited — set a password before they can sign in`,
-            );
-          } catch {
-            setToast("Invite failed — check email is unique and try again");
-          }
-          setInviteOpen(false);
+            // Send welcome email — silently ignored if backend not ready yet
+            sendWelcomeEmail(member.id, tempPassword).catch(() => null);
+            setToast(`${name} added — welcome email sent`);
         }}
       />
 
