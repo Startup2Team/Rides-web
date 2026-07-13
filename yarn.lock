@@ -1256,10 +1256,10 @@ emoji-regex@^9.2.2:
   resolved "https://registry.npmjs.org/emoji-regex/-/emoji-regex-9.2.2.tgz"
   integrity sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==
 
-enhanced-resolve@^5.21.0:
-  version "5.22.2"
-  resolved "https://registry.npmjs.org/enhanced-resolve/-/enhanced-resolve-5.22.2.tgz"
-  integrity sha512-0rxICaFZ7NQho/sHely2bvOPRP0Eu2B0NZ9zM54YvRvWMn7jfz3DmnOZDR9LlXDdDcqntAVc6Hfy4gr/tdH/Ag==
+enhanced-resolve@^5.21.0, enhanced-resolve@^5.24.2:
+  version "5.24.2"
+  resolved "https://registry.npmjs.org/enhanced-resolve/-/enhanced-resolve-5.24.2.tgz"
+  integrity sha512-rpsZEGT1jFuve6QlpyRp9ckQ+kN61hvF9BzCPyMdaKTm8UJce96KBn3sorXOFXlzjPrs3Vc4T1NsSroZ3PxlFw==
   dependencies:
     graceful-fs "^4.2.4"
     tapable "^2.3.3"
