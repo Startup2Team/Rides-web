@@ -1068,6 +1068,81 @@ export const disbursePayouts = (transactionIds: string[]) =>
     body: { transactionIds },
   });
 
+// ── Finance & Ledger API ──────────────────────────────────────────────────
+
+export type LedgerEntry = {
+  date: string;
+  transaction_id: string;
+  account: string;
+  description: string;
+  debit: number;
+  credit: number;
+  reference: string;
+};
+
+export type TrialBalanceRow = {
+  account: string;
+  debit_total: number;
+  credit_total: number;
+};
+
+export type TrialBalance = {
+  rows: TrialBalanceRow[];
+  total_debit: number;
+  total_credit: number;
+  balanced: boolean;
+};
+
+export type BalanceSheetSection = {
+  account: string;
+  balance: number;
+};
+
+export type BalanceSheet = {
+  assets: BalanceSheetSection[];
+  total_assets: number;
+  liabilities: BalanceSheetSection[];
+  total_liabilities: number;
+  equity: BalanceSheetSection[];
+  total_equity: number;
+  as_of_date: string;
+};
+
+export type StaffActivity = {
+  admin_id: string;
+  name: string;
+  email: string;
+  role: string;
+  action_count: number;
+  last_active: string | null;
+};
+
+export type StaffAnalytics = {
+  total_staff: number;
+  active_admins: number;
+  actions_count: number;
+  activity_breakdown: StaffActivity[];
+};
+
+export const getGeneralLedger = (params: { start?: string; end?: string } = {}) => {
+  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  return request<{ entries: LedgerEntry[] }>(`/admin/finance/ledger${qs ? `?${qs}` : ""}`);
+};
+
+export const getTrialBalance = (params: { start?: string; end?: string } = {}) => {
+  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  return request<TrialBalance>(`/admin/finance/trial-balance${qs ? `?${qs}` : ""}`);
+};
+
+export const getBalanceSheet = (params: { as_of?: string } = {}) => {
+  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  return request<BalanceSheet>(`/admin/finance/balance-sheet${qs ? `?${qs}` : ""}`);
+};
+
+export const getStaffAnalytics = () => {
+  return request<StaffAnalytics>("/admin/finance/staff-analytics");
+};
+
 // ── Safety / Flags ────────────────────────────────────────────────────────
 
 export const getGpsAnomalies = () =>
@@ -1394,24 +1469,19 @@ export const inviteAdmin = (name: string, email: string, roleId: string, passwor
     body: { name, email, role_id: roleId, ...(password ? { password } : {}) },
   });
 
-/** Sends a welcome email to a newly added admin with their login credentials.
- *  Backend endpoint: POST /admin/team/members/:id/welcome-email
- *  TODO: backend team to implement — accepts { temp_password, login_url }
- */
-export const sendWelcomeEmail = (memberId: string, tempPassword: string) =>
-  request<void>(`/admin/team/members/${memberId}/welcome-email`, {
-    method: "POST",
-    body: {
-      temp_password: tempPassword,
-      login_url: `${typeof window !== "undefined" ? window.location.origin : ""}/admin/login`,
-    },
-  });
+
 
 /** Sets initial password for an invited admin (required before they can sign in). */
 export const setMemberPassword = (memberId: string, password: string) =>
   request<void>(`/admin/team/members/${memberId}/set-password`, {
     method: "POST",
     body: { password },
+  });
+
+export const sendWelcomeEmail = (memberId: string, tempPassword: string, loginUrl: string) =>
+  request<void>(`/admin/team/members/${memberId}/welcome-email`, {
+    method: "POST",
+    body: { temp_password: tempPassword, login_url: loginUrl },
   });
 
 export const updateMemberRole = (id: string, roleId: string) =>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Avatar, Card } from "../_components";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Avatar, Card, StatCard } from "../_components";
 import { InviteAdminModal } from "./invite-admin-modal";
 import { SetPasswordModal } from "./set-password-modal";
 import { AdminActivityModal } from "./admin-activity-modal";
@@ -18,7 +18,10 @@ import {
   updateMemberRole,
   resendInvite,
   resetMember2FA,
+  updateRolePermissions,
+  getStaffAnalytics,
   type TeamMember,
+  type StaffAnalytics,
 } from "@/lib/api";
 
 type AdminStatus = "Active" | "Invited" | "Suspended";
@@ -45,11 +48,13 @@ const statusStyles: Record<AdminStatus, string> = {
     "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200",
 };
 
-type Tab = "team" | "roles";
+type Tab = "team" | "roles" | "matrix" | "analytics";
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "team", label: "Team" },
   { id: "roles", label: "Roles" },
+  { id: "matrix", label: "Permissions matrix" },
+  { id: "analytics", label: "Staff analytics" },
 ];
 
 export function TeamConsole() {
@@ -746,6 +751,10 @@ export function TeamConsole() {
         </div>
       ) : null}
 
+      {tab === "analytics" ? (
+        <StaffAnalyticsView />
+      ) : null}
+
       <AdminActivityModal
         admin={
           activityForId
@@ -780,6 +789,7 @@ export function TeamConsole() {
         roles={roles}
         onClose={() => setInviteOpen(false)}
         onInvite={async ({ name, email, roleId, tempPassword }) => {
+          try {
             const member = await inviteAdmin(name, email, roleId, tempPassword);
             setAdmins((prev) => [
               {
@@ -794,9 +804,15 @@ export function TeamConsole() {
               },
               ...prev,
             ]);
-            // Send welcome email — silently ignored if backend not ready yet
-            sendWelcomeEmail(member.id, tempPassword).catch(() => null);
+            if (tempPassword) {
+              const loginUrl = `${window.location.origin}/admin/login`;
+              sendWelcomeEmail(member.id, tempPassword, loginUrl).catch(() => {});
+            }
             setToast(`${name} added — welcome email sent`);
+          } catch {
+            setToast("Invite failed — check email is unique and try again");
+          }
+          setInviteOpen(false);
         }}
       />
 
@@ -809,6 +825,78 @@ export function TeamConsole() {
           <span className="text-sm font-medium text-foreground">{toast}</span>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function StaffAnalyticsView() {
+  const [data, setData] = useState<StaffAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getStaffAnalytics()
+      .then((res) => setData(res))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-48 items-center justify-center">
+        <p className="text-xs text-muted-foreground animate-pulse">Loading staff analytics...</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex h-48 items-center justify-center">
+        <p className="text-xs text-muted-foreground">Failed to load staff analytics.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard label="Total Staff Members" value={String(data.total_staff)} hint="Administrators registered" />
+        <StatCard label="Active Staff (30d)" value={String(data.active_admins)} hint="With recorded audit activities" />
+        <StatCard label="Total Actions Logged" value={String(data.actions_count)} hint="Security audit trail count" />
+      </div>
+
+      {/* Activity Breakdown Table */}
+      <Card title="Administrative Action Breakdown">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-border bg-surface text-muted-foreground">
+                <th className="px-4 py-3 font-semibold">Administrator</th>
+                <th className="px-4 py-3 font-semibold">Role</th>
+                <th className="px-4 py-3 font-semibold">Actions Performed</th>
+                <th className="px-4 py-3 font-semibold">Last Active</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {data.activity_breakdown.map((member) => (
+                <tr key={member.admin_id} className="hover:bg-surface/50">
+                  <td className="px-4 py-3 font-medium text-foreground">
+                    <div>
+                      <p>{member.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{member.email}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{member.role}</td>
+                  <td className="px-4 py-3 text-foreground font-semibold">{member.action_count}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {member.last_active ? new Date(member.last_active).toLocaleString() : "Never"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }

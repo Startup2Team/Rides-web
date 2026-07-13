@@ -15,6 +15,9 @@ import {
   getNegotiationsStats,
   getNegotiations,
   getDriverRegistrationReport,
+  getGeneralLedger,
+  getTrialBalance,
+  getBalanceSheet,
   getTickets,
   type Customer,
 } from "@/lib/api";
@@ -399,6 +402,49 @@ async function negotiationStatsContent(meta: ReportMeta): Promise<Omit<Generated
   };
 }
 
+function periodToDates(period: Period, customRange: { from: string; to: string } | null): { start?: string; end?: string } {
+  if (customRange?.from) {
+    return { start: new Date(customRange.from).toISOString(), end: new Date(customRange.to).toISOString() };
+  }
+  const days = periodToQueryDays(period, customRange);
+  const start = new Date(Date.now() - days * 86400000).toISOString();
+  return { start, end: new Date().toISOString() };
+}
+
+async function generalLedgerContent(meta: ReportMeta): Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">> {
+  const dates = periodToDates(meta.period, meta.customRange);
+  const data = await getGeneralLedger(dates).catch(() => ({ entries: [] }));
+  const entries = data.entries || [];
+  
+  const totalDebit = entries.reduce((s, e) => s + (e.debit || 0), 0);
+  const totalCredit = entries.reduce((s, e) => s + (e.credit || 0), 0);
+  const generatedAt = new Date().toISOString();
+
+  return {
+    title: "General Ledger Report",
+    subtitle: `Double-entry transaction listing · ${meta.scopeLabel}`,
+    headers: ["Date", "Transaction ID", "Account", "Description", "Debit (RWF)", "Credit (RWF)", "Reference"],
+    rows: entries.map((e) => [
+      new Date(e.date).toLocaleString(),
+      e.transaction_id || "—",
+      e.account,
+      e.description,
+      e.debit ? `${e.debit.toLocaleString()} RWF` : "—",
+      e.credit ? `${e.credit.toLocaleString()} RWF` : "—",
+      e.reference || "—",
+    ]),
+    insights: [
+      `Total ledger activity: ${entries.length} entries processed. Total debits: ${totalDebit.toLocaleString()} RWF. Total credits: ${totalCredit.toLocaleString()} RWF.`,
+    ],
+    generatedAt,
+    summary: [
+      { label: "Total Entries", value: entries.length },
+      { label: "Total Debits", value: `${totalDebit.toLocaleString()} RWF`, tone: "primary" },
+      { label: "Total Credits", value: `${totalCredit.toLocaleString()} RWF`, tone: "primary" },
+    ],
+  };
+}
+
 async function supportResolutionContent(meta: ReportMeta): Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">> {
   const statusFilter = meta.filters?.status ?? "all";
   
@@ -499,6 +545,91 @@ async function supportResolutionContent(meta: ReportMeta): Promise<Omit<Generate
   };
 }
 
+async function trialBalanceContent(meta: ReportMeta): Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">> {
+  const dates = periodToDates(meta.period, meta.customRange);
+  const tb = await getTrialBalance(dates).catch(() => ({ rows: [], total_debit: 0, total_credit: 0, balanced: true }));
+
+  const generatedAt = new Date().toISOString();
+
+  return {
+    title: "Trial Balance Report",
+    subtitle: `Financial accounts summary · ${meta.scopeLabel}`,
+    headers: ["Account", "Debit Total (RWF)", "Credit Total (RWF)"],
+    rows: (tb.rows || []).map((r) => [
+      r.account,
+      r.debit_total ? `${r.debit_total.toLocaleString()} RWF` : "—",
+      r.credit_total ? `${r.credit_total.toLocaleString()} RWF` : "—",
+    ]),
+    insights: [
+      tb.balanced
+        ? "All ledger accounts are balanced (Debits match Credits)."
+        : "Warning: Unbalanced ledger accounts detected. Investigate discrepancy.",
+    ],
+    generatedAt,
+    summary: [
+      { label: "Total Debits", value: `${tb.total_debit.toLocaleString()} RWF`, tone: "primary" },
+      { label: "Total Credits", value: `${tb.total_credit.toLocaleString()} RWF`, tone: "primary" },
+      {
+        label: "Status",
+        value: tb.balanced ? "BALANCED" : "DISCREPANCY",
+        tone: tb.balanced ? "primary" : "danger",
+      },
+    ],
+  };
+}
+
+async function balanceSheetContent(meta: ReportMeta): Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">> {
+  const dates = periodToDates(meta.period, meta.customRange);
+  const bs = await getBalanceSheet({ as_of: dates.end }).catch(() => ({
+    assets: [],
+    total_assets: 0,
+    liabilities: [],
+    total_liabilities: 0,
+    equity: [],
+    total_equity: 0,
+    as_of_date: new Date().toISOString(),
+  }));
+
+  const generatedAt = new Date().toISOString();
+  const rows: (string | number)[][] = [];
+
+  rows.push(["ASSETS", ""]);
+  (bs.assets || []).forEach((a) => {
+    rows.push([`  ${a.account}`, `${a.balance.toLocaleString()} RWF`]);
+  });
+  rows.push(["TOTAL ASSETS", `${bs.total_assets.toLocaleString()} RWF`]);
+
+  rows.push(["", ""]);
+  rows.push(["LIABILITIES", ""]);
+  (bs.liabilities || []).forEach((l) => {
+    rows.push([`  ${l.account}`, `${l.balance.toLocaleString()} RWF`]);
+  });
+  rows.push(["TOTAL LIABILITIES", `${bs.total_liabilities.toLocaleString()} RWF`]);
+
+  rows.push(["", ""]);
+  rows.push(["EQUITY", ""]);
+  (bs.equity || []).forEach((e) => {
+    rows.push([`  ${e.account}`, `${e.balance.toLocaleString()} RWF`]);
+  });
+  rows.push(["TOTAL EQUITY", `${bs.total_equity.toLocaleString()} RWF`]);
+
+  return {
+    title: "Balance Sheet",
+    subtitle: `Statement of financial position as of ${new Date(bs.as_of_date).toLocaleDateString()}`,
+    headers: ["Account Category / Name", "Balance"],
+    rows,
+    insights: [
+      `Total assets of ${bs.total_assets.toLocaleString()} RWF match liabilities & equity of ${(bs.total_liabilities + bs.total_equity).toLocaleString()} RWF.`,
+    ],
+    generatedAt,
+    summary: [
+      { label: "Assets", value: `${bs.total_assets.toLocaleString()} RWF`, tone: "primary" },
+      { label: "Liabilities", value: `${bs.total_liabilities.toLocaleString()} RWF` },
+      { label: "Equity", value: `${bs.total_equity.toLocaleString()} RWF` },
+    ],
+  };
+}
+
 const BUILDERS: Record<string, (meta: ReportMeta) => Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">>> = {
   "ops-daily": opsSummaryContent,
   "support-resolution": supportResolutionContent,
@@ -508,6 +639,9 @@ const BUILDERS: Record<string, (meta: ReportMeta) => Promise<Omit<GeneratedRepor
   "revenue-breakdown": revenueBreakdownContent,
   "customer-overview": customerOverviewContent,
   "negotiation-stats": negotiationStatsContent,
+  "general-ledger": generalLedgerContent,
+  "trial-balance": trialBalanceContent,
+  "balance-sheet": balanceSheetContent,
 };
 
 export async function generateReport(templateId: string, meta: ReportMeta): Promise<GeneratedReport> {
