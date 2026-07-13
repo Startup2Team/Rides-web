@@ -346,4 +346,31 @@ body {
     top: 0;
     width: 100%;
   }
+}/* Global scrollbar styled in theme primary blue (always visible) */
+::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+  display: block !important;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f5 !important; /* Solid background forces persistent rendering on Chrome/Safari/macOS */
+  border-radius: 999px !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--primary) !important;
+  border-radius: 999px !important;
+  border: 2px solid #f5f5f5 !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary) !important;
+  filter: brightness(0.92) !important;
+}
+
+/* Firefox scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) #f5f5f5;
 }

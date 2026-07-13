@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Avatar, Card } from "../_components";
+import { Card } from "../_components";
 import { QRCode } from "./qr-code";
 import {
   getAccount,
@@ -12,8 +12,8 @@ import {
   disable2FA,
   get2FASetup,
   enable2FA,
-  resetTOTP,
   uploadFile,
+  resolveBackendUrl,
   NO_BACKEND,
 } from "@/lib/api";
 import { getAdminUser, getToken } from "@/lib/auth";
@@ -151,7 +151,7 @@ export function AccountConsole() {
   const [uploading, setUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { refreshUser } = useAuth();
+  const { refreshUser, roleName } = useAuth();
 
   // Password state
   const [currentPwd, setCurrentPwd] = useState("");
@@ -169,12 +169,7 @@ export function AccountConsole() {
   const [confirmingDisable, setConfirmingDisable] = useState(false);
   const [setup2FAData, setSetup2FAData] = useState<{ secret: string; otpauth_url: string } | null>(null);
 
-  // Reset authenticator flow (for already-enabled 2FA)
-  type AuthResetStep = "verify-current" | "show-new-qr" | null;
-  const [authResetStep, setAuthResetStep] = useState<AuthResetStep>(null);
-  const [authResetCurrentCode, setAuthResetCurrentCode] = useState("");
-  const [authResetData, setAuthResetData] = useState<{ secret: string; qr_code_url: string; backup_codes: string[] } | null>(null);
-  const [authResetBusy, setAuthResetBusy] = useState(false);
+
 
   // Sessions
   const [sessions, setSessions] = useState<Session[]>(NO_BACKEND ? initialSessions : []);
@@ -331,34 +326,65 @@ export function AccountConsole() {
     }
   }
 
-  function regenerateBackupCodes() {
-    setAuthResetStep("verify-current");
-  }
 
-  async function handleAuthResetVerify(e: React.FormEvent) {
-    e.preventDefault();
-    if (authResetCurrentCode.length !== 6) return;
-    setAuthResetBusy(true);
-    try {
-      const data = await resetTOTP(authResetCurrentCode);
-      setAuthResetData(data);
-      setAuthResetStep("show-new-qr");
-      setAuthResetCurrentCode("");
-    } catch {
-      setToast("Invalid code. Check your authenticator and try again.");
-    } finally {
-      setAuthResetBusy(false);
-    }
-  }
-
-  function closeAuthReset() {
-    setAuthResetStep(null);
-    setAuthResetCurrentCode("");
-    setAuthResetData(null);
-  }
 
   return (
     <div className="space-y-6">
+      {/* Profile hero card */}
+      <div className="flex items-center gap-5 rounded-2xl border border-border bg-card p-5">
+        <div className="relative shrink-0">
+          <div className="h-20 w-20 overflow-hidden rounded-full ring-4 ring-primary/10">
+            {photoUrl ? (
+              <img src={resolveBackendUrl(photoUrl) || undefined} alt={name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-primary/10 text-2xl font-bold text-primary">
+                {name ? name.charAt(0).toUpperCase() : "?"}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleUploadClick}
+            disabled={uploading}
+            className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-primary text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+            aria-label="Change photo"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </button>
+          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-lg font-bold tracking-tight text-foreground">{name || "—"}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{email}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {roleName ? (
+              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                {roleName}
+              </span>
+            ) : null}
+            {twoFactorEnabled ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden>
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                2FA on
+              </span>
+            ) : (
+              <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+                2FA off
+              </span>
+            )}
+            {phone ? (
+              <span className="text-[11px] text-muted-foreground">{phone}</span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-4 py-3">
         <div className="flex items-center gap-1">
           {tabs.map((t) => {
@@ -384,30 +410,7 @@ export function AccountConsole() {
       {tab === "profile" ? (
         <Card title="Profile">
           <div className="p-5">
-            <div className="flex items-center gap-4">
-              <Avatar name={name} url={photoUrl} />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-foreground">{name}</p>
-                <p className="text-xs text-muted-foreground">{email}</p>
-              </div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={handleUploadClick}
-                disabled={uploading}
-                className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {uploading ? "Uploading..." : "Upload photo"}
-              </button>
-            </div>
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="mt-0 grid gap-4 sm:grid-cols-2">
               <label className="block">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                   Full name
@@ -448,7 +451,7 @@ export function AccountConsole() {
                   Role
                 </span>
                 <div className="mt-2 flex h-10 items-center rounded-lg border border-border bg-muted/50 px-3 text-sm text-foreground">
-                  Super Admin
+                  {roleName ?? "—"}
                   <span className="ml-auto text-[10px] text-muted-foreground">
                     Contact a Super Admin to change
                   </span>
@@ -555,51 +558,6 @@ export function AccountConsole() {
                 )}
               </div>
 
-              {twoFactorEnabled && !resetMode ? (
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => setAuthResetStep("verify-current")}
-                    className="flex items-start gap-3 rounded-xl border border-border bg-surface/40 p-4 text-left transition-colors hover:border-primary/30"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
-                        <polyline points="1 4 1 10 7 10" />
-                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                      </svg>
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">
-                        Reset authenticator
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        Scan a new QR code (e.g. when changing phones).
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={regenerateBackupCodes}
-                    className="flex items-start gap-3 rounded-xl border border-border bg-surface/40 p-4 text-left transition-colors hover:border-primary/30"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
-                        <rect x="3" y="11" width="18" height="11" rx="2" />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                      </svg>
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">
-                        Regenerate backup codes
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        Old codes are invalidated. Save the new ones immediately.
-                      </p>
-                    </div>
-                  </button>
-                </div>
-              ) : null}
 
               {resetMode ? (
                 <form onSubmit={confirmReset} className="mt-5 space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
@@ -659,93 +617,7 @@ export function AccountConsole() {
                 </form>
               ) : null}
 
-              {authResetStep === "verify-current" ? (
-                <form onSubmit={handleAuthResetVerify} className="mt-5 space-y-4 rounded-xl border border-border bg-surface/40 p-4">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                      Verify identity
-                    </p>
-                    <p className="mt-1 text-xs text-foreground">
-                      Enter your current 6-digit authenticator code to confirm before generating a new QR.
-                    </p>
-                  </div>
-                  <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                      Current authenticator code
-                    </span>
-                    <input
-                      value={authResetCurrentCode}
-                      onChange={(e) => setAuthResetCurrentCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      inputMode="numeric"
-                      placeholder="123456"
-                      autoFocus
-                      className="mt-2 block h-10 w-32 rounded-lg border border-border bg-card px-3 text-center font-mono text-base font-semibold tracking-wider text-foreground outline-none focus:border-primary"
-                    />
-                  </label>
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={closeAuthReset}
-                      className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-foreground transition-colors hover:bg-surface"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={authResetCurrentCode.length !== 6 || authResetBusy}
-                      className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {authResetBusy ? "Verifying…" : "Verify & generate new QR"}
-                    </button>
-                  </div>
-                </form>
-              ) : null}
 
-              {authResetStep === "show-new-qr" && authResetData ? (
-                <div className="mt-5 space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">
-                    New authenticator QR — scan now
-                  </p>
-                  <div className="grid gap-4 sm:grid-cols-[auto,1fr]">
-                    <div className="flex h-40 w-40 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border">
-                      <QRCode seed={authResetData.qr_code_url} />
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs text-foreground">
-                        Scan with Google Authenticator, Authy, 1Password, or any TOTP-compatible app. Your new code is already active.
-                      </p>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Setup key (if you can&apos;t scan)</p>
-                      <code className="block break-all rounded-md bg-card p-2 font-mono text-[11px] font-semibold text-foreground ring-1 ring-border">
-                        {authResetData.secret}
-                      </code>
-                    </div>
-                  </div>
-                  {authResetData.backup_codes.length > 0 ? (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-700">
-                        New backup codes — save these now
-                      </p>
-                      <p className="mt-1 text-[11px] text-amber-700">
-                        Your old backup codes are now invalid. Each new code works once.
-                      </p>
-                      <div className="mt-2 grid grid-cols-2 gap-1.5 font-mono text-[11px] text-foreground">
-                        {authResetData.backup_codes.map((c) => (
-                          <code key={c} className="rounded-md bg-card px-2 py-1 ring-1 ring-border">{c}</code>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={closeAuthReset}
-                      className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30 transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                      Done — I&apos;ve scanned it
-                    </button>
-                  </div>
-                </div>
-              ) : null}
 
               {showBackup ? (
                 <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">

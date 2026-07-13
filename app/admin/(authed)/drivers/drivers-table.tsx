@@ -370,6 +370,8 @@ export function DriversTable() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -378,7 +380,7 @@ export function DriversTable() {
 
   useEffect(() => {
     setPage(1);
-  }, [vehicleSlug, debouncedQuery, statusFilter, dateFilter]);
+  }, [vehicleSlug, debouncedQuery, statusFilter, dateFilter, customFrom, customTo]);
 
   const loadDrivers = useCallback(async () => {
     setLoading(true);
@@ -486,6 +488,21 @@ export function DriversTable() {
       } else if (dateFilter === "month") {
         const oneMonth = 30 * 24 * 60 * 60 * 1000;
         if (now - createdTime > oneMonth) return false;
+      } else if (dateFilter === "custom") {
+        let cutoffFrom: number | null = null;
+        let cutoffTo: number | null = null;
+        if (customFrom) {
+          const fromDate = new Date(customFrom);
+          fromDate.setHours(0, 0, 0, 0);
+          cutoffFrom = fromDate.getTime();
+        }
+        if (customTo) {
+          const toDate = new Date(customTo);
+          toDate.setHours(23, 59, 59, 999);
+          cutoffTo = toDate.getTime();
+        }
+        if (cutoffFrom && createdTime < cutoffFrom) return false;
+        if (cutoffTo && createdTime > cutoffTo) return false;
       }
     }
 
@@ -657,6 +674,7 @@ export function DriversTable() {
               <option value="today">Joined: Today</option>
               <option value="week">Joined: Last 7 days</option>
               <option value="month">Joined: Last 30 days</option>
+              <option value="custom">Joined: Custom Range</option>
             </select>
           </div>
 
@@ -686,7 +704,50 @@ export function DriversTable() {
         </div>
       ) : null}
 
-
+      {dateFilter === "custom" ? (
+        <div className="border-b border-border bg-muted/10 p-3 text-xs text-muted-foreground flex flex-wrap items-center gap-3">
+          <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+            Registration range:
+          </span>
+          <label className="flex items-center gap-1.5">
+            <span>From</span>
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => {
+                setCustomFrom(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          <label className="flex items-center gap-1.5">
+            <span>To</span>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => {
+                setCustomTo(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          {(customFrom || customTo) && (
+            <button
+              type="button"
+              onClick={() => {
+                setCustomFrom("");
+                setCustomTo("");
+                setPage(1);
+              }}
+              className="font-semibold text-primary hover:underline ml-auto"
+            >
+              Clear dates
+            </button>
+          )}
+        </div>
+      ) : null}
 
       {viewMode === "table" ? (
       <div className="overflow-x-auto">
