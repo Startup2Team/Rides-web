@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminPageHeader, Card, StatCard, StatusPill } from "../_components";
 import { NotificationFormModal, type NotificationDraft } from "./notification-form-modal";
 import { useAuth } from "@/context/auth-context";
@@ -32,14 +32,27 @@ function formatDateTime(value: number | string | null): string {
 
 export function NotificationsConsole() {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => listNotifications());
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AppNotification | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  function refresh() {
-    setNotifications(listNotifications());
+  async function refresh() {
+    setLoading(true);
+    try {
+      const data = await listNotifications();
+      setNotifications(data);
+    } catch (err) {
+      console.error("Failed to load notifications", err);
+    } finally {
+      setLoading(false);
+    }
   }
+
+  useEffect(() => {
+    refresh();
+  }, []);
 
   function showToast(message: string) {
     setToast(message);
@@ -53,44 +66,61 @@ export function NotificationsConsole() {
     return { sent, scheduled, drafts, total: notifications.length };
   }, [notifications]);
 
-  function handleSave(draft: NotificationDraft, action: "draft" | "send") {
-    const id = editing?.id ?? `NOT-${Date.now().toString(36).toUpperCase()}`;
+  async function handleSave(draft: NotificationDraft, action: "draft" | "send") {
     const now = Date.now();
     const isFutureSchedule = draft.scheduledAt && new Date(draft.scheduledAt).getTime() > now;
 
     const status: AppNotification["status"] =
       action === "draft" ? "draft" : isFutureSchedule ? "scheduled" : "sent";
 
-    saveNotification({
-      id,
-      title: draft.title,
-      message: draft.message,
-      imageUrl: draft.imageUrl,
-      actionLink: draft.actionLink,
-      audience: draft.audience,
-      status,
-      scheduledAt: draft.scheduledAt || null,
-      sentAt: status === "sent" ? now : null,
-      createdBy: editing?.createdBy ?? user?.name ?? "Admin",
-      createdAt: editing?.createdAt ?? now,
-    });
+    try {
+      await saveNotification({
+        title: draft.title,
+        message: draft.message,
+        imageUrl: draft.imageUrl,
+        actionLink: draft.actionLink,
+        audience: draft.audience,
+        status,
+        scheduledAt: draft.scheduledAt || null,
+        sentAt: status === "sent" ? now : null,
+      });
 
-    setFormOpen(false);
-    setEditing(null);
-    refresh();
-    showToast(status === "sent" ? "Notification sent" : status === "scheduled" ? "Notification scheduled" : "Draft saved");
+      setFormOpen(false);
+      setEditing(null);
+      await refresh();
+      showToast(status === "sent" ? "Notification sent" : status === "scheduled" ? "Notification scheduled" : "Draft saved");
+    } catch (err) {
+      showToast("Failed to save notification");
+    }
   }
 
-  function handleSendNow(notification: AppNotification) {
-    saveNotification({ ...notification, status: "sent", sentAt: Date.now() });
-    refresh();
-    showToast("Notification sent");
+  async function handleSendNow(notification: AppNotification) {
+    try {
+      await saveNotification({
+        title: notification.title,
+        message: notification.message,
+        imageUrl: notification.imageUrl,
+        actionLink: notification.actionLink,
+        audience: notification.audience,
+        status: "sent",
+        scheduledAt: null,
+        sentAt: Date.now(),
+      });
+      await refresh();
+      showToast("Notification sent");
+    } catch (err) {
+      showToast("Failed to send notification");
+    }
   }
 
-  function handleDelete(id: string) {
-    removeNotification(id);
-    refresh();
-    showToast("Notification removed");
+  async function handleDelete(id: string) {
+    try {
+      await removeNotification(id);
+      await refresh();
+      showToast("Notification removed");
+    } catch (err) {
+      showToast("Failed to remove notification");
+    }
   }
 
   return (
@@ -121,7 +151,11 @@ export function NotificationsConsole() {
       </div>
 
       <Card title="History">
-        {notifications.length === 0 ? (
+        {loading ? (
+          <div className="px-5 py-12 text-center text-sm text-muted-foreground">
+            Loading notification campaigns...
+          </div>
+        ) : notifications.length === 0 ? (
           <div className="px-5 py-12 text-center">
             <p className="text-sm text-muted-foreground">No notifications yet.</p>
             <button type="button" onClick={() => setFormOpen(true)} className="mt-3 text-xs font-semibold text-primary hover:underline">

@@ -1216,6 +1216,35 @@ export const resolveIncident = (id: string) =>
 export const addIncidentMessage = (id: string, message: string) =>
   request<void>(`/admin/incidents/${id}/message`, { method: "POST", body: { message } });
 
+// ── Push Notification Campaigns ──────────────────────────────────────────
+
+export type BackendNotificationCampaign = {
+  id: string;
+  title: string;
+  body: string;
+  audience: "ALL" | "DRIVERS" | "CUSTOMERS";
+  status: "SENT" | "SCHEDULED" | "DRAFT";
+  sent_at: string;
+  created_by: string;
+  created_at: string;
+};
+
+export type CampaignsResponse = {
+  notifications: BackendNotificationCampaign[];
+  total: number;
+};
+
+export const getNotificationCampaigns = (params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request<CampaignsResponse>(`/admin/notifications${qs ? `?${qs}` : ""}`);
+};
+
+export const createNotificationCampaign = (data: { title: string; body: string; audience: string }) =>
+  request<BackendNotificationCampaign>("/admin/notifications", { method: "POST", body: data });
+
+export const deleteNotificationCampaign = (id: string) =>
+  request<void>(`/admin/notifications/${id}`, { method: "DELETE" });
+
 // ── Support Tickets ───────────────────────────────────────────────────────
 
 export type TicketMessage = {
