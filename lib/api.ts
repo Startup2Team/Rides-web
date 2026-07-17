@@ -2028,3 +2028,69 @@ export const clearDeviceCollision = (userID: string, deviceID: string) =>
 
 export const getAccountTimeline = (userID: string, limit?: number) =>
   request<any>(`/admin/users/${userID}/timeline${limit !== undefined ? `?limit=${limit}` : ""}`);
+
+// ── Partners & Adverts ───────────────────────────────────────────────────
+
+export type ApiPartner = {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  status: "active" | "inactive";
+  createdAt: string;
+};
+
+export type ApiAdvert = {
+  id: string;
+  partnerId: string;
+  imageUrl: string | null;
+  headline: string;
+  ctaLabel: string;
+  ctaLink: string;
+  active: boolean;
+  startDate: string | null;
+  endDate: string | null;
+  priority: number;
+  createdAt: string;
+};
+
+export const getPartners = () => request<ApiPartner[]>("/admin/partners");
+
+export const savePartner = (partner: Partial<ApiPartner>, id?: string) => {
+  if (id) {
+    return request<ApiPartner>(`/admin/partners/${id}`, {
+      method: "PATCH",
+      body: partner,
+    });
+  } else {
+    return request<ApiPartner>("/admin/partners", {
+      method: "POST",
+      body: partner,
+    });
+  }
+};
+
+export const removePartner = (id: string) =>
+  request<void>(`/admin/partners/${id}`, { method: "DELETE" });
+
+export const getAdverts = () => request<ApiAdvert[]>("/admin/adverts");
+
+export const saveAdvert = (advert: Partial<ApiAdvert>, id?: string) => {
+  if (id) {
+    return request<ApiAdvert>(`/admin/adverts/${id}`, {
+      method: "PATCH",
+      body: advert,
+    });
+  } else {
+    return request<ApiAdvert>("/admin/adverts", {
+      method: "POST",
+      body: advert,
+    });
+  }
+};
+
+export const removeAdvert = (id: string) =>
+  request<void>(`/admin/adverts/${id}`, { method: "DELETE" });
+

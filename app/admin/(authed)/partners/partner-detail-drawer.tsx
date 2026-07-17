@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Avatar, StatusPill } from "../_components";
 import { AdvertFormModal, type AdvertDraft } from "./advert-form-modal";
 import { listAdverts, saveAdvert, removeAdvert, type Partner, type Advert } from "@/lib/partner-store";
@@ -18,9 +18,22 @@ export function PartnerDetailDrawer({
   onClose: () => void;
   onEditPartner: () => void;
 }) {
-  const [adverts, setAdverts] = useState<Advert[]>(() => listAdverts(partner.id));
+  const [adverts, setAdverts] = useState<Advert[]>([]);
+  const [loading, setLoading] = useState(true);
   const [advertModalOpen, setAdvertModalOpen] = useState(false);
   const [editingAdvert, setEditingAdvert] = useState<Advert | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await listAdverts(partner.id);
+      setAdverts(data);
+    } catch (err) {
+      console.error("Failed to load adverts:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [partner.id]);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -35,13 +48,13 @@ export function PartnerDetailDrawer({
     };
   }, [onClose]);
 
-  function refresh() {
-    setAdverts(listAdverts(partner.id));
-  }
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
-  function handleSaveAdvert(draft: AdvertDraft) {
-    saveAdvert({
-      id: editingAdvert?.id ?? `ADV-${Date.now().toString(36).toUpperCase()}`,
+  async function handleSaveAdvert(draft: AdvertDraft) {
+    const advertId = editingAdvert?.id ?? "";
+    const payload: Partial<Advert> = {
       partnerId: partner.id,
       imageUrl: draft.imageUrl,
       headline: draft.headline,
@@ -51,16 +64,24 @@ export function PartnerDetailDrawer({
       startDate: draft.startDate || null,
       endDate: draft.endDate || null,
       priority: draft.priority,
-      createdAt: editingAdvert?.createdAt ?? Date.now(),
-    });
-    setAdvertModalOpen(false);
-    setEditingAdvert(null);
-    refresh();
+    };
+    try {
+      await saveAdvert(payload, advertId || undefined);
+      setAdvertModalOpen(false);
+      setEditingAdvert(null);
+      await refresh();
+    } catch (err) {
+      console.error(err);
+    }
   }
 
-  function handleDeleteAdvert(id: string) {
-    removeAdvert(id);
-    refresh();
+  async function handleDeleteAdvert(id: string) {
+    try {
+      await removeAdvert(id);
+      await refresh();
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   return (
@@ -114,7 +135,9 @@ export function PartnerDetailDrawer({
             </div>
           </div>
 
-          {adverts.length === 0 ? (
+          {loading ? (
+            <p className="mt-8 text-center text-sm text-muted-foreground">Loading adverts...</p>
+          ) : adverts.length === 0 ? (
             <p className="mt-8 text-center text-sm text-muted-foreground">No adverts yet — add one to get started.</p>
           ) : (
             <ul className="mt-4 space-y-3">
@@ -158,7 +181,7 @@ export function PartnerDetailDrawer({
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDeleteAdvert(advert.id)}
+                        onClick={() => void handleDeleteAdvert(advert.id)}
                         className="h-8 rounded-lg border border-border px-3 text-xs font-medium text-red-600 hover:border-red-200 hover:bg-red-50"
                       >
                         Delete
