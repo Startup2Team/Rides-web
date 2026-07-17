@@ -1,6 +1,4 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getDriversOverview, NO_BACKEND } from "@/lib/api";
 import {
@@ -153,12 +151,16 @@ export function DriversOverview() {
   const [stats, setStats] = useState<DriversOverviewStats>(emptyStats);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const firstLoad = useRef(true);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      setLoading(true);
+      if (firstLoad.current) {
+        setLoading(true);
+        firstLoad.current = false;
+      }
       setError(null);
       try {
         const vehicleType = slug ? vehicleTypeFromSlug(slug) : undefined;
@@ -196,8 +198,10 @@ export function DriversOverview() {
     }
 
     void load();
+    const id = setInterval(load, 15_000);
     return () => {
       cancelled = true;
+      clearInterval(id);
     };
   }, [slug]);
 

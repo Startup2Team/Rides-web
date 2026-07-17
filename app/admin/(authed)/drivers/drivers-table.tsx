@@ -372,6 +372,7 @@ export function DriversTable() {
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const firstLoad = useRef(true);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -383,7 +384,10 @@ export function DriversTable() {
   }, [vehicleSlug, debouncedQuery, statusFilter, dateFilter, customFrom, customTo]);
 
   const loadDrivers = useCallback(async () => {
-    setLoading(true);
+    if (firstLoad.current) {
+      setLoading(true);
+      firstLoad.current = false;
+    }
     setError(null);
     try {
       const params: Record<string, string> = {
@@ -433,6 +437,10 @@ export function DriversTable() {
 
   useEffect(() => {
     void loadDrivers();
+    const id = setInterval(loadDrivers, 15_000);
+    return () => {
+      clearInterval(id);
+    };
   }, [loadDrivers]);
 
   useEffect(() => {
