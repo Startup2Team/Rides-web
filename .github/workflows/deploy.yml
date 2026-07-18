@@ -30,4 +30,6 @@ jobs:
           SSH="ssh -i ~/.ssh/deploy -o BatchMode=yes root@139.84.251.242"
           # Web has no secrets on the box, so a clean replace is safe.
           git archive --format=tar HEAD | $SSH 'rm -rf /opt/rides/Rides-web && mkdir -p /opt/rides/Rides-web && tar -x -C /opt/rides/Rides-web'
-          $SSH 'cd /opt/rides/Rides-api/api-server && docker compose -f docker-compose.prod.yml up -d --build admin && docker image prune -f'
+          $SSH 'cd /opt/rides/Rides-api/api-server && docker compose -f docker-compose.prod.yml up -d --build admin'
+          # Staging admin — same source, built with the staging API URL baked in.
+          $SSH 'cd /opt/rides/Rides-api/api-server && docker compose --env-file .env.staging -p rides-staging -f docker-compose.staging.yml up -d --build admin && docker image prune -f'
