@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getDriversOverview, NO_BACKEND } from "@/lib/api";
