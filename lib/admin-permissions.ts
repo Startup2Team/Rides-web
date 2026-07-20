@@ -20,6 +20,7 @@ export type Permission =
   | "/admin/packages"
   | "/admin/campaigns"
   | "/admin/purchases"
+  | "/admin/package-payments"
   | "/admin/entitlements"
   | "/admin/audit-logs"
   | "/admin/profile"
@@ -66,6 +67,7 @@ export const SIDEBAR_ITEMS: {
   { href: "/admin/packages", label: "Packages", group: "Monetization" },
   { href: "/admin/campaigns", label: "Campaigns", group: "Monetization" },
   { href: "/admin/purchases", label: "Purchases", group: "Monetization" },
+  { href: "/admin/package-payments", label: "Package Payments", group: "Monetization" },
   { href: "/admin/entitlements", label: "Entitlements", group: "Monetization" },
   { href: "/admin/audit-logs", label: "Audit Logs", group: "Monetization" },
   { href: "/admin/profile", label: "Profile", group: "System" },
@@ -105,6 +107,7 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       "/admin/packages",
       "/admin/campaigns",
       "/admin/purchases",
+      "/admin/package-payments",
       "/admin/audit-logs",
     ],
     homePath: "/admin",
@@ -165,6 +168,7 @@ export function normalizePermissions(raw: unknown): Permission[] {
     "/admin/packages",
     "/admin/campaigns",
     "/admin/purchases",
+    "/admin/package-payments",
     "/admin/entitlements",
     "/admin/audit-logs",
     "/admin/profile",

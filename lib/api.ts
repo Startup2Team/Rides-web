@@ -1731,6 +1731,92 @@ export const getAuditLogs = (params: {
   );
 };
 
+// ── Package Payments (manual payment claims) ──────────────────────────────
+// Admin review queue for driver-submitted proof-of-payment claims. The driver
+// pays a merchant MoMo code off-platform, submits proof, and an operator
+// (SuperAdmin / FinanceManager) approves (grants rides) or rejects (with a
+// reason). Backend returns the raw snake_case claim shape below.
+//
+// proof_image_id is the stored file URL of the uploaded proof screenshot
+// (payment-proofs/… object) — it can be rendered directly as an image src,
+// exactly like driver KYC document file_url values.
+
+export type ManualClaimStatus =
+  | "submitted"
+  | "approved"
+  | "rejected"
+  | "created"
+  | "cancelled"
+  | "expired"
+  | "needs_clarification";
+
+export type ManualPaymentClaim = {
+  id: string;
+  version: number;
+  driver_id: string;
+  vehicle_id: string;
+  vehicle_type: string;
+  offer_id: string;
+  package_id: string;
+  package_name: string;
+  expected_amount_rwf: number;
+  provider: string; // mtn | airtel
+  merchant_code_snapshot: string;
+  payer_phone_number: string;
+  transaction_reference: string | null;
+  proof_image_id: string | null;
+  status: ManualClaimStatus;
+  created_at: string;
+  submitted_at: string | null;
+  expires_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  rejection_reason: string | null;
+  clarification_message: string | null;
+};
+
+/**
+ * List manual payment claims for review. Defaults to the `submitted` review
+ * queue on the backend; pass "all" to see every status. The backend wraps the
+ * list in { items, next_cursor }.
+ */
+export const getManualPaymentClaims = async (
+  status = "submitted",
+): Promise<ManualPaymentClaim[]> => {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+  const res = await request<{ items: ManualPaymentClaim[] | null; next_cursor: string | null }>(
+    `/admin/package-payments/manual-claims${qs}`,
+  );
+  return res?.items ?? [];
+};
+
+/** Approve a submitted claim — grants the package rides and notifies the driver. */
+export const approveManualPaymentClaim = (id: string) =>
+  request<{ claim: ManualPaymentClaim }>(
+    `/admin/package-payments/manual-claims/${id}/approve`,
+    { method: "POST", body: {} },
+  );
+
+/**
+ * Reject a submitted claim with a required reason and an optional clarification
+ * message the driver sees before resubmitting.
+ */
+export const rejectManualPaymentClaim = (
+  id: string,
+  reason: string,
+  clarificationMessage?: string,
+) =>
+  request<{ claim: ManualPaymentClaim }>(
+    `/admin/package-payments/manual-claims/${id}/reject`,
+    {
+      method: "POST",
+      body: {
+        reason,
+        clarification_message: clarificationMessage ?? "",
+      },
+    },
+  );
+
 // ── Account Assist ────────────────────────────────────────────────────────
 
 export const clearOTPLockout = (userID: string) =>
