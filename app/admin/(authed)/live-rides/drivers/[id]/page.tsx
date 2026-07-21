@@ -5,8 +5,6 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import "leaflet/dist/leaflet.css";
 import { getDriver, getLiveMap, type LiveMapDriver } from "@/lib/api";
-import { isMockDriverId, MOCK_DRIVERS } from "@/lib/mock-drivers";
-import { MOCK_LIVE_MAP_DRIVERS, MOCK_ONLINE_DRIVERS, nearestKigaliPlace } from "@/lib/mock-live-rides";
 import { formatTransportType } from "@/lib/drivers";
 import { Avatar, StatusPill } from "../../../_components";
 
@@ -20,17 +18,8 @@ type DriverIdentity = {
   licenseNumber: string | null;
 };
 
-function identityFromMock(id: keyof typeof MOCK_DRIVERS): DriverIdentity {
-  const d = MOCK_DRIVERS[id];
-  return {
-    id: d.id,
-    name: d.full_name?.trim() || d.phone || "Driver",
-    phone: d.phone ?? "—",
-    vehicle: formatTransportType(d.transport_type),
-    plate: d.vehicle_plate ?? "—",
-    approvalStatus: d.approval_status ?? null,
-    licenseNumber: d.license_number ?? null,
-  };
+function nearestKigaliPlace(_lat: number, _lng: number): string {
+  return "Kigali, Rwanda";
 }
 
 function CurrentPositionMap({ lat, lng }: { lat: number; lng: number }) {
@@ -104,32 +93,17 @@ export default function DriverActivityPage() {
     setLoading(true);
     setError(null);
 
-    const identityPromise: Promise<DriverIdentity | null> = isMockDriverId(id)
-      ? Promise.resolve(identityFromMock(id))
-      : getDriver(id)
-          .then((d) => ({
-            id: d.id,
-            name: d.full_name?.trim() || d.phone || "Driver",
-            phone: d.phone ?? "—",
-            vehicle: formatTransportType(d.transport_type),
-            plate: d.vehicle_plate ?? "—",
-            approvalStatus: d.approval_status ?? null,
-            licenseNumber: d.license_number ?? null,
-          }))
-          .catch(() => {
-            const fallback = MOCK_ONLINE_DRIVERS.find((d) => d.id === id);
-            return fallback
-              ? {
-                  id: fallback.id,
-                  name: fallback.name,
-                  phone: fallback.phone,
-                  vehicle: formatTransportType(fallback.transportType),
-                  plate: fallback.plate,
-                  approvalStatus: null,
-                  licenseNumber: null,
-                }
-              : null;
-          });
+    const identityPromise: Promise<DriverIdentity | null> = getDriver(id)
+      .then((d) => ({
+        id: d.id,
+        name: d.full_name?.trim() || d.phone || "Driver",
+        phone: d.phone ?? "—",
+        vehicle: formatTransportType(d.transport_type),
+        plate: d.vehicle_plate ?? "—",
+        approvalStatus: d.approval_status ?? null,
+        licenseNumber: d.license_number ?? null,
+      }))
+      .catch(() => null);
 
     const positionPromise = getLiveMap()
       .then((res) => res.drivers ?? [])
@@ -144,8 +118,7 @@ export default function DriverActivityPage() {
       }
       setIdentity(ident);
       const real = drivers.find((d) => d.id === id) ?? null;
-      const mockPos = MOCK_LIVE_MAP_DRIVERS.find((d) => d.id === id) ?? null;
-      setPosition(real ?? mockPos);
+      setPosition(real);
       setPositionIsLive(real != null);
       setLoading(false);
     });
