@@ -183,9 +183,9 @@ export function TicketModal({
             let messageBody = m.body;
             if (isSystem && (messageBody.startsWith("⚠️ Ticket Closed:") || messageBody.startsWith("⚠️ Closed:")) && !messageBody.includes("Closed/solved by:")) {
               const reason = messageBody.replace("⚠️ Ticket Closed:", "").replace("⚠️ Closed:", "").trim();
-              const adminName = getAssigneeName(ticket.assignedTo) || user?.name || "Admin (Mock)";
+              const adminName = getAssigneeName(ticket.assignedTo) || user?.name || "Admin";
               const admin = admins.find((a) => a.id === ticket.assignedTo || a.name === ticket.assignedTo);
-              const adminEmail = (admin ? admin.email : null) || user?.email || "admin@mock.local";
+              const adminEmail = (admin ? admin.email : null) || user?.email || "admin@rides.rw";
               const d = new Date(ticket.lastActivity);
               const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
               const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
@@ -197,9 +197,9 @@ Date : ${dateStr}
 Time: ${timeStr}`;
             } else if (isSystem && (messageBody.startsWith("✅ Case Marked Solved:") || messageBody.startsWith("✅ Solved:")) && !messageBody.includes("Closed/solved by:")) {
               const reason = messageBody.replace("✅ Case Marked Solved:", "").replace("✅ Solved:", "").trim();
-              const adminName = getAssigneeName(ticket.assignedTo) || user?.name || "Admin (Mock)";
+              const adminName = getAssigneeName(ticket.assignedTo) || user?.name || "Admin";
               const admin = admins.find((a) => a.id === ticket.assignedTo || a.name === ticket.assignedTo);
-              const adminEmail = (admin ? admin.email : null) || user?.email || "admin@mock.local";
+              const adminEmail = (admin ? admin.email : null) || user?.email || "admin@rides.rw";
               const d = new Date(ticket.lastActivity);
               const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
               const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });

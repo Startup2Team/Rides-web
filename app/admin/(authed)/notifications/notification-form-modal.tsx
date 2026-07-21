@@ -26,10 +26,10 @@ function draftFromNotification(notification: AppNotification | null): Notificati
   return {
     title: notification.title,
     message: notification.message,
-    imageUrl: notification.imageUrl,
-    actionLink: notification.actionLink,
+    imageUrl: notification.imageUrl ?? null,
+    actionLink: notification.actionLink ?? "",
     audience: notification.audience,
-    scheduledAt: notification.scheduledAt ?? "",
+    scheduledAt: String(notification.scheduledAt ?? ""),
   };
 }
 

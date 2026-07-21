@@ -24,7 +24,7 @@ const STATUS_TONE: Record<AppNotification["status"], "success" | "warn" | "neutr
   draft: "neutral",
 };
 
-function formatDateTime(value: number | string | null): string {
+function formatDateTime(value?: number | string | null): string {
   if (!value) return "—";
   const d = typeof value === "number" ? new Date(value) : new Date(value);
   return d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
