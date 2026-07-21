@@ -2,14 +2,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Avatar, Card, StatCard } from "../_components";
-import {
-  VEHICLE_LABELS,
-  formatDateTime,
-  type Entitlement,
-  type EntitlementTransaction,
-  type EntitlementTransactionKind,
-} from "@/lib/packages-mock";
-import { getAdminEntitlements } from "@/lib/api";
+import { getAdminEntitlements, type Entitlement } from "@/lib/api";
+
+const VEHICLE_LABELS: Record<string, string> = {
+  moto: "Moto Bike",
+  cab: "Cab Taxi",
+  hilux: "Light Hilux",
+  fuso: "Heavy Fuso",
+};
+
+function formatDateTime(isoStr: string): string {
+  if (!isoStr) return "—";
+  return new Date(isoStr).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 import { GrantRidesModal } from "./grant-rides-modal";
 
 type GrantTarget = {
@@ -20,14 +30,14 @@ type GrantTarget = {
   currentBonus: number;
 } | null;
 
-const TXN_LABEL: Record<EntitlementTransactionKind, string> = {
+const TXN_LABEL: Record<string, string> = {
   "purchase-grant": "Purchase",
   "ride-deduction": "Ride",
   "admin-grant": "Admin grant",
   "admin-revoke": "Admin revoke",
 };
 
-const TXN_COLOUR: Record<EntitlementTransactionKind, string> = {
+const TXN_COLOUR: Record<string, string> = {
   "purchase-grant": "text-primary",
   "ride-deduction": "text-muted-foreground",
   "admin-grant": "text-emerald-600",
@@ -583,7 +593,7 @@ function DetailDrawer({
   );
 }
 
-function TxnRow({ txn }: { txn: EntitlementTransaction }) {
+function TxnRow({ txn }: { txn: Entitlement["transactions"][number] }) {
   const sign = (n: number) => (n > 0 ? `+${n}` : String(n));
   return (
     <li className="rounded-xl border border-border bg-card p-3">

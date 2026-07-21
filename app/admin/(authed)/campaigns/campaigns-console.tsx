@@ -3,16 +3,36 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, StatCard, StatusPill } from "../_components";
 import {
-  VEHICLE_LABELS,
-  formatDate,
-  formatRWF,
+  getAdminCampaigns,
+  createCampaign,
+  getAdminPackages,
+  type Package,
   type Campaign,
   type CampaignStatus,
-} from "@/lib/packages-mock";
-import { getAdminCampaigns, createCampaign, getAdminPackages, type Package } from "@/lib/api";
+} from "@/lib/api";
+
+const VEHICLE_LABELS: Record<string, string> = {
+  moto: "Moto Bike",
+  cab: "Cab Taxi",
+  hilux: "Light Hilux",
+  fuso: "Heavy Fuso",
+};
+
+function formatRWF(amount: number): string {
+  return `${amount.toLocaleString()} RWF`;
+}
+
+function formatDate(isoStr: string): string {
+  if (!isoStr) return "—";
+  return new Date(isoStr).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 import { CampaignDetailDrawer } from "./campaign-detail-drawer";
 
-const STATUS_TONE: Record<CampaignStatus, "success" | "warn" | "info" | "neutral" | "danger"> = {
+const STATUS_TONE: Record<string, "success" | "warn" | "info" | "neutral" | "danger"> = {
   active: "success",
   scheduled: "info",
   draft: "warn",
@@ -20,7 +40,7 @@ const STATUS_TONE: Record<CampaignStatus, "success" | "warn" | "info" | "neutral
   archived: "neutral",
 };
 
-type StatusFilter = "all" | CampaignStatus;
+type StatusFilter = "all" | string;
 
 const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -385,11 +405,11 @@ function AudienceBadge({ campaign }: { campaign: Campaign }) {
 
 function OverrideSummary({ campaign }: { campaign: Campaign }) {
   const parts: string[] = [];
-  if (campaign.priceOverride !== null)
+  if (campaign.priceOverride != null)
     parts.push(`Price → ${formatRWF(campaign.priceOverride)}`);
-  if (campaign.ridesOverride !== null)
+  if (campaign.ridesOverride != null)
     parts.push(`+${campaign.ridesOverride} rides`);
-  if (campaign.bonusRidesOverride !== null)
+  if (campaign.bonusRidesOverride != null)
     parts.push(`+${campaign.bonusRidesOverride} bonus`);
   if (parts.length === 0) return <span className="text-muted-foreground">—</span>;
   return <span className="text-xs">{parts.join(" · ")}</span>;
@@ -403,14 +423,15 @@ function chipClass(active: boolean) {
   }`;
 }
 
-function statusLabel(status: CampaignStatus): string {
-  return {
+function statusLabel(status: string): string {
+  const map: Record<string, string> = {
     active: "Active",
     scheduled: "Scheduled",
     draft: "Draft",
     expired: "Expired",
     archived: "Archived",
-  }[status];
+  };
+  return map[status] ?? status;
 }
 
 function CreateCampaignModal({
