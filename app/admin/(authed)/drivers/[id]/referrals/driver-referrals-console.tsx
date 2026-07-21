@@ -7,8 +7,6 @@ import { Avatar, Card, StatCard } from "../../../_components";
 import { getDriver, getDriverReferrals, type ReferredDriver } from "@/lib/api";
 import { formatReferredDriverLine, referralCountLabel } from "@/lib/referrals";
 import { formatTransportType, mapDriverDetailToVerify } from "@/lib/drivers";
-import { getMockDriverById, isMockDriverId, isMockReferredId } from "@/lib/mock-drivers";
-import { getLocalDriverDetail, isLocalDriverId } from "@/lib/local-drivers";
 
 type StatusFilter = "all" | "Pending" | "Approved" | "Rejected";
 type DateFilter = "all" | "today" | "week" | "month";
@@ -31,8 +29,8 @@ function statusBadgeClass(status: string): string {
 
 export function DriverReferralsConsole({ driverId }: { driverId: string }) {
   const router = useRouter();
-  const [referrerName, setReferrerName] = useState("Driver");
-  const [referralCount, setReferralCount] = useState(0);
+  const [referrerName, setReferrerName] = useState<string>("Driver");
+  const [referralCount, setReferralCount] = useState<number>(0);
   const [referrals, setReferrals] = useState<ReferredDriver[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,14 +42,7 @@ export function DriverReferralsConsole({ driverId }: { driverId: string }) {
     setLoading(true);
     setError(null);
     try {
-      let detail;
-      if (isMockDriverId(driverId) || isMockReferredId(driverId)) {
-        detail = getMockDriverById(driverId);
-      } else if (isLocalDriverId(driverId)) {
-        detail = getLocalDriverDetail(driverId);
-      } else {
-        detail = await getDriver(driverId);
-      }
+      const detail = await getDriver(driverId);
 
       if (!detail) throw new Error("Driver not found");
 

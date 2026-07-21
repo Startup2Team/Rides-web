@@ -12,7 +12,6 @@ import {
   suspendDriver,
   reinstateDriver,
   forceDriverOffline,
-  NO_BACKEND,
 } from "@/lib/api";
 import {
   mapApiDriver,
@@ -22,8 +21,6 @@ import {
   type DriverRow,
   type DriverStatus,
 } from "@/lib/drivers";
-import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
-import { getLocalApiDrivers } from "@/lib/local-drivers";
 import { ReferralCountLink, ReferralStatTile } from "./referred-drivers-section";
 
 type Driver = DriverRow;
@@ -399,33 +396,8 @@ export function DriversTable() {
 
       const res = await getDrivers(params);
       const apiRows = (res.drivers ?? []).map(mapApiDriver);
-      if (NO_BACKEND) {
-        const queryLower = debouncedQuery.toLowerCase();
-        const matchSearch = (d: any) => {
-          if (!debouncedQuery) return true;
-          const name = d.full_name?.toLowerCase() ?? "";
-          const plate = d.vehicle_plate?.toLowerCase() ?? "";
-          const phone = d.phone?.toLowerCase() ?? "";
-          return name.includes(queryLower) || plate.includes(queryLower) || phone.includes(queryLower);
-        };
-        const mockRows = MOCK_API_DRIVERS
-          .filter((d) => !vehicleType || d.transport_type === vehicleType)
-          .filter(matchSearch)
-          .map(mapApiDriver);
-        const localRows = getLocalApiDrivers()
-          .filter((d) => !vehicleType || d.transport_type === vehicleType)
-          .filter(matchSearch)
-          .map(mapApiDriver);
-        // Deduplicate — real API takes precedence over mock/local if IDs ever collide.
-        const seenIds = new Set(apiRows.map((d) => d.id));
-        const extras = [...mockRows, ...localRows].filter((d) => !seenIds.has(d.id));
-        const merged = [...apiRows, ...extras];
-        setDrivers(merged);
-        setTotalFromApi((res.total ?? apiRows.length) + extras.length);
-      } else {
-        setDrivers(apiRows);
-        setTotalFromApi(res.total ?? apiRows.length);
-      }
+      setDrivers(apiRows);
+      setTotalFromApi(res.total ?? apiRows.length);
     } catch (err) {
       setDrivers([]);
       setTotalFromApi(0);

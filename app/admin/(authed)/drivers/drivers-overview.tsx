@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { getDriversOverview, NO_BACKEND } from "@/lib/api";
+import { getDriversOverview } from "@/lib/api";
 import {
   isVehicleSlug,
   vehicleTypeFromSlug,
@@ -10,8 +10,6 @@ import {
   type VehicleSlug,
 } from "@/lib/drivers";
 import type { VehicleSlug as DriverFormSlug } from "@/lib/driver-registration";
-import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
-import { getLocalApiDrivers } from "@/lib/local-drivers";
 import { AdminPageHeader, StatCard } from "../_components";
 import { AddDriverButton } from "./add-driver-button";
 import { GenerateReportButton } from "../reports/generate-report-button";
@@ -171,24 +169,13 @@ export function DriversOverview() {
 
         const res = await getDriversOverview(params);
         if (cancelled) return;
-        const extras = NO_BACKEND ? [
-          ...MOCK_API_DRIVERS,
-          ...getLocalApiDrivers(),
-        ].filter((d) => !vehicleType || d.transport_type === vehicleType) : [];
-        const isPending = (d: { approval_status?: string }) =>
-          ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
-        const isOnline = (d: { is_online?: boolean }) => !!d.is_online;
-        const isOnTrip = (d: { on_trip?: boolean }) => !!d.on_trip;
-        const isSuspended = (d: { approval_status?: string }) =>
-          d.approval_status?.toUpperCase() === "SUSPENDED";
-        const referralsOf = (d: { referral_count?: number }) => d.referral_count ?? 0;
         setStats({
-          total: (res.total ?? 0) + extras.length,
-          online: (res.online ?? 0) + extras.filter(isOnline).length,
-          onTrip: (res.on_trip ?? 0) + extras.filter(isOnTrip).length,
-          pending: (res.pending ?? 0) + extras.filter(isPending).length,
-          suspended: (res.suspended ?? 0) + extras.filter(isSuspended).length,
-          totalReferrals: (res.total_referrals ?? 0) + extras.reduce((sum, d) => sum + referralsOf(d), 0),
+          total: res.total ?? 0,
+          online: res.online ?? 0,
+          onTrip: res.on_trip ?? 0,
+          pending: res.pending ?? 0,
+          suspended: res.suspended ?? 0,
+          totalReferrals: res.total_referrals ?? 0,
         });
       } catch (err) {
         if (cancelled) return;
@@ -200,7 +187,7 @@ export function DriversOverview() {
     }
 
     void load();
-    const id = setInterval(load, 15_000);
+    const id = setInterval(load, 5_000);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -217,23 +204,13 @@ export function DriversOverview() {
           if (vehicleType) params.vehicle_type = vehicleType;
           const res = await getDriversOverview(params);
           if (cancelled) return;
-          const extras = NO_BACKEND ? [...MOCK_API_DRIVERS, ...getLocalApiDrivers()].filter(
-            (d) => !vehicleType || d.transport_type === vehicleType,
-          ) : [];
-          const isPending = (d: { approval_status?: string }) =>
-            ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
-          const isOnline = (d: { is_online?: boolean }) => !!d.is_online;
-          const isOnTrip = (d: { on_trip?: boolean }) => !!d.on_trip;
-          const isSuspended = (d: { approval_status?: string }) =>
-            d.approval_status?.toUpperCase() === "SUSPENDED";
-          const referralsOf = (d: { referral_count?: number }) => d.referral_count ?? 0;
           setStats({
-            total: (res.total ?? 0) + extras.length,
-            online: (res.online ?? 0) + extras.filter(isOnline).length,
-            onTrip: (res.on_trip ?? 0) + extras.filter(isOnTrip).length,
-            pending: (res.pending ?? 0) + extras.filter(isPending).length,
-            suspended: (res.suspended ?? 0) + extras.filter(isSuspended).length,
-            totalReferrals: (res.total_referrals ?? 0) + extras.reduce((sum, d) => sum + referralsOf(d), 0),
+            total: res.total ?? 0,
+            online: res.online ?? 0,
+            onTrip: res.on_trip ?? 0,
+            pending: res.pending ?? 0,
+            suspended: res.suspended ?? 0,
+            totalReferrals: res.total_referrals ?? 0,
           });
         } catch {
           /* ignore — keep previous stats */
