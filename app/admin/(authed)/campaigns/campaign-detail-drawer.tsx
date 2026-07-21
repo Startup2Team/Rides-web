@@ -294,7 +294,7 @@ export function CampaignDetailDrawer({
               Lifecycle actions
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Transition this campaign's lifecycle state dynamically in mock mode.
+              Transition this campaign's lifecycle state dynamically.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {isUpcoming ? (
