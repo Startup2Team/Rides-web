@@ -1200,8 +1200,14 @@ export const getNotificationCampaigns = (params: Record<string, string> = {}) =>
   return request<CampaignsResponse>(`/admin/notifications${qs ? `?${qs}` : ""}`);
 };
 
-export const createNotificationCampaign = (data: { title: string; body: string; audience: string }) =>
+export const createNotificationCampaign = (data: { title: string; body: string; audience: string; target_driver_id?: string }) =>
   request<BackendNotificationCampaign>("/admin/notifications", { method: "POST", body: data });
+
+export const notifyDriver = (driverId: string, data: { title: string; body: string; reason?: string }) =>
+  request<{ id: string; status: string; message?: string }>(`/admin/drivers/${driverId}/notify`, {
+    method: "POST",
+    body: data,
+  });
 
 export const deleteNotificationCampaign = (id: string) =>
   request<void>(`/admin/notifications/${id}`, { method: "DELETE" });

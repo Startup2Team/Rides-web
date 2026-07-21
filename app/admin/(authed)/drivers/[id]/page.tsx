@@ -14,6 +14,7 @@ import {
 import { mapDriverDetailToVerify } from "@/lib/drivers";
 import type { VerifyDriver, ReviewHistoryEntry } from "../verify-driver-modal";
 import { ReferredDriversSection } from "../referred-drivers-section";
+import { NotifyDriverModal } from "../notify-driver-modal";
 
 type DocKey = "profile_photo" | "national_id" | "license" | "insurance" | "authorization";
 
@@ -640,6 +641,7 @@ export default function DriverReviewPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [notifyOpen, setNotifyOpen] = useState(false);
 
   const [decisions, setDecisions] = useState<Record<DocKey, DocDecision>>(() => {
     const s: FaceDecision["status"] = "none";
@@ -916,13 +918,30 @@ export default function DriverReviewPage() {
             </div>
           </div>
         </div>
-        <Link
-          href="/admin/drivers"
-          className="inline-flex h-9 shrink-0 items-center rounded-xl border border-border bg-card px-4 text-xs font-semibold text-foreground hover:bg-surface"
-        >
-          ← Back to Drivers
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setNotifyOpen(true)}
+            className="inline-flex h-9 items-center rounded-xl bg-primary/10 border border-primary/20 px-3.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+          >
+            💬 Send Message
+          </button>
+          <Link
+            href="/admin/drivers"
+            className="inline-flex h-9 shrink-0 items-center rounded-xl border border-border bg-card px-4 text-xs font-semibold text-foreground hover:bg-surface"
+          >
+            ← Back to Drivers
+          </Link>
+        </div>
       </div>
+
+      <NotifyDriverModal
+        open={notifyOpen}
+        driverId={driver.id}
+        driverName={driver.name}
+        onClose={() => setNotifyOpen(false)}
+        onSuccess={() => setToast("Direct push notification sent to driver!")}
+      />
 
       {driver.reviewHistory && driver.reviewHistory.length > 0 ? (
         <ReviewHistorySection history={driver.reviewHistory} />

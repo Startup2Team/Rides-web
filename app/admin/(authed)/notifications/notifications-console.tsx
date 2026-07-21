@@ -15,7 +15,13 @@ import {
 const AUDIENCE_LABEL: Record<NotificationAudience, string> = {
   both: "Customers & Drivers",
   customers: "Customers",
-  drivers: "Drivers",
+  drivers: "All Drivers",
+  driver_moto: "Moto Riders",
+  driver_cab: "Cab Drivers",
+  driver_hilux: "Hilux Drivers",
+  driver_fuso: "Fuso Drivers",
+  driver_rifani: "Rifani Drivers",
+  single_driver: "Single Driver",
 };
 
 const STATUS_TONE: Record<AppNotification["status"], "success" | "warn" | "neutral"> = {

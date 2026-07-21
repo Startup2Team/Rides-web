@@ -22,6 +22,7 @@ import {
   type DriverStatus,
 } from "@/lib/drivers";
 import { ReferralCountLink, ReferralStatTile } from "./referred-drivers-section";
+import { NotifyDriverModal } from "./notify-driver-modal";
 
 type Driver = DriverRow;
 
@@ -364,6 +365,7 @@ export function DriversTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [notifyDriverTarget, setNotifyDriverTarget] = useState<{ id: string; name: string } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
@@ -585,7 +587,7 @@ export function DriversTable() {
         d.status === "Pending" ? () => router.push(`/admin/drivers/${d.id}`) : undefined
       }
       onView={() => router.push(`/admin/drivers/${d.id}`)}
-      onMessage={() => setToast(`Message sent to ${d.name}`)}
+      onMessage={() => setNotifyDriverTarget({ id: d.id, name: d.name })}
       onForceOffline={async () => {
         try {
           await forceDriverOffline(d.id);
@@ -952,6 +954,16 @@ export function DriversTable() {
           </span>
           <span className="text-sm font-medium text-foreground">{toast}</span>
         </div>
+      ) : null}
+
+      {notifyDriverTarget ? (
+        <NotifyDriverModal
+          open={!!notifyDriverTarget}
+          driverId={notifyDriverTarget.id}
+          driverName={notifyDriverTarget.name}
+          onClose={() => setNotifyDriverTarget(null)}
+          onSuccess={() => setToast(`Notification sent to ${notifyDriverTarget.name}`)}
+        />
       ) : null}
     </Card>
   );
