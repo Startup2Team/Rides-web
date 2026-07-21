@@ -12,9 +12,7 @@ import {
   suspendCustomer,
   reinstateCustomer,
   type Customer as ApiCustomer,
-  NO_BACKEND,
 } from "@/lib/api";
-import { MOCK_API_CUSTOMERS } from "@/lib/mock-customers";
 import { CustomerStats } from "./customer-stats";
 import { GenerateReportButton } from "../reports/generate-report-button";
 import type { ReportMeta } from "../reports/report-content";
@@ -395,11 +393,6 @@ export function CustomersTable() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   useEffect(() => {
-    if (NO_BACKEND) {
-      setCustomers(MOCK_API_CUSTOMERS.map(mapApiCustomer));
-      setLoading(false);
-      return;
-    }
     getCustomers({ limit: "100", offset: "0" })
       .then((res) => {
         const api = (res.customers ?? []).map(mapApiCustomer);
