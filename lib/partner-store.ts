@@ -1,7 +1,3 @@
-/**
- * Real API integration for Partners and Adverts.
- * Connects the monetization admin dashboard to the Go backend.
- */
 import {
   getPartners as apiGetPartners,
   savePartner as apiSavePartner,
@@ -12,9 +8,31 @@ import {
   type ApiPartner,
   type ApiAdvert,
 } from "./api";
-import { type Partner, type Advert } from "./mock-partners";
 
-export type { Partner, Advert } from "./mock-partners";
+export type Partner = {
+  id: string;
+  name: string;
+  logoUrl?: string | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  status: "active" | "inactive";
+  createdAt: number;
+};
+
+export type Advert = {
+  id: string;
+  partnerId: string;
+  imageUrl: string | null;
+  headline: string;
+  ctaLabel?: string | null;
+  ctaLink?: string | null;
+  active: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+  priority?: number | null;
+  createdAt: number;
+};
 
 function mapPartner(p: ApiPartner): Partner {
   return {
@@ -50,7 +68,7 @@ export async function listPartners(): Promise<Partner[]> {
     const list = await apiGetPartners();
     return (list ?? []).map(mapPartner);
   } catch (err) {
-    console.error("listPartners error, fallback to empty", err);
+    console.error("listPartners error", err);
     return [];
   }
 }
@@ -63,10 +81,10 @@ export async function getPartner(id: string): Promise<Partner | null> {
 export async function savePartner(partner: Partial<Partner>, id?: string): Promise<void> {
   const payload: Partial<ApiPartner> = {
     name: partner.name,
-    logoUrl: partner.logoUrl,
-    contactName: partner.contactName,
-    contactEmail: partner.contactEmail,
-    contactPhone: partner.contactPhone,
+    logoUrl: partner.logoUrl ?? undefined,
+    contactName: partner.contactName ?? undefined,
+    contactEmail: partner.contactEmail ?? undefined,
+    contactPhone: partner.contactPhone ?? undefined,
     status: partner.status,
   };
   await apiSavePartner(payload, id);
@@ -82,7 +100,7 @@ export async function listAdverts(partnerId?: string): Promise<Advert[]> {
     const mapped = (list ?? []).map(mapAdvert);
     return partnerId ? mapped.filter((a) => a.partnerId === partnerId) : mapped;
   } catch (err) {
-    console.error("listAdverts error, fallback to empty", err);
+    console.error("listAdverts error", err);
     return [];
   }
 }
@@ -90,14 +108,14 @@ export async function listAdverts(partnerId?: string): Promise<Advert[]> {
 export async function saveAdvert(advert: Partial<Advert>, id?: string): Promise<void> {
   const payload: Partial<ApiAdvert> = {
     partnerId: advert.partnerId,
-    imageUrl: advert.imageUrl,
+    imageUrl: advert.imageUrl ?? undefined,
     headline: advert.headline,
-    ctaLabel: advert.ctaLabel,
-    ctaLink: advert.ctaLink,
+    ctaLabel: advert.ctaLabel ?? undefined,
+    ctaLink: advert.ctaLink ?? undefined,
     active: advert.active,
-    startDate: advert.startDate,
-    endDate: advert.endDate,
-    priority: advert.priority,
+    startDate: advert.startDate ?? undefined,
+    endDate: advert.endDate ?? undefined,
+    priority: advert.priority ?? undefined,
   };
   await apiSaveAdvert(payload, id);
 }

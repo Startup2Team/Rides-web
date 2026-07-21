@@ -4,9 +4,23 @@ import {
   deleteNotificationCampaign,
   type BackendNotificationCampaign,
 } from "./api";
-import { type AppNotification } from "./mock-notifications";
 
-export type { AppNotification, NotificationAudience, NotificationStatus } from "./mock-notifications";
+export type NotificationAudience = "both" | "customers" | "drivers";
+export type NotificationStatus = "sent" | "scheduled" | "draft";
+
+export type AppNotification = {
+  id: string;
+  title: string;
+  message: string;
+  imageUrl?: string | null;
+  actionLink?: string;
+  audience: NotificationAudience;
+  status: NotificationStatus;
+  scheduledAt?: string | number | null;
+  sentAt?: number | null;
+  createdBy: string;
+  createdAt: number;
+};
 
 function mapBackendToFrontend(bc: BackendNotificationCampaign): AppNotification {
   let audience: "both" | "customers" | "drivers" = "both";

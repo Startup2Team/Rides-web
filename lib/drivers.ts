@@ -5,8 +5,6 @@ import {
   validateRwandaNationalId,
   validateLicenseNumber,
 } from "./driver-registration";
-import { MOCK_DRIVERS } from "./mock-drivers";
-import { getLocalDriverDetail } from "./local-drivers";
 
 /** URL slug ?vehicle=moto → backend transport_type */
 export const VEHICLE_SLUG_TO_TYPE: Record<string, string> = {
@@ -139,23 +137,15 @@ export function mapApiDriver(d: ApiDriver): DriverRow {
   const name =
     d.full_name?.trim() ||
     (d.phone ? d.phone : "Unknown driver");
-  const onTrip = Boolean(d.on_trip);
-
-  let fullDetail: any = null;
-  if (d.id.startsWith("local-driver-")) {
-    fullDetail = getLocalDriverDetail(d.id);
-  } else if (d.id in MOCK_DRIVERS) {
-    fullDetail = MOCK_DRIVERS[d.id as keyof typeof MOCK_DRIVERS];
-  }
   const isNonCompliant = d.approval_status?.toUpperCase() === "APPROVED_NON_COMPLIANT";
-  const eligible = isNonCompliant ? false : (fullDetail ? isDriverEligible(fullDetail) : true);
+  const eligible = !isNonCompliant;
 
   return {
     id: d.id,
     name,
     vehicle: formatTransportType(d.transport_type),
     plate: d.vehicle_plate ?? "—",
-    status: mapApprovalStatus(d.approval_status, Boolean(d.is_online), onTrip),
+    status: mapApprovalStatus(d.approval_status, Boolean(d.is_online), Boolean(d.on_trip)),
     acceptance: pct,
     rating: (d as { rating?: number }).rating ?? null,
     lastActive: d.created_at
