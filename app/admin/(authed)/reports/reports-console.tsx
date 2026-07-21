@@ -24,7 +24,6 @@ import {
   type ReportCategory,
 } from "./reports-templates";
 import { deleteReport, generateReport as logReportToBackend, getReports, type BackendReport } from "@/lib/api";
-import { MOCK_REPORTS } from "@/lib/mock-reports";
 import { useAuth } from "@/context/auth-context";
 import { saveReport, listSavedReports, getSavedReport, removeSavedReport } from "@/lib/report-store";
 
@@ -241,13 +240,10 @@ export function ReportsConsole() {
 
     getReports({ limit: "50", offset: "0" })
       .then((res) => {
-        const backend =
-          (res.reports ?? []).length > 0
-            ? res.reports!.map(mapBackendReport)
-            : MOCK_REPORTS.map(mapBackendReport);
+        const backend = (res.reports ?? []).map(mapBackendReport);
         setDownloads([...local, ...backend.filter((r) => !localIds.has(r.id))]);
       })
-      .catch(() => setDownloads([...local, ...MOCK_REPORTS.map(mapBackendReport).filter((r) => !localIds.has(r.id))]))
+      .catch(() => setDownloads(local))
       .finally(() => setHistoryLoading(false));
   }, []);
 

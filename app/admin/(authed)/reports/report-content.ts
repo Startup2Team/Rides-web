@@ -21,9 +21,6 @@ import {
   getTickets,
   type Customer,
 } from "@/lib/api";
-import { mockRidesDaily, mockFunnel, mockDriverPerformance, mockVehicleMix } from "@/lib/mock-analytics";
-import { MOCK_API_CUSTOMERS } from "@/lib/mock-customers";
-import { MOCK_NEGOTIATIONS, MOCK_NEGOTIATIONS_STATS } from "@/lib/mock-negotiations";
 import { periodToQueryDays, type Period } from "../_period-filter";
 import {
   filterLabel,
@@ -31,8 +28,6 @@ import {
   TRANSPORT_DISPLAY,
   type ExportTemplate,
 } from "./reports-templates";
-
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export type ReportFilters = Record<string, string>;
 
@@ -147,15 +142,15 @@ function mockCustomerOverview(customers: Customer[]) {
 async function opsSummaryContent(meta: ReportMeta): Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">> {
   const vehicleId = meta.vehicleId ?? vehicleFromFilters(meta.filters);
   const days = periodToQueryDays(meta.period, meta.customRange);
-  const daily = await getRidesDaily(days, vehicleId).catch(() => mockRidesDaily(days, vehicleId));
-  const totalCompleted = daily.reduce((s, d) => s + d.completed, 0);
-  const totalCancelled = daily.reduce((s, d) => s + d.cancelled, 0);
+  const daily = await getRidesDaily(days, vehicleId).catch(() => []);
+  const totalCompleted = daily.reduce((s: number, d: any) => s + d.completed, 0);
+  const totalCancelled = daily.reduce((s: number, d: any) => s + d.cancelled, 0);
   const generatedAt = new Date().toISOString();
   return {
     title: "Ride Activity Report",
     subtitle: `Daily rides · ${meta.scopeLabel}`,
     headers: ["Date", "Completed", "Cancelled", "Total"],
-    rows: daily.map((d) => [d.day, d.completed, d.cancelled, d.total]),
+    rows: daily.map((d: any) => [d.day, d.completed, d.cancelled, d.total]),
     insights: [
       `${totalCompleted.toLocaleString()} rides completed and ${totalCancelled.toLocaleString()} cancelled across ${daily.length} day${daily.length === 1 ? "" : "s"}.`,
     ],
@@ -172,7 +167,8 @@ async function opsSummaryContent(meta: ReportMeta): Promise<Omit<GeneratedReport
 async function tripCompletionContent(meta: ReportMeta): Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">> {
   const vehicleId = meta.vehicleId ?? vehicleFromFilters(meta.filters);
   const days = periodToQueryDays(meta.period, meta.customRange);
-  const funnel = await getFunnel(days, vehicleId).catch(() => mockFunnel(days, vehicleId));
+  const emptyFunnel = { booked: 0, matched: 0, confirmed: 0, completed: 0, cancelled: 0 };
+  const funnel = await getFunnel(days, vehicleId).catch(() => emptyFunnel);
   const completionRate = funnel.booked > 0 ? Math.round((funnel.completed / funnel.booked) * 100) : 0;
   const generatedAt = new Date().toISOString();
   return {
@@ -199,16 +195,16 @@ async function tripCompletionContent(meta: ReportMeta): Promise<Omit<GeneratedRe
 
 async function driverPerformanceContent(meta: ReportMeta): Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">> {
   const vehicleId = meta.vehicleId ?? vehicleFromFilters(meta.filters);
-  const perf = await getDriverPerformance(vehicleId).catch(() => mockDriverPerformance(vehicleId));
+  const perf = await getDriverPerformance(vehicleId).catch(() => []);
   const avgAcceptance =
-    perf.length > 0 ? Math.round(perf.reduce((s, p) => s + p.acceptance_rate, 0) / perf.length) : 0;
-  const totalTrips = perf.reduce((s, p) => s + p.total_rides, 0);
+    perf.length > 0 ? Math.round(perf.reduce((s: number, p: any) => s + p.acceptance_rate, 0) / perf.length) : 0;
+  const totalTrips = perf.reduce((s: number, p: any) => s + p.total_rides, 0);
   const generatedAt = new Date().toISOString();
   return {
     title: "Driver Performance Report",
     subtitle: `Trips, acceptance, and earnings · ${meta.scopeLabel}`,
     headers: ["Driver", "Vehicle", "Trips", "Acceptance %", "Earnings 30d (RWF)"],
-    rows: perf.map((p) => [
+    rows: perf.map((p: any) => [
       p.full_name ?? p.phone,
       vehicleLabel(p.transport_type),
       p.total_rides,
@@ -275,14 +271,14 @@ async function driverRegistrationsContent(meta: ReportMeta): Promise<Omit<Genera
 async function revenueBreakdownContent(meta: ReportMeta): Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">> {
   const vehicleId = meta.vehicleId ?? vehicleFromFilters(meta.filters);
   const days = periodToQueryDays(meta.period, meta.customRange);
-  const mix = await getVehicleMix(days, vehicleId).catch(() => mockVehicleMix(days, vehicleId));
-  const mixTotalRevenue = mix.reduce((s, m) => s + m.revenue, 0);
-  const mixTotalRides = mix.reduce((s, m) => s + m.rides, 0);
+  const mix = await getVehicleMix(days, vehicleId).catch(() => []);
+  const mixTotalRevenue = mix.reduce((s: number, m: any) => s + m.revenue, 0);
+  const mixTotalRides = mix.reduce((s: number, m: any) => s + m.rides, 0);
 
-  const overview = NO_BACKEND ? null : await getRevenue(meta.period).catch(() => null);
+  const overview = await getRevenue(meta.period).catch(() => null);
   const totalRevenue = overview?.total_revenue ?? mixTotalRevenue;
 
-  const rows: (string | number)[][] = mix.map((m) => [vehicleLabel(m.transport_type), m.rides, m.revenue]);
+  const rows: (string | number)[][] = mix.map((m: any) => [vehicleLabel(m.transport_type), m.rides, m.revenue]);
   rows.push(["TOTAL", mixTotalRides, totalRevenue]);
   const generatedAt = new Date().toISOString();
 
@@ -305,32 +301,28 @@ async function revenueBreakdownContent(meta: ReportMeta): Promise<Omit<Generated
 async function customerOverviewContent(meta: ReportMeta): Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">> {
   const statusFilter = meta.filters?.status ?? "all";
   const [overview, customersRes] = await Promise.all([
-    NO_BACKEND
-      ? mockCustomerOverview(MOCK_API_CUSTOMERS)
-      : getCustomersOverview().catch(() => mockCustomerOverview(MOCK_API_CUSTOMERS)),
-    NO_BACKEND
-      ? { customers: MOCK_API_CUSTOMERS, total: MOCK_API_CUSTOMERS.length, limit: 500, offset: 0 }
-      : getCustomers({ limit: "500" }).catch(() => ({
-          customers: MOCK_API_CUSTOMERS,
-          total: MOCK_API_CUSTOMERS.length,
-          limit: 500,
-          offset: 0,
-        })),
+    getCustomersOverview().catch(() => ({ total: 0, active: 0, suspended: 0, active_this_week: 0 })),
+    getCustomers({ limit: "500" }).catch(() => ({
+      customers: [],
+      total: 0,
+      limit: 500,
+      offset: 0,
+    })),
   ]);
 
-  let customers = customersRes.customers;
-  if (statusFilter === "active") customers = customers.filter((c) => !c.is_suspended);
-  if (statusFilter === "suspended") customers = customers.filter((c) => c.is_suspended);
+  let customers = customersRes.customers ?? [];
+  if (statusFilter === "active") customers = customers.filter((c: Customer) => !c.is_suspended);
+  if (statusFilter === "suspended") customers = customers.filter((c: Customer) => c.is_suspended);
 
   const generatedAt = new Date().toISOString();
-  const active = customers.filter((c) => !c.is_suspended).length;
-  const suspended = customers.filter((c) => c.is_suspended).length;
+  const active = customers.filter((c: Customer) => !c.is_suspended).length;
+  const suspended = customers.filter((c: Customer) => c.is_suspended).length;
 
   return {
     title: "Customer Registration Report",
     subtitle: `Registered, active, and suspended customers · ${meta.scopeLabel}`,
     headers: ["Customer ID", "Name", "Phone", "Total rides", "Status", "Joined"],
-    rows: customers.map((c) => [
+    rows: customers.map((c: Customer) => [
       c.id,
       c.full_name ?? "—",
       c.phone,
@@ -354,15 +346,17 @@ async function customerOverviewContent(meta: ReportMeta): Promise<Omit<Generated
 async function negotiationStatsContent(meta: ReportMeta): Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">> {
   const vehicleId = meta.vehicleId ?? vehicleFromFilters(meta.filters);
   const statusFilter = meta.filters?.status ?? "all";
+  const emptyStats = { total_today: 0, agreed_today: 0, failed_today: 0, avg_rounds: 0 };
   const [stats, negs] = await Promise.all([
-    getNegotiationsStats().catch(() => MOCK_NEGOTIATIONS_STATS),
-    getNegotiations({ limit: "200" }).catch(() => ({ negotiations: MOCK_NEGOTIATIONS, total: MOCK_NEGOTIATIONS.length })),
+    getNegotiationsStats().catch(() => emptyStats),
+    getNegotiations({ limit: "200" }).catch(() => ({ negotiations: [], total: 0 })),
   ]);
 
-  let filtered = negs.negotiations;
-  if (vehicleId) filtered = filtered.filter((n) => n.transport_type === vehicleId);
+  type NegItem = typeof negs.negotiations[number];
+  let filtered: NegItem[] = negs.negotiations ?? [];
+  if (vehicleId) filtered = filtered.filter((n: NegItem) => n.transport_type === vehicleId);
   if (statusFilter !== "all") {
-    filtered = filtered.filter((n) => {
+    filtered = filtered.filter((n: NegItem) => {
       const s = n.status.toLowerCase();
       if (statusFilter === "agreed") return s.includes("agreed") || s.includes("accepted");
       if (statusFilter === "failed") return s.includes("fail") || s.includes("reject");
@@ -371,14 +365,14 @@ async function negotiationStatsContent(meta: ReportMeta): Promise<Omit<Generated
     });
   }
 
-  const agreed = filtered.filter((n) => n.status.toLowerCase().includes("agreed")).length;
+  const agreed = filtered.filter((n: NegItem) => n.status.toLowerCase().includes("agreed")).length;
   const generatedAt = new Date().toISOString();
 
   return {
     title: "Negotiation Report",
     subtitle: `Round counts, outcomes, and fare uplift · ${meta.scopeLabel}`,
     headers: ["Negotiation ID", "Vehicle", "Customer", "Driver", "Initial fare", "Agreed fare", "Uplift", "Rounds", "Status"],
-    rows: filtered.map((n) => [
+    rows: filtered.map((n: NegItem) => [
       n.id,
       vehicleLabel(n.transport_type),
       n.customer.name ?? n.customer.phone,
