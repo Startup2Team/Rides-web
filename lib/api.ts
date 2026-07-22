@@ -762,10 +762,10 @@ export const requestDriverMoreInfo = (
     body: { reason, documents },
   });
 
-export const suspendDriver = (id: string, durationHours: number) =>
+export const suspendDriver = (id: string, durationHours: number = 24, reason?: string) =>
   request<void>(`/admin/drivers/${id}/suspend`, {
     method: "POST",
-    body: { duration_hours: durationHours },
+    body: { duration_hours: durationHours, reason },
   });
 
 export const reinstateDriver = (id: string) =>
@@ -835,10 +835,10 @@ export const getCustomer = (id: string) => request<CustomerDetail>(`/admin/custo
 export const banCustomer = (id: string, reason: string) =>
   request<void>(`/admin/customers/${id}/ban`, { method: "PATCH", body: { reason } });
 
-export const suspendCustomer = (id: string, durationHours: number) =>
-  request<void>(`/admin/customers/${id}/suspend`, {
+export const suspendCustomer = (id: string, durationHours: number = 24, reason?: string) =>
+  request<void>(`/admin/users/${id}/suspend`, {
     method: "POST",
-    body: { duration_hours: durationHours },
+    body: { duration_hours: durationHours, reason },
   });
 
 export const reinstateCustomer = (id: string) =>

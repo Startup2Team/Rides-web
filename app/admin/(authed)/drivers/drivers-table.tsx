@@ -23,6 +23,7 @@ import {
 } from "@/lib/drivers";
 import { ReferralCountLink, ReferralStatTile } from "./referred-drivers-section";
 import { NotifyDriverModal } from "./notify-driver-modal";
+import { SuspendModal } from "./suspend-modal";
 
 type Driver = DriverRow;
 
@@ -366,6 +367,7 @@ export function DriversTable() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [notifyDriverTarget, setNotifyDriverTarget] = useState<{ id: string; name: string } | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
@@ -599,11 +601,7 @@ export function DriversTable() {
           );
         }
       }}
-      onSuspend={async () => {
-        try { await suspendDriver(d.id, 24); } catch { /* ignore */ }
-        updateStatus(d.id, "Suspended");
-        setToast(`${d.name} suspended`);
-      }}
+      onSuspend={() => setSuspendTarget({ id: d.id, name: d.name })}
       onReinstate={async () => {
         try { await reinstateDriver(d.id); } catch { /* ignore */ }
         updateStatus(d.id, "Offline");
@@ -963,6 +961,21 @@ export function DriversTable() {
           driverName={notifyDriverTarget.name}
           onClose={() => setNotifyDriverTarget(null)}
           onSuccess={() => setToast(`Notification sent to ${notifyDriverTarget.name}`)}
+        />
+      ) : null}
+
+      {suspendTarget ? (
+        <SuspendModal
+          open={!!suspendTarget}
+          targetId={suspendTarget.id}
+          targetName={suspendTarget.name}
+          userType="driver"
+          onClose={() => setSuspendTarget(null)}
+          onConfirm={async (id, reason, durationHours) => {
+            await suspendDriver(id, durationHours, reason);
+            updateStatus(id, "Suspended");
+            setToast(`${suspendTarget.name} suspended. Live push notification sent.`);
+          }}
         />
       ) : null}
     </Card>

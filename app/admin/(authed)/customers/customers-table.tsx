@@ -14,6 +14,7 @@ import {
   type Customer as ApiCustomer,
 } from "@/lib/api";
 import { CustomerStats } from "./customer-stats";
+import { SuspendModal } from "../drivers/suspend-modal";
 import { GenerateReportButton } from "../reports/generate-report-button";
 import type { ReportMeta } from "../reports/report-content";
 
@@ -390,6 +391,7 @@ export function CustomersTable() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   useEffect(() => {
@@ -523,11 +525,7 @@ export function CustomersTable() {
         updateStatus(c.id, "Active");
         setToast(`${c.name} flag removed`);
       }}
-      onSuspend={async () => {
-        try { await suspendCustomer(c.id, 24); } catch { /* ignore */ }
-        updateStatus(c.id, "Suspended");
-        setToast(`${c.name} suspended`);
-      }}
+      onSuspend={() => setSuspendTarget({ id: c.id, name: c.name })}
       onReinstate={async () => {
         try { await reinstateCustomer(c.id); } catch { /* ignore */ }
         updateStatus(c.id, "Active");
@@ -870,6 +868,21 @@ export function CustomersTable() {
           </span>
           <span className="text-sm font-medium text-foreground">{toast}</span>
         </div>
+      ) : null}
+
+      {suspendTarget ? (
+        <SuspendModal
+          open={!!suspendTarget}
+          targetId={suspendTarget.id}
+          targetName={suspendTarget.name}
+          userType="customer"
+          onClose={() => setSuspendTarget(null)}
+          onConfirm={async (id, reason, durationHours) => {
+            await suspendCustomer(id, durationHours, reason);
+            updateStatus(id, "Suspended");
+            setToast(`${suspendTarget.name} suspended. Live push notification sent.`);
+          }}
+        />
       ) : null}
       </Card>
     </div>
