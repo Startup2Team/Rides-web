@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, StatCard, StatusPill, Avatar } from "../_components";
 import { getAdminPurchases, reconcilePurchase, type PurchaseSnapshot, type PurchaseStatus } from "@/lib/api";
+import { ManualClaimsDrawer } from "../packages/manual-claims-drawer";
 
 const VEHICLE_LABELS: Record<string, string> = {
   moto: "Moto Bike",
@@ -69,6 +70,7 @@ export function PurchasesConsole() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [openPurchaseId, setOpenPurchaseId] = useState<string | null>(null);
+  const [claimsDrawerOpen, setClaimsDrawerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
@@ -172,6 +174,21 @@ export function PurchasesConsole() {
           <button onClick={() => setError(null)} className="shrink-0 text-xs font-semibold underline-offset-2 hover:underline">Dismiss</button>
         </div>
       )}
+
+      {/* Action Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border border-border p-4 rounded-2xl shadow-xs">
+        <div>
+          <h2 className="text-base font-bold text-foreground">Package Purchases & Manual Claims</h2>
+          <p className="text-xs text-muted-foreground">View completed package purchases and review manual MoMo / Bank payment claims submitted by drivers.</p>
+        </div>
+        <button
+          onClick={() => setClaimsDrawerOpen(true)}
+          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
+        >
+          <span>📋</span>
+          <span>Review Manual Payment Claims</span>
+        </button>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -422,6 +439,12 @@ export function PurchasesConsole() {
           onClose={() => setOpenPurchaseId(null)}
         />
       ) : null}
+
+      <ManualClaimsDrawer
+        open={claimsDrawerOpen}
+        onClose={() => setClaimsDrawerOpen(false)}
+        onStatusUpdate={() => refresh()}
+      />
     </div>
   );
 }
