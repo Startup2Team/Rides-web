@@ -3,16 +3,49 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, StatCard, StatusPill } from "../_components";
 import {
-  VEHICLE_LABELS,
-  formatDate,
-  formatRWF,
+  getAdminCampaigns,
+  createCampaign,
+  getAdminPackages,
+  getAdminPurchases,
+  type Package,
   type Campaign,
   type CampaignStatus,
-} from "@/lib/packages-mock";
-import { getAdminCampaigns, createCampaign, getAdminPackages, type Package } from "@/lib/api";
+  type PurchaseSnapshot,
+} from "@/lib/api";
+
+const VEHICLE_LABELS: Record<string, string> = {
+  moto: "Moto Bike",
+  cab: "Cab Taxi",
+  hilux: "Light Hilux",
+  fuso: "Heavy Fuso",
+};
+
+function formatRWF(amount: number): string {
+  return `${amount.toLocaleString()} RWF`;
+}
+
+function formatDate(isoStr: string): string {
+  if (!isoStr) return "—";
+  return new Date(isoStr).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(isoStr: string): string {
+  if (!isoStr) return "—";
+  return new Date(isoStr).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 import { CampaignDetailDrawer } from "./campaign-detail-drawer";
 
-const STATUS_TONE: Record<CampaignStatus, "success" | "warn" | "info" | "neutral" | "danger"> = {
+const STATUS_TONE: Record<string, "success" | "warn" | "info" | "neutral" | "danger"> = {
   active: "success",
   scheduled: "info",
   draft: "warn",
@@ -20,7 +53,7 @@ const STATUS_TONE: Record<CampaignStatus, "success" | "warn" | "info" | "neutral
   archived: "neutral",
 };
 
-type StatusFilter = "all" | CampaignStatus;
+type StatusFilter = "all" | string;
 
 const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -33,6 +66,7 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 
 export function CampaignsConsole() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [purchases, setPurchases] = useState<PurchaseSnapshot[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [audienceFilter, setAudienceFilter] = useState("all");
@@ -41,14 +75,40 @@ export function CampaignsConsole() {
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(() => {
-    getAdminCampaigns()
-      .then(setCampaigns)
+    Promise.all([
+      getAdminCampaigns(),
+      getAdminPurchases().catch(() => []),
+    ])
+      .then(([cList, pList]) => {
+        setCampaigns(cList);
+        setPurchases(pList);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load campaigns"));
   }, []);
 
   useEffect(() => {
     reload();
   }, [reload]);
+
+  const campaignStats = useMemo(() => {
+    const totalPurchases = purchases.length;
+    const promoPurchases = purchases.filter((p) => p.campaignId);
+    const promoCount = promoPurchases.length;
+    const promoShare = totalPurchases > 0 ? Math.round((promoCount / totalPurchases) * 100) : 0;
+    const standardShare = totalPurchases > 0 ? 100 - promoShare : 100;
+
+    const promoRevenue = promoPurchases.reduce((sum, p) => sum + (p.pricePaid || 0), 0);
+    const totalRevenue = purchases.reduce((sum, p) => sum + (p.pricePaid || 0), 0);
+
+    return {
+      totalPurchases,
+      promoCount,
+      promoShare,
+      standardShare,
+      promoRevenue,
+      totalRevenue,
+    };
+  }, [purchases]);
 
   const filtered = useMemo(() => {
     return campaigns.filter((c) => {
@@ -172,33 +232,33 @@ export function CampaignsConsole() {
             {/* Stacked Attributed Progress Bar */}
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-semibold">
-                <span className="text-primary">Promo Attributed (65%)</span>
-                <span className="text-muted-foreground">Standard (35%)</span>
+                <span className="text-primary">Promo Attributed ({campaignStats.promoShare}%)</span>
+                <span className="text-muted-foreground">Standard ({campaignStats.standardShare}%)</span>
               </div>
               <div className="h-3 w-full rounded-full bg-muted overflow-hidden flex">
-                <div className="h-full bg-primary" style={{ width: "65%" }} />
-                <div className="h-full bg-muted-foreground/30" style={{ width: "35%" }} />
+                <div className="h-full bg-primary" style={{ width: `${campaignStats.promoShare}%` }} />
+                <div className="h-full bg-muted-foreground/30" style={{ width: `${campaignStats.standardShare}%` }} />
               </div>
             </div>
 
             {/* Target Audience Distribution */}
             <div className="space-y-2 border-t border-border pt-4">
-              <span className="text-xs font-bold text-foreground block">Audience Conversion Boost</span>
+              <span className="text-xs font-bold text-foreground block">Attributed Revenue Impact</span>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="rounded-lg bg-muted/30 p-2 border border-border/40">
-                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">New signups</span>
-                  <span className="text-emerald-600 font-bold mt-1 block text-lg">+32.4%</span>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">Promo Revenue</span>
+                  <span className="text-emerald-600 font-bold mt-1 block text-base">{campaignStats.promoRevenue.toLocaleString()} RWF</span>
                 </div>
                 <div className="rounded-lg bg-muted/30 p-2 border border-border/40">
-                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">Existing active</span>
-                  <span className="text-primary font-bold mt-1 block text-lg">+18.2%</span>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">Promo Sales</span>
+                  <span className="text-primary font-bold mt-1 block text-base">{campaignStats.promoCount} Purchases</span>
                 </div>
               </div>
             </div>
           </div>
           <div className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1.5 border-t border-border pt-4 mt-4">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-            Live data feeding from mock purchases ledger.
+            Live campaign attributions calculated from purchase ledger.
           </div>
         </Card>
       </div>
@@ -385,11 +445,11 @@ function AudienceBadge({ campaign }: { campaign: Campaign }) {
 
 function OverrideSummary({ campaign }: { campaign: Campaign }) {
   const parts: string[] = [];
-  if (campaign.priceOverride !== null)
+  if (campaign.priceOverride != null)
     parts.push(`Price → ${formatRWF(campaign.priceOverride)}`);
-  if (campaign.ridesOverride !== null)
+  if (campaign.ridesOverride != null)
     parts.push(`+${campaign.ridesOverride} rides`);
-  if (campaign.bonusRidesOverride !== null)
+  if (campaign.bonusRidesOverride != null)
     parts.push(`+${campaign.bonusRidesOverride} bonus`);
   if (parts.length === 0) return <span className="text-muted-foreground">—</span>;
   return <span className="text-xs">{parts.join(" · ")}</span>;
@@ -403,14 +463,15 @@ function chipClass(active: boolean) {
   }`;
 }
 
-function statusLabel(status: CampaignStatus): string {
-  return {
+function statusLabel(status: string): string {
+  const map: Record<string, string> = {
     active: "Active",
     scheduled: "Scheduled",
     draft: "Draft",
     expired: "Expired",
     archived: "Archived",
-  }[status];
+  };
+  return map[status] ?? status;
 }
 
 function CreateCampaignModal({

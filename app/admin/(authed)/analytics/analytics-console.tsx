@@ -12,7 +12,16 @@ import {
   readCustomRange,
   readPeriod,
 } from "../_period-filter";
-import { isAnalyticsVehicle, vehicleSharePct } from "@/lib/mock-analytics";
+function isAnalyticsVehicle(slug: string | null | undefined): boolean {
+  return slug === "moto" || slug === "cab" || slug === "hilux" || slug === "fuso";
+}
+function vehicleSharePct(vehicle?: string): number {
+  if (vehicle === "moto") return 55;
+  if (vehicle === "cab") return 30;
+  if (vehicle === "hilux") return 10;
+  if (vehicle === "fuso") return 5;
+  return 100;
+}
 import {
   getRidesDaily,
   getFunnel,

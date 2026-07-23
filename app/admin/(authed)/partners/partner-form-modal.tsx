@@ -19,10 +19,10 @@ function draftFromPartner(partner: Partner | null): PartnerDraft {
   }
   return {
     name: partner.name,
-    logoUrl: partner.logoUrl,
-    contactName: partner.contactName,
-    contactEmail: partner.contactEmail,
-    contactPhone: partner.contactPhone,
+    logoUrl: partner.logoUrl ?? null,
+    contactName: partner.contactName ?? "",
+    contactEmail: partner.contactEmail ?? "",
+    contactPhone: partner.contactPhone ?? "",
     status: partner.status,
   };
 }

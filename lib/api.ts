@@ -4,34 +4,84 @@ import {
   clustersToHeatZones,
   type LiveDemandHeatZone,
 } from "./live-demand-heatmap";
-import {
-  MOCK_SATISFACTION,
-  mockFunnel,
-  mockRidesDaily,
-  mockVehicleMix,
-  mockActivityHeatmap,
-  mockDriverPerformance,
-} from "./mock-analytics";
-import { MOCK_LIVE_RIDES, MOCK_LIVE_RIDE_DETAILS, MOCK_LIVE_RIDES_STATS } from "./mock-live-rides";
-import {
-  MOCK_NEGOTIATIONS,
-  MOCK_NEGOTIATION_DETAILS,
-  MOCK_NEGOTIATIONS_STATS,
-} from "./mock-negotiations";
-import { MOCK_REPORTS, MOCK_REPORTS_STATS } from "./mock-reports";
-import type {
-  Campaign as AdminCampaignView,
-  CampaignAudience,
-  CampaignStatus,
-  Entitlement,
-  EntitlementTransactionKind,
-  PurchaseSnapshot,
-  PurchaseStatus,
-  VehicleType as MonetizationVehicleType,
-} from "./packages-mock";
-import { MOCK_ENTITLEMENTS, MOCK_PACKAGES, MOCK_PURCHASES, MOCK_CAMPAIGNS } from "./packages-mock";
 
-export const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL && !process.env.NEXT_PUBLIC_API_URL;
+export type MonetizationVehicleType = "moto" | "cab" | "hilux" | "fuso";
+export type CampaignAudience = "all" | "first-purchase" | "vehicle-type" | "new_drivers" | "high_performers" | "inactive_drivers";
+export type CampaignStatus = "active" | "scheduled" | "ended" | "draft" | "expired" | "archived";
+export type EntitlementTransactionKind = "PURCHASE" | "CONSUMPTION" | "EXPIRATION" | "ADJUSTMENT" | "admin-grant";
+export type PurchaseStatus = "COMPLETED" | "PENDING" | "FAILED" | "EXPIRED" | "paid" | "completed";
+
+export type Entitlement = {
+  id: string;
+  driverId: string;
+  driverName: string;
+  driverPhone?: string;
+  vehicleId?: string;
+  vehicleType: string;
+  vehiclePlate?: string;
+  ridesRemaining: number;
+  bonusRidesRemaining: number;
+  totalGranted: number;
+  totalConsumed: number;
+  transactions: {
+    id: string;
+    entitlementId: string;
+    kind: EntitlementTransactionKind;
+    ridesDelta: number;
+    bonusRidesDelta: number;
+    ridesAfter: number;
+    bonusRidesAfter: number;
+    sourceRef: string;
+    reason?: string;
+    performedBy?: string;
+    createdAt: string;
+  }[];
+};
+
+export type PurchaseSnapshot = {
+  id: string;
+  driverId: string;
+  driverName: string;
+  driverPhone?: string;
+  vehicleId?: string;
+  vehicleType?: string;
+  vehiclePlate?: string;
+  packageId: string;
+  packageName: string;
+  packageVersion?: number;
+  campaignId?: string | null;
+  campaignName?: string | null;
+  pricePaid?: number;
+  ridesGranted?: number;
+  bonusRidesGranted?: number;
+  amountRwf?: number;
+  paymentMethod?: string;
+  paymentProvider?: string | null;
+  paymentReference?: string;
+  status: PurchaseStatus;
+  createdAt: string;
+  paidAt?: string | null;
+};
+
+export type Campaign = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  status: CampaignStatus;
+  audience: CampaignAudience;
+  vehicleTypes?: MonetizationVehicleType[] | null;
+  packageIds?: string[] | null;
+  priceOverride?: number | null;
+  ridesOverride?: number | null;
+  bonusRidesOverride?: number | null;
+  startsAt: string;
+  endsAt: string;
+  createdAt: string;
+  createdBy?: string;
+};
+
+export const NO_BACKEND = false;
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
@@ -250,36 +300,15 @@ export type DashboardWindow =
 
 export const getDashboard = async (window?: DashboardWindow): Promise<DashboardSnapshot> => {
   let path = "/admin/dashboard";
-  let days = 1;
-  
+
   if (window?.from && window.to) {
     const qs = new URLSearchParams({ from: window.from, to: window.to }).toString();
     path = `/admin/dashboard?${qs}`;
-    try {
-      const start = new Date(window.from).getTime();
-      const end = new Date(window.to).getTime();
-      days = Math.max(1, Math.ceil((end - start) / (24 * 60 * 60 * 1000)) + 1);
-    } catch {
-      days = 1;
-    }
   } else if (window?.days && window.days > 0) {
     path = `/admin/dashboard?days=${window.days}`;
-    days = window.days;
   }
 
-  const snap = await request<DashboardSnapshot>(path);
-
-  // If the database is empty or unseeded (returning 0), simulate period-scaled metrics
-  const baseRides = 34;
-  const baseRevenue = 4200000;
-
-  return {
-    ...snap,
-    ridesInPeriod: snap.ridesInPeriod || (baseRides * days),
-    revenueInPeriod: snap.revenueInPeriod || (baseRevenue * days),
-    liveRides: snap.liveRides || (34 + (days % 3)),
-    onlineDrivers: snap.onlineDrivers || (89 + (days % 5)),
-  };
+  return request<DashboardSnapshot>(path);
 };
 
 export type RevenuePoint = { t: string; v: number };
@@ -476,7 +505,6 @@ export type SatisfactionData = {
 
 export const getAnalyticsOverview = () => request<AnalyticsOverviewFull>("/admin/analytics/overview");
 export const getRidesDaily = async (days = 30, vehicle?: string, periodOffsetDays = 0) => {
-  if (NO_BACKEND) return mockRidesDaily(days, vehicle, periodOffsetDays);
   const qs = new URLSearchParams({ days: String(days) });
   if (vehicle) qs.set("vehicle", vehicle);
   if (periodOffsetDays > 0) qs.set("offset", String(periodOffsetDays));
@@ -486,7 +514,6 @@ export const getRidesWeekly = () => request<DailyRidePoint[]>("/admin/analytics/
 export const getRevenueBreakdown = () =>
   request<Record<string, unknown>>("/admin/analytics/revenue/breakdown");
 export const getDriverPerformance = async (vehicle?: string) => {
-  if (NO_BACKEND) return mockDriverPerformance(vehicle);
   const qs = vehicle ? `?vehicle=${encodeURIComponent(vehicle)}` : "";
   return request<DriverPerf[]>(`/admin/analytics/drivers/performance${qs}`);
 };
@@ -500,7 +527,6 @@ export type ActivityCell = { day: number; hour: number; count: number };
 export const getHeatmap = () => request<HeatPoint[]>("/admin/analytics/heatmap");
 export const getHeatmapZones = () => request<HeatZone[]>("/admin/analytics/heatmap/zones");
 export const getActivityHeatmap = async (vehicle?: string) => {
-  if (NO_BACKEND) return mockActivityHeatmap(vehicle);
   const qs = vehicle ? `?vehicle=${encodeURIComponent(vehicle)}` : "";
   return request<ActivityCell[]>(`/admin/analytics/activity-heatmap${qs}`);
 };
@@ -509,10 +535,6 @@ export type { LiveDemandCluster, LiveDemandHeatZone } from "./live-demand-heatma
 
 /** Live demand from riders waiting for pickup — powers the heatmap "Now" view. */
 export const getLiveDemandHeatmap = async (): Promise<LiveDemandHeatZone[]> => {
-  if (NO_BACKEND) {
-    return clustersToHeatZones(clusterWaitingRides(MOCK_LIVE_RIDES));
-  }
-
   try {
     const map = await getLiveMap();
     const points = map.heatPoints ?? [];
@@ -538,19 +560,16 @@ export const getLiveDemandHeatmap = async (): Promise<LiveDemandHeatZone[]> => {
 export const getCancellations = () =>
   request<Record<string, unknown>>("/admin/analytics/cancellations");
 export const getFunnel = async (days = 30, vehicle?: string) => {
-  if (NO_BACKEND) return mockFunnel(days, vehicle);
   const qs = new URLSearchParams({ days: String(days) });
   if (vehicle) qs.set("vehicle", vehicle);
   return request<FunnelData>(`/admin/analytics/funnel?${qs}`);
 };
 export const getVehicleMix = async (days = 30, vehicle?: string) => {
-  if (NO_BACKEND) return mockVehicleMix(days, vehicle);
   const qs = new URLSearchParams({ days: String(days) });
   if (vehicle) qs.set("vehicle", vehicle);
   return request<VehicleMixItem[]>(`/admin/analytics/vehicle-mix?${qs}`);
 };
 export const getSatisfaction = async () => {
-  if (NO_BACKEND) return MOCK_SATISFACTION;
   return request<SatisfactionData>("/admin/analytics/satisfaction");
 };
 
@@ -675,10 +694,6 @@ export type ReferredDriver = {
 };
 
 export async function getDriverReferrals(driverId: string): Promise<ReferredDriver[]> {
-  if (NO_BACKEND) {
-    const { getLocalReferredDrivers } = await import("./referrals");
-    return getLocalReferredDrivers(driverId);
-  }
   return request<ReferredDriver[]>(`/admin/drivers/${driverId}/referrals`);
 }
 
@@ -747,10 +762,10 @@ export const requestDriverMoreInfo = (
     body: { reason, documents },
   });
 
-export const suspendDriver = (id: string, durationHours: number) =>
+export const suspendDriver = (id: string, durationHours: number = 24, reason?: string) =>
   request<void>(`/admin/drivers/${id}/suspend`, {
     method: "POST",
-    body: { duration_hours: durationHours },
+    body: { duration_hours: durationHours, reason },
   });
 
 export const reinstateDriver = (id: string) =>
@@ -820,10 +835,10 @@ export const getCustomer = (id: string) => request<CustomerDetail>(`/admin/custo
 export const banCustomer = (id: string, reason: string) =>
   request<void>(`/admin/customers/${id}/ban`, { method: "PATCH", body: { reason } });
 
-export const suspendCustomer = (id: string, durationHours: number) =>
-  request<void>(`/admin/customers/${id}/suspend`, {
+export const suspendCustomer = (id: string, durationHours: number = 24, reason?: string) =>
+  request<void>(`/admin/users/${id}/suspend`, {
     method: "POST",
-    body: { duration_hours: durationHours },
+    body: { duration_hours: durationHours, reason },
   });
 
 export const reinstateCustomer = (id: string) =>
@@ -898,39 +913,21 @@ export const getRides = (params: Record<string, string> = {}) => {
 };
 
 export const getLiveRides = async (params: Record<string, string> = {}): Promise<RidesResponse> => {
-  if (NO_BACKEND) {
-    return {
-      rides: MOCK_LIVE_RIDES,
-      total: MOCK_LIVE_RIDES.length,
-    };
-  }
   const qs = new URLSearchParams(params).toString();
   return request<RidesResponse>(`/admin/rides/live${qs ? `?${qs}` : ""}`);
 };
 
 export const getLiveRidesStats = async (): Promise<LiveRidesStats> => {
-  if (NO_BACKEND) {
-    return MOCK_LIVE_RIDES_STATS;
-  }
   return request<LiveRidesStats>("/admin/rides/live/stats");
 };
 
 export const getRide = (id: string) => request<RideDetail>(`/admin/rides/${id}`);
 
 export const getLiveRide = async (id: string): Promise<RideDetail> => {
-  if (NO_BACKEND) {
-    const detail = MOCK_LIVE_RIDE_DETAILS[id];
-    if (detail) return detail;
-    throw new Error("Mock live ride not found");
-  }
   return request<RideDetail>(`/admin/rides/live/${id}`);
 };
 
 export const interveneRide = async (id: string, action: string, reason: string): Promise<void> => {
-  if (NO_BACKEND) {
-    console.log(`[Mock API] Intervened ride ${id} with action=${action}, reason=${reason}`);
-    return;
-  }
   return request<void>(`/admin/rides/live/${id}/intervene`, {
     method: "POST",
     body: { action, reason },
@@ -968,26 +965,15 @@ export type NegotiationsStats = {
 };
 
 export const getNegotiations = async (params: Record<string, string> = {}): Promise<NegotiationsResponse> => {
-  if (NO_BACKEND) {
-    return { negotiations: MOCK_NEGOTIATIONS, total: MOCK_NEGOTIATIONS.length };
-  }
   const qs = new URLSearchParams(params).toString();
   return request<NegotiationsResponse>(`/admin/negotiations${qs ? `?${qs}` : ""}`);
 };
 
 export const getNegotiationsStats = async (): Promise<NegotiationsStats> => {
-  if (NO_BACKEND) {
-    return MOCK_NEGOTIATIONS_STATS;
-  }
   return request<NegotiationsStats>("/admin/negotiations/stats");
 };
 
 export const getNegotiation = async (id: string): Promise<RideDetail> => {
-  if (NO_BACKEND) {
-    const detail = MOCK_NEGOTIATION_DETAILS[id];
-    if (detail) return detail;
-    throw new Error("Mock negotiation not found");
-  }
   return request<RideDetail>(`/admin/negotiations/${id}`);
 };
 
@@ -1023,36 +1009,11 @@ export type TransactionsResponse = {
 };
 
 export const getRevenue = async (period = "today", from?: string, to?: string): Promise<RevenueOverview> => {
-  if (NO_BACKEND) {
-    let scale = 1;
-    if (period === "week") scale = 7;
-    else if (period === "month") scale = 30;
-    else if (period === "quarter") scale = 90;
-    else if (period === "year") scale = 365;
-    else if (period === "custom" && from && to) {
-      const diffMs = Math.abs(new Date(to).getTime() - new Date(from).getTime());
-      scale = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-    }
-    return {
-      total_revenue: 3480000 * scale,
-      platform_revenue: 348000 * scale,
-      driver_earnings: 3132000 * scale,
-      total_transactions: 1240 * scale,
-      period,
-    };
-  }
   const qs = from && to ? `&from=${from}&to=${to}` : "";
   return request<RevenueOverview>(`/admin/revenue?period=${period}${qs}`);
 };
 
 export const getRevenueKPIs = async (period = "today", from?: string, to?: string) => {
-  if (NO_BACKEND) {
-    return {
-      gross_revenue_change_pct: 12.5,
-      payouts_change_pct: 8.2,
-      trips_change_pct: 15.1,
-    };
-  }
   const qs = from && to ? `&from=${from}&to=${to}` : "";
   return request<Record<string, unknown>>(`/admin/revenue/kpis?period=${period}${qs}`);
 };
@@ -1067,6 +1028,81 @@ export const disbursePayouts = (transactionIds: string[]) =>
     method: "POST",
     body: { transactionIds },
   });
+
+// ── Finance & Ledger API ──────────────────────────────────────────────────
+
+export type LedgerEntry = {
+  date: string;
+  transaction_id: string;
+  account: string;
+  description: string;
+  debit: number;
+  credit: number;
+  reference: string;
+};
+
+export type TrialBalanceRow = {
+  account: string;
+  debit_total: number;
+  credit_total: number;
+};
+
+export type TrialBalance = {
+  rows: TrialBalanceRow[];
+  total_debit: number;
+  total_credit: number;
+  balanced: boolean;
+};
+
+export type BalanceSheetSection = {
+  account: string;
+  balance: number;
+};
+
+export type BalanceSheet = {
+  assets: BalanceSheetSection[];
+  total_assets: number;
+  liabilities: BalanceSheetSection[];
+  total_liabilities: number;
+  equity: BalanceSheetSection[];
+  total_equity: number;
+  as_of_date: string;
+};
+
+export type StaffActivity = {
+  admin_id: string;
+  name: string;
+  email: string;
+  role: string;
+  action_count: number;
+  last_active: string | null;
+};
+
+export type StaffAnalytics = {
+  total_staff: number;
+  active_admins: number;
+  actions_count: number;
+  activity_breakdown: StaffActivity[];
+};
+
+export const getGeneralLedger = (params: { start?: string; end?: string } = {}) => {
+  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  return request<{ entries: LedgerEntry[] }>(`/admin/finance/ledger${qs ? `?${qs}` : ""}`);
+};
+
+export const getTrialBalance = (params: { start?: string; end?: string } = {}) => {
+  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  return request<TrialBalance>(`/admin/finance/trial-balance${qs ? `?${qs}` : ""}`);
+};
+
+export const getBalanceSheet = (params: { as_of?: string } = {}) => {
+  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  return request<BalanceSheet>(`/admin/finance/balance-sheet${qs ? `?${qs}` : ""}`);
+};
+
+export const getStaffAnalytics = () => {
+  return request<StaffAnalytics>("/admin/finance/staff-analytics");
+};
 
 // ── Safety / Flags ────────────────────────────────────────────────────────
 
@@ -1140,6 +1176,41 @@ export const resolveIncident = (id: string) =>
 
 export const addIncidentMessage = (id: string, message: string) =>
   request<void>(`/admin/incidents/${id}/message`, { method: "POST", body: { message } });
+
+// ── Push Notification Campaigns ──────────────────────────────────────────
+
+export type BackendNotificationCampaign = {
+  id: string;
+  title: string;
+  body: string;
+  audience: "ALL" | "DRIVERS" | "CUSTOMERS";
+  status: "SENT" | "SCHEDULED" | "DRAFT";
+  sent_at: string;
+  created_by: string;
+  created_at: string;
+};
+
+export type CampaignsResponse = {
+  notifications: BackendNotificationCampaign[];
+  total: number;
+};
+
+export const getNotificationCampaigns = (params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request<CampaignsResponse>(`/admin/notifications${qs ? `?${qs}` : ""}`);
+};
+
+export const createNotificationCampaign = (data: { title: string; body: string; audience: string; target_driver_id?: string }) =>
+  request<BackendNotificationCampaign>("/admin/notifications", { method: "POST", body: data });
+
+export const notifyDriver = (driverId: string, data: { title: string; body: string; reason?: string }) =>
+  request<{ id: string; status: string; message?: string }>(`/admin/drivers/${driverId}/notify`, {
+    method: "POST",
+    body: data,
+  });
+
+export const deleteNotificationCampaign = (id: string) =>
+  request<void>(`/admin/notifications/${id}`, { method: "DELETE" });
 
 // ── Support Tickets ───────────────────────────────────────────────────────
 
@@ -1283,14 +1354,10 @@ export type ReportsStats = {
 };
 
 export const getReportsStats = async () => {
-  if (NO_BACKEND) return MOCK_REPORTS_STATS;
   return request<ReportsStats>("/admin/reports/stats");
 };
 
 export const getReports = async (params: Record<string, string> = {}) => {
-  if (NO_BACKEND) {
-    return { reports: MOCK_REPORTS, total: MOCK_REPORTS.length };
-  }
   const qs = new URLSearchParams(params).toString();
   return request<{ reports: BackendReport[]; total: number }>(`/admin/reports${qs ? `?${qs}` : ""}`);
 };
@@ -1324,7 +1391,6 @@ export const getDriverRegistrationReport = async (
   const { buildDriverRegistrationReport, buildDriverRegistrationReportFromDrivers } = await import(
     "./driver-registration-report"
   );
-  if (NO_BACKEND) return buildDriverRegistrationReport(filters);
   try {
     const res = await getDrivers({ limit: "1000" });
     return buildDriverRegistrationReportFromDrivers(res.drivers, filters);
@@ -1394,24 +1460,19 @@ export const inviteAdmin = (name: string, email: string, roleId: string, passwor
     body: { name, email, role_id: roleId, ...(password ? { password } : {}) },
   });
 
-/** Sends a welcome email to a newly added admin with their login credentials.
- *  Backend endpoint: POST /admin/team/members/:id/welcome-email
- *  TODO: backend team to implement — accepts { temp_password, login_url }
- */
-export const sendWelcomeEmail = (memberId: string, tempPassword: string) =>
-  request<void>(`/admin/team/members/${memberId}/welcome-email`, {
-    method: "POST",
-    body: {
-      temp_password: tempPassword,
-      login_url: `${typeof window !== "undefined" ? window.location.origin : ""}/admin/login`,
-    },
-  });
+
 
 /** Sets initial password for an invited admin (required before they can sign in). */
 export const setMemberPassword = (memberId: string, password: string) =>
   request<void>(`/admin/team/members/${memberId}/set-password`, {
     method: "POST",
     body: { password },
+  });
+
+export const sendWelcomeEmail = (memberId: string, tempPassword: string, loginUrl: string) =>
+  request<void>(`/admin/team/members/${memberId}/welcome-email`, {
+    method: "POST",
+    body: { temp_password: tempPassword, login_url: loginUrl },
   });
 
 export const updateMemberRole = (id: string, roleId: string) =>
@@ -1465,38 +1526,9 @@ export type Package = {
   created_at: string;
 };
 
-let mockPackagesInMemo: Package[] | null = null;
 
-const getMockPackages = (): Package[] => {
-  if (!mockPackagesInMemo) {
-    mockPackagesInMemo = MOCK_PACKAGES.map((rp) => {
-      const activeVer = rp.versions.find((v: any) => v.status === "active") || rp.versions[0];
-      const vtCode = rp.vehicleType === "moto" ? "MOTO_BIKE"
-                   : rp.vehicleType === "cab" ? "CAB_TAXI"
-                   : rp.vehicleType === "hilux" ? "LIGHT_HILUX"
-                   : "HEAVY_FUSO";
-      return {
-        id: rp.id,
-        name: rp.name,
-        vehicle_type_id: rp.vehicleType,
-        vehicle_type_code: vtCode,
-        ride_count: activeVer?.rides ?? 10,
-        bonus_rides: activeVer?.bonusRides ?? 0,
-        validity_days: 30,
-        price_rwf: activeVer?.price ?? 1000,
-        is_promotional: false,
-        is_active: rp.activeVersionId !== null,
-        created_at: activeVer?.createdAt ?? new Date().toISOString(),
-      };
-    });
-  }
-  return mockPackagesInMemo;
-};
 
 export const getAdminPackages = async (): Promise<Package[]> => {
-  if (NO_BACKEND) {
-    return getMockPackages();
-  }
   return request<Package[]>("/admin/packages");
 };
 
@@ -1509,24 +1541,6 @@ export const createPackage = async (data: {
   price_rwf: number;
   is_promotional: boolean;
 }): Promise<Package> => {
-  if (NO_BACKEND) {
-    const list = getMockPackages();
-    const newPkg: Package = {
-      id: `pkg_${Math.random().toString(36).substring(2, 9)}`,
-      name: data.name,
-      vehicle_type_id: data.vehicle_type_code.toLowerCase(),
-      vehicle_type_code: data.vehicle_type_code,
-      ride_count: data.ride_count,
-      bonus_rides: data.bonus_rides,
-      validity_days: data.validity_days,
-      price_rwf: data.price_rwf,
-      is_promotional: data.is_promotional,
-      is_active: true,
-      created_at: new Date().toISOString(),
-    };
-    list.push(newPkg);
-    return newPkg;
-  }
   return request<Package>("/admin/packages", { method: "POST", body: data });
 };
 
@@ -1540,31 +1554,10 @@ export const updatePackage = async (
     price_rwf?: number;
   }
 ): Promise<Package> => {
-  if (NO_BACKEND) {
-    const list = getMockPackages();
-    const idx = list.findIndex((p) => p.id === id);
-    if (idx !== -1) {
-      list[idx] = {
-        ...list[idx]!,
-        ...data,
-      };
-      return list[idx]!;
-    }
-    throw new Error("Package not found");
-  }
   return request<Package>(`/admin/packages/${id}`, { method: "PATCH", body: data });
 };
 
 export const togglePackage = async (id: string, isActive: boolean) => {
-  if (NO_BACKEND) {
-    const list = getMockPackages();
-    const idx = list.findIndex((p) => p.id === id);
-    if (idx !== -1) {
-      list[idx]!.is_active = isActive;
-      return { status: "success" };
-    }
-    throw new Error("Package not found");
-  }
   return request<{ status: string }>(`/admin/packages/${id}/toggle`, {
     method: "POST",
     body: { is_active: isActive },
@@ -1572,16 +1565,54 @@ export const togglePackage = async (id: string, isActive: boolean) => {
 };
 
 export const deletePackage = async (id: string) => {
-  if (NO_BACKEND) {
-    const list = getMockPackages();
-    const idx = list.findIndex((p) => p.id === id);
-    if (idx !== -1) {
-      list.splice(idx, 1);
-      return { status: "success" };
-    }
-    throw new Error("Package not found");
-  }
   return request<{ status: string }>(`/admin/packages/${id}`, { method: "DELETE" });
+};
+
+// ── Manual Package Payment Claims (Admin Review) ──────────────────────────────────
+export type ManualClaim = {
+  id: string;
+  driver_id: string;
+  vehicle_id?: string | null;
+  vehicle_type: string;
+  package_name: string;
+  expected_amount_rwf: number;
+  provider: string;
+  payer_phone_number?: string | null;
+  transaction_reference?: string | null;
+  proof_image_id?: string | null;
+  status: "draft" | "submitted" | "approved" | "rejected" | "expired" | "cancelled";
+  submitted_at?: string | null;
+  created_at: string;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  rejection_reason?: string | null;
+  clarification_message?: string | null;
+};
+
+export const getAdminManualClaims = async (status = "submitted", limit = 100): Promise<{ items: ManualClaim[] }> => {
+  return request<{ items: ManualClaim[] }>(`/admin/package-payments/manual-claims?status=${status}&limit=${limit}`);
+};
+
+export const approveManualClaim = async (claimId: string): Promise<{ claim: ManualClaim }> => {
+  return request<{ claim: ManualClaim }>(`/admin/package-payments/manual-claims/${claimId}/approve`, {
+    method: "POST",
+  });
+};
+
+export const rejectManualClaim = async (
+  claimId: string,
+  reason: string,
+  reasonCode = "invalid_receipt",
+  clarificationMessage = ""
+): Promise<{ claim: ManualClaim }> => {
+  return request<{ claim: ManualClaim }>(`/admin/package-payments/manual-claims/${claimId}/reject`, {
+    method: "POST",
+    body: {
+      reason_code: reasonCode,
+      reason,
+      clarification_message: clarificationMessage,
+    },
+  });
 };
 
 // ── Campaigns ─────────────────────────────────────────────────────────────
@@ -1613,7 +1644,7 @@ const VEHICLE_CODE_TO_VIEW: Record<string, MonetizationVehicleType> = {
   HEAVY_FUSO: "fuso",
 };
 
-function mapCampaign(c: BackendCampaign): AdminCampaignView {
+function mapCampaign(c: BackendCampaign): Campaign {
   const audience: CampaignAudience =
     c.type === "VEHICLE_TYPE" ? "vehicle-type" : c.type === "FIRST_PURCHASE" ? "first-purchase" : "all";
   const vt = c.target_vehicle_type_code ? VEHICLE_CODE_TO_VIEW[c.target_vehicle_type_code] : undefined;
@@ -1636,19 +1667,7 @@ function mapCampaign(c: BackendCampaign): AdminCampaignView {
   };
 }
 
-let mockCampaignsInMemo: AdminCampaignView[] | null = null;
-
-const getMockCampaigns = (): AdminCampaignView[] => {
-  if (!mockCampaignsInMemo) {
-    mockCampaignsInMemo = [...MOCK_CAMPAIGNS];
-  }
-  return mockCampaignsInMemo;
-};
-
-export const getAdminCampaigns = async (): Promise<AdminCampaignView[]> => {
-  if (NO_BACKEND) {
-    return getMockCampaigns();
-  }
+export const getAdminCampaigns = async (): Promise<Campaign[]> => {
   const list = await request<BackendCampaign[]>("/admin/campaigns");
   return (list ?? []).map(mapCampaign);
 };
@@ -1664,46 +1683,15 @@ export const createCampaign = async (data: {
   bonusRidesOverride: number | null;
   startsAt: string;
   endsAt: string;
-}): Promise<AdminCampaignView> => {
-  if (NO_BACKEND) {
-    const list = getMockCampaigns();
-    const newCamp: AdminCampaignView = {
-      id: `camp_${Math.random().toString(36).substring(2, 9)}`,
-      slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-      name: data.name,
-      description: data.description,
-      status: "active",
-      audience: data.audience,
-      vehicleTypes: data.vehicleTypes,
-      packageIds: data.packageIds,
-      priceOverride: data.priceOverride,
-      ridesOverride: data.ridesOverride,
-      bonusRidesOverride: data.bonusRidesOverride,
-      startsAt: data.startsAt,
-      endsAt: data.endsAt,
-      createdAt: new Date().toISOString(),
-      createdBy: "ops@rides.rw",
-    };
-    list.push(newCamp);
-    return newCamp;
-  }
-  return request<AdminCampaignView>("/admin/campaigns", {
+}): Promise<Campaign> => {
+  return request<Campaign>("/admin/campaigns", {
     method: "POST",
     body: data,
   });
 };
 
-export const updateCampaignStatus = async (campaignId: string, status: CampaignStatus): Promise<AdminCampaignView> => {
-  if (NO_BACKEND) {
-    const list = getMockCampaigns();
-    const idx = list.findIndex((c) => c.id === campaignId);
-    if (idx !== -1) {
-      list[idx]!.status = status;
-      return list[idx]!;
-    }
-    throw new Error("Campaign not found");
-  }
-  return request<AdminCampaignView>(`/admin/campaigns/${campaignId}/status`, {
+export const updateCampaignStatus = async (campaignId: string, status: CampaignStatus): Promise<Campaign> => {
+  return request<Campaign>(`/admin/campaigns/${campaignId}/status`, {
     method: "POST",
     body: { status },
   });
@@ -1751,8 +1739,6 @@ function mapPurchase(p: BackendPurchase): PurchaseSnapshot {
     driverName: p.driver_name ?? "Unknown driver",
     driverPhone: p.driver_phone,
     vehicleId: p.vehicle_id ?? "",
-    // The console's VehicleType enum has no tuk-tuk; unknown codes fall back to
-    // "moto" so labels/filters still render (rare edge case).
     vehicleType: VEHICLE_CODE_TO_VIEW[p.vehicle_type_code] ?? "moto",
     vehiclePlate: p.vehicle_plate ?? "—",
     packageId: p.package_id,
@@ -1772,26 +1758,11 @@ function mapPurchase(p: BackendPurchase): PurchaseSnapshot {
 }
 
 export const getAdminPurchases = async (): Promise<PurchaseSnapshot[]> => {
-  if (NO_BACKEND) {
-    return MOCK_PURCHASES;
-  }
   const list = await request<BackendPurchase[]>("/admin/packages-purchases");
   return (list ?? []).map(mapPurchase);
 };
 
 export const reconcilePurchase = async (purchaseId: string): Promise<PurchaseSnapshot> => {
-  if (NO_BACKEND) {
-    const idx = MOCK_PURCHASES.findIndex((p) => p.id === purchaseId);
-    if (idx !== -1) {
-      MOCK_PURCHASES[idx] = {
-        ...MOCK_PURCHASES[idx]!,
-        status: "paid",
-        paidAt: new Date().toISOString(),
-      };
-      return MOCK_PURCHASES[idx]!;
-    }
-    throw new Error("Purchase not found");
-  }
   return request<PurchaseSnapshot>(`/admin/packages-purchases/${purchaseId}/reconcile`, {
     method: "POST",
   });
@@ -1856,9 +1827,6 @@ function mapEntitlement(e: BackendEntitlement): Entitlement {
 }
 
 export const getAdminEntitlements = async (): Promise<Entitlement[]> => {
-  if (NO_BACKEND) {
-    return MOCK_ENTITLEMENTS;
-  }
   const res = await request<{ entitlements: BackendEntitlement[] }>("/admin/entitlements");
   return (res?.entitlements ?? []).map(mapEntitlement);
 };
@@ -1872,30 +1840,6 @@ export const grantEntitlement = async (
   bonusRides: number,
   reason: string,
 ) => {
-  if (NO_BACKEND) {
-    const ent = MOCK_ENTITLEMENTS.find(
-      (e) => e.id === driverId || e.driverId === driverId,
-    );
-    if (ent) {
-      ent.ridesRemaining += rides;
-      ent.bonusRidesRemaining += bonusRides;
-      ent.totalGranted += rides + bonusRides;
-      ent.transactions.unshift({
-        id: `txn_${Date.now()}`,
-        entitlementId: ent.id,
-        kind: "admin-grant",
-        ridesDelta: rides,
-        bonusRidesDelta: bonusRides,
-        ridesAfter: ent.ridesRemaining,
-        bonusRidesAfter: ent.bonusRidesRemaining,
-        sourceRef: "admin@taravelis.com",
-        reason,
-        performedBy: "admin@taravelis.com",
-        createdAt: new Date().toISOString(),
-      });
-    }
-    return;
-  }
   return request<void>("/admin/entitlements/grant", {
     method: "POST",
     body: { driver_id: driverId, vehicle_type_id: vehicleTypeId, rides, bonus_rides: bonusRides, reason },
@@ -1958,3 +1902,69 @@ export const clearDeviceCollision = (userID: string, deviceID: string) =>
 
 export const getAccountTimeline = (userID: string, limit?: number) =>
   request<any>(`/admin/users/${userID}/timeline${limit !== undefined ? `?limit=${limit}` : ""}`);
+
+// ── Partners & Adverts ───────────────────────────────────────────────────
+
+export type ApiPartner = {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  status: "active" | "inactive";
+  createdAt: string;
+};
+
+export type ApiAdvert = {
+  id: string;
+  partnerId: string;
+  imageUrl: string | null;
+  headline: string;
+  ctaLabel: string;
+  ctaLink: string;
+  active: boolean;
+  startDate: string | null;
+  endDate: string | null;
+  priority: number;
+  createdAt: string;
+};
+
+export const getPartners = () => request<ApiPartner[]>("/admin/partners");
+
+export const savePartner = (partner: Partial<ApiPartner>, id?: string) => {
+  if (id) {
+    return request<ApiPartner>(`/admin/partners/${id}`, {
+      method: "PATCH",
+      body: partner,
+    });
+  } else {
+    return request<ApiPartner>("/admin/partners", {
+      method: "POST",
+      body: partner,
+    });
+  }
+};
+
+export const removePartner = (id: string) =>
+  request<void>(`/admin/partners/${id}`, { method: "DELETE" });
+
+export const getAdverts = () => request<ApiAdvert[]>("/admin/adverts");
+
+export const saveAdvert = (advert: Partial<ApiAdvert>, id?: string) => {
+  if (id) {
+    return request<ApiAdvert>(`/admin/adverts/${id}`, {
+      method: "PATCH",
+      body: advert,
+    });
+  } else {
+    return request<ApiAdvert>("/admin/adverts", {
+      method: "POST",
+      body: advert,
+    });
+  }
+};
+
+export const removeAdvert = (id: string) =>
+  request<void>(`/admin/adverts/${id}`, { method: "DELETE" });
+

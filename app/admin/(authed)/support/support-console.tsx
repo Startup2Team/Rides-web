@@ -513,8 +513,8 @@ Time: ${timeStr}`;
                 setToast("Ticket resolved and logged");
               }}
               onCloseTicket={async (id, reason) => {
-                const myEmail = user?.email || "admin@mock.local";
-                const myName = user?.name || "Admin (Mock)";
+                const myEmail = user?.email || "admin@rides.rw";
+                const myName = user?.name || "Admin";
                 const now = new Date();
                 const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
                 const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });

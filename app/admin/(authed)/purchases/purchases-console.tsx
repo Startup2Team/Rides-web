@@ -2,23 +2,43 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, StatCard, StatusPill, Avatar } from "../_components";
-import {
-  VEHICLE_LABELS,
-  VEHICLE_ORDER,
-  formatDateTime,
-  formatRWF,
-  type PurchaseSnapshot,
-  type PurchaseStatus,
-  type VehicleType,
-} from "@/lib/packages-mock";
-import { getAdminPurchases, reconcilePurchase } from "@/lib/api";
+import { getAdminPurchases, reconcilePurchase, type PurchaseSnapshot, type PurchaseStatus } from "@/lib/api";
+import { ManualClaimsDrawer } from "../packages/manual-claims-drawer";
 
-const STATUS_TONE: Record<PurchaseStatus, "success" | "warn" | "danger" | "neutral"> = {
+const VEHICLE_LABELS: Record<string, string> = {
+  moto: "Moto Bike",
+  cab: "Cab Taxi",
+  hilux: "Light Hilux",
+  fuso: "Heavy Fuso",
+};
+
+const VEHICLE_ORDER: string[] = ["moto", "cab", "hilux", "fuso"];
+
+function formatRWF(amount: number): string {
+  return `${amount.toLocaleString()} RWF`;
+}
+
+function formatDateTime(isoStr: string): string {
+  if (!isoStr) return "—";
+  return new Date(isoStr).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+const STATUS_TONE: Record<string, "success" | "warn" | "danger" | "neutral"> = {
   paid: "success",
+  completed: "success",
+  COMPLETED: "success",
   pending: "warn",
+  PENDING: "warn",
   failed: "danger",
+  FAILED: "danger",
   cancelled: "neutral",
   expired: "neutral",
+  EXPIRED: "neutral",
 };
 
 const DRIVER_AVATARS: Record<string, string> = {
@@ -36,7 +56,7 @@ function getDriverAvatar(name: string): string | undefined {
   return DRIVER_AVATARS[norm];
 }
 
-type VehicleFilter = "all" | VehicleType;
+type VehicleFilter = "all" | string;
 type PackageFilter = "all" | string;
 
 export function PurchasesConsole() {
@@ -50,6 +70,7 @@ export function PurchasesConsole() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [openPurchaseId, setOpenPurchaseId] = useState<string | null>(null);
+  const [claimsDrawerOpen, setClaimsDrawerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
@@ -130,10 +151,10 @@ export function PurchasesConsole() {
   }, [purchases, vehicle, pkgFilter, query, period, customFrom, customTo]);
 
   /* Stats calculated from filtered results */
-  const revenue = filtered.reduce((s, p) => s + p.pricePaid, 0);
+  const revenue = filtered.reduce((s, p) => s + (p.pricePaid ?? p.amountRwf ?? 0), 0);
   const totalPurchases = filtered.length;
-  const totalRides = filtered.reduce((s, p) => s + p.ridesGranted, 0);
-  const totalBonus = filtered.reduce((s, p) => s + p.bonusRidesGranted, 0);
+  const totalRides = filtered.reduce((s, p) => s + (p.ridesGranted ?? 0), 0);
+  const totalBonus = filtered.reduce((s, p) => s + (p.bonusRidesGranted ?? 0), 0);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const safePage = Math.max(1, Math.min(page, totalPages || 1));
@@ -153,6 +174,21 @@ export function PurchasesConsole() {
           <button onClick={() => setError(null)} className="shrink-0 text-xs font-semibold underline-offset-2 hover:underline">Dismiss</button>
         </div>
       )}
+
+      {/* Action Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border border-border p-4 rounded-2xl shadow-xs">
+        <div>
+          <h2 className="text-base font-bold text-foreground">Package Purchases & Manual Claims</h2>
+          <p className="text-xs text-muted-foreground">View completed package purchases and review manual MoMo / Bank payment claims submitted by drivers.</p>
+        </div>
+        <button
+          onClick={() => setClaimsDrawerOpen(true)}
+          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
+        >
+          <span>📋</span>
+          <span>Review Manual Payment Claims</span>
+        </button>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -291,7 +327,7 @@ export function PurchasesConsole() {
                     <td className="px-4 py-3.5">
                       <div className="flex flex-col">
                         <span className="inline-flex w-fit items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-                          {VEHICLE_LABELS[p.vehicleType]}
+                          {VEHICLE_LABELS[p.vehicleType ?? "moto"] ?? p.vehicleType}
                         </span>
                         <span className="mt-1 font-mono text-[11px] text-muted-foreground">
                           {p.vehiclePlate}
@@ -301,7 +337,7 @@ export function PurchasesConsole() {
                     <td className="px-4 py-3.5">
                       <p className="text-sm font-medium text-foreground">{p.packageName}</p>
                       <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                        v{p.packageVersion}
+                        v{p.packageVersion ?? 1}
                       </p>
                     </td>
                     <td className="px-4 py-3.5">
@@ -314,11 +350,11 @@ export function PurchasesConsole() {
                       )}
                     </td>
                     <td className="px-4 py-3.5 text-right font-bold tabular-nums text-foreground">
-                      {formatRWF(p.pricePaid)}
+                      {formatRWF(p.pricePaid ?? p.amountRwf ?? 0)}
                     </td>
                     <td className="px-4 py-3.5 text-right tabular-nums text-foreground">
-                      {p.ridesGranted}
-                      {p.bonusRidesGranted > 0 ? (
+                      {p.ridesGranted ?? 0}
+                      {(p.bonusRidesGranted ?? 0) > 0 ? (
                         <span className="ml-1 text-emerald-600">
                           +{p.bonusRidesGranted}
                         </span>
@@ -403,6 +439,12 @@ export function PurchasesConsole() {
           onClose={() => setOpenPurchaseId(null)}
         />
       ) : null}
+
+      <ManualClaimsDrawer
+        open={claimsDrawerOpen}
+        onClose={() => setClaimsDrawerOpen(false)}
+        onStatusUpdate={() => refresh()}
+      />
     </div>
   );
 }
@@ -533,7 +575,7 @@ function PurchaseDetailsDrawer({
                 <span className="text-muted-foreground font-medium">Vehicle assigned</span>
                 <span className="text-right flex flex-col items-end">
                   <span className="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-                    {VEHICLE_LABELS[purchase.vehicleType]}
+                    {VEHICLE_LABELS[purchase.vehicleType ?? "moto"] ?? purchase.vehicleType}
                   </span>
                   <span className="mt-1 font-mono text-xs font-bold text-foreground">{purchase.vehiclePlate}</span>
                 </span>
@@ -541,15 +583,15 @@ function PurchaseDetailsDrawer({
               <div className="flex justify-between p-4">
                 <span className="text-muted-foreground font-medium">Rides granted</span>
                 <span className="font-bold text-foreground">
-                  {purchase.ridesGranted} rides
-                  {purchase.bonusRidesGranted > 0 && (
+                  {purchase.ridesGranted ?? 0} rides
+                  {(purchase.bonusRidesGranted ?? 0) > 0 && (
                     <span className="text-emerald-600 ml-1 font-bold">+{purchase.bonusRidesGranted} bonus</span>
                   )}
                 </span>
               </div>
               <div className="flex justify-between p-4">
                 <span className="text-muted-foreground font-medium">Price paid</span>
-                <span className="font-bold text-foreground text-lg">{formatRWF(purchase.pricePaid)}</span>
+                <span className="font-bold text-foreground text-lg">{formatRWF(purchase.pricePaid ?? purchase.amountRwf ?? 0)}</span>
               </div>
             </div>
           </div>

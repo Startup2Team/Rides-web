@@ -1,51 +1,102 @@
-/**
- * Local persistence for admin-authored notifications. There is no push
- * delivery infrastructure yet (no FCM/Expo push integration anywhere in this
- * app) — so this is an admin console for composing, scheduling, and tracking
- * notification history against localStorage, same pattern as
- * report-store.ts / partner-store.ts. Ready to wire to a real push backend
- * later without changing the UI.
- */
-import { MOCK_NOTIFICATIONS, type AppNotification } from "./mock-notifications";
+import {
+  getNotificationCampaigns,
+  createNotificationCampaign,
+  deleteNotificationCampaign,
+  type BackendNotificationCampaign,
+} from "./api";
 
-export type { AppNotification, NotificationAudience, NotificationStatus } from "./mock-notifications";
+export type NotificationAudience =
+  | "both"
+  | "customers"
+  | "drivers"
+  | "driver_moto"
+  | "driver_cab"
+  | "driver_hilux"
+  | "driver_fuso"
+  | "driver_rifani"
+  | "single_driver";
 
-const NOTIFICATIONS_KEY = "taravelis:notifications";
+export type NotificationStatus = "sent" | "scheduled" | "draft";
 
-function readAll(): AppNotification[] {
-  if (typeof window === "undefined") return MOCK_NOTIFICATIONS;
+export type AppNotification = {
+  id: string;
+  title: string;
+  message: string;
+  imageUrl?: string | null;
+  actionLink?: string;
+  audience: NotificationAudience;
+  targetDriverId?: string;
+  status: NotificationStatus;
+  scheduledAt?: string | number | null;
+  sentAt?: number | null;
+  createdBy: string;
+  createdAt: number;
+};
+
+function mapBackendToFrontend(bc: BackendNotificationCampaign): AppNotification {
+  let audience: NotificationAudience = "both";
+  const audMap: Record<string, NotificationAudience> = {
+    ALL: "both",
+    CUSTOMERS: "customers",
+    DRIVERS: "drivers",
+    DRIVER_MOTO: "driver_moto",
+    DRIVER_CAB: "driver_cab",
+    DRIVER_HILUX: "driver_hilux",
+    DRIVER_FUSO: "driver_fuso",
+    DRIVER_RIFANI: "driver_rifani",
+    SINGLE_DRIVER: "single_driver",
+  };
+  if (audMap[bc.audience]) audience = audMap[bc.audience];
+
+  return {
+    id: bc.id,
+    title: bc.title,
+    message: bc.body,
+    imageUrl: null,
+    actionLink: "",
+    audience,
+    status: bc.status.toLowerCase() as "sent" | "scheduled" | "draft",
+    scheduledAt: bc.sent_at || null,
+    sentAt: bc.sent_at ? new Date(bc.sent_at).getTime() : null,
+    createdBy: bc.created_by || "Admin",
+    createdAt: new Date(bc.created_at).getTime(),
+  };
+}
+
+export async function listNotifications(): Promise<AppNotification[]> {
   try {
-    const raw = window.localStorage.getItem(NOTIFICATIONS_KEY);
-    if (!raw) {
-      window.localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(MOCK_NOTIFICATIONS));
-      return MOCK_NOTIFICATIONS;
-    }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : MOCK_NOTIFICATIONS;
-  } catch {
-    return MOCK_NOTIFICATIONS;
+    const res = await getNotificationCampaigns();
+    return (res?.notifications || []).map(mapBackendToFrontend);
+  } catch (err) {
+    console.error("Failed to list notifications:", err);
+    return [];
   }
 }
 
-function writeAll(entries: AppNotification[]) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(entries));
-  } catch {
-    // storage full/unavailable — non-fatal, edits just won't persist
-  }
+export async function saveNotification(
+  notification: Omit<AppNotification, "id" | "createdAt" | "createdBy">
+): Promise<AppNotification> {
+  const audMap: Record<NotificationAudience, string> = {
+    both: "ALL",
+    customers: "CUSTOMERS",
+    drivers: "DRIVERS",
+    driver_moto: "DRIVER_MOTO",
+    driver_cab: "DRIVER_CAB",
+    driver_hilux: "DRIVER_HILUX",
+    driver_fuso: "DRIVER_FUSO",
+    driver_rifani: "DRIVER_RIFANI",
+    single_driver: "SINGLE_DRIVER",
+  };
+
+  const res = await createNotificationCampaign({
+    title: notification.title,
+    body: notification.message,
+    audience: audMap[notification.audience] || "ALL",
+    target_driver_id: notification.targetDriverId,
+  });
+  return mapBackendToFrontend(res);
 }
 
-export function listNotifications(): AppNotification[] {
-  return readAll().sort((a, b) => b.createdAt - a.createdAt);
-}
-
-export function saveNotification(notification: AppNotification) {
-  const all = readAll().filter((n) => n.id !== notification.id);
-  all.unshift(notification);
-  writeAll(all);
-}
-
-export function removeNotification(id: string) {
-  writeAll(readAll().filter((n) => n.id !== id));
+export async function removeNotification(id: string): Promise<void> {
+  await deleteNotificationCampaign(id);
 }

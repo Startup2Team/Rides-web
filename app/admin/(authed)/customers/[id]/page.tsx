@@ -9,13 +9,8 @@ import {
   reinstateCustomer,
   type CustomerDetail,
   type CustomerTrip,
-  NO_BACKEND,
 } from "@/lib/api";
 import { Avatar, StatusPill } from "../../_components";
-import {
-  isMockCustomerId,
-  MOCK_CUSTOMERS,
-} from "@/lib/mock-customers";
 
 
 
@@ -151,12 +146,6 @@ export default function CustomerProfilePage() {
 
   useEffect(() => {
     if (!id) return;
-    if (NO_BACKEND || isMockCustomerId(id)) {
-      const mock = isMockCustomerId(id) ? MOCK_CUSTOMERS[id] : null;
-      setDetail(mock);
-      setLoading(false);
-      return;
-    }
     getCustomer(id)
       .then(setDetail)
       .catch(() => setDetail(null))
@@ -173,7 +162,7 @@ export default function CustomerProfilePage() {
     if (!detail) return;
     setActing(true);
     try {
-      if (!NO_BACKEND) await suspendCustomer(detail.id, 24);
+      await suspendCustomer(detail.id, 24);
       setDetail((d) => d ? { ...d, is_suspended: true } : d);
       setToast("Customer suspended");
     } finally {
@@ -185,7 +174,7 @@ export default function CustomerProfilePage() {
     if (!detail) return;
     setActing(true);
     try {
-      if (!NO_BACKEND) await reinstateCustomer(detail.id);
+      await reinstateCustomer(detail.id);
       setDetail((d) => d ? { ...d, is_suspended: false } : d);
       setToast("Customer reinstated");
     } finally {

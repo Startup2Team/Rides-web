@@ -40,7 +40,7 @@ import {
   getSectors,
 } from "@/lib/rwanda-locations";
 import { ImageCaptureField } from "./image-capture-field";
-import { saveLocalDriver } from "@/lib/local-drivers";
+
 
 const VEHICLE_TYPES: { value: VehicleSlug; label: string; description: string }[] = [
   { value: "moto",   label: "Moto Bike",   description: "Motorcycle transport" },
@@ -510,31 +510,15 @@ export function AddDriverButton({
         }
       }
 
-      saveLocalDriver({
-        id,
+      await createDriver({
         full_name: form.fullName.trim(),
         phone: normalizeRwandaMobilePhone(form.phone),
         transport_type: slugToTransportType(form.vehicleType),
         vehicle_plate: form.plate.trim().toUpperCase(),
-        national_id_number: form.nationalIdNumber.trim().toUpperCase(),
         license_number: form.license.trim().toUpperCase(),
-        date_of_birth: form.dob,
-        city: "Kigali",
-        address: {
-          province: form.province,
-          district: form.district,
-          sector: form.sector,
-          cell: form.cell,
-          village: form.village,
-        },
-        momo_provider: form.momoProvider,
-        momo_pay_code: form.momoCode ? normalizeRwandaMobilePhone(form.momoCode) : "",
-        approval_status: "APPROVED",
-        created_at: now,
-        is_online: false,
-        documents,
-        review_history: [],
-      });
+      }).catch(() => null);
+
+
 
       close();
       window.dispatchEvent(new Event("localDriversUpdated"));

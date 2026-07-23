@@ -1,25 +1,28 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { hasPermission } from "@/lib/admin-permissions";
 import {
-  MOCK_CAMPAIGNS,
-  MOCK_ENTITLEMENTS,
-  MOCK_PACKAGES,
-  MOCK_PURCHASES,
-  VEHICLE_LABELS,
-  formatRWF,
-  type Campaign,
+  getAdminPurchases,
+  getAdminEntitlements,
+  getAdminCampaigns,
   type PurchaseSnapshot,
-} from "@/lib/packages-mock";
+  type Entitlement,
+  type Campaign,
+} from "@/lib/api";
 
-/* ───────────────────────────────────────────────────────────────────────── */
-/* MonetizationGrid — composite widget for dashboards.                        */
-/* Each child widget is gated by the relevant permission, so a role only      */
-/* sees the widgets they have access to. Custom roles get the right view     */
-/* automatically.                                                             */
-/* ───────────────────────────────────────────────────────────────────────── */
+const VEHICLE_LABELS: Record<string, string> = {
+  moto: "Moto Bike",
+  cab: "Cab Taxi",
+  hilux: "Light Hilux",
+  fuso: "Heavy Fuso",
+};
+
+function formatRWF(amount: number): string {
+  return `${amount.toLocaleString()} RWF`;
+}
 
 export function MonetizationGrid() {
   const { permissions } = useAuth();
@@ -28,79 +31,59 @@ export function MonetizationGrid() {
   const showCampaigns = hasPermission(permissions, "/admin/campaigns");
   const showLowBalance = hasPermission(permissions, "/admin/entitlements");
 
-  const visibleCount = [showRevenue, showRecent, showCampaigns, showLowBalance]
-    .filter(Boolean).length;
-
-  if (visibleCount === 0) return null;
-
-  // Adapt grid columns to the number of visible widgets so they always fill nicely.
-  const colsClass =
-    visibleCount >= 4
-      ? "lg:grid-cols-4"
-      : visibleCount === 3
-      ? "lg:grid-cols-3"
-      : visibleCount === 2
-      ? "lg:grid-cols-2"
-      : "lg:grid-cols-1";
+  if (!showRevenue && !showRecent && !showCampaigns && !showLowBalance) {
+    return null;
+  }
 
   return (
-    <section aria-label="Monetization overview">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">
-          Monetization
-        </h2>
-        <p className="text-[11px] text-muted-foreground">
-          Packages · Campaigns · Purchases · Entitlements
-        </p>
-      </div>
-      <div className={`grid gap-4 sm:grid-cols-2 ${colsClass}`}>
+    <section className="mt-8 space-y-4">
+      <header className="flex items-center justify-between">
+        <div>
+          <h2 className="text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Monetization & Driver Packages
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Live overview of package sales, low balances, and promotional campaigns.
+          </p>
+        </div>
+      </header>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {showRevenue ? <PackageRevenueWidget /> : null}
         {showRecent ? <RecentPurchasesWidget /> : null}
-        {showCampaigns ? <ActiveCampaignsWidget /> : null}
         {showLowBalance ? <LowBalanceDriversWidget /> : null}
+        {showCampaigns ? <ActiveCampaignsWidget /> : null}
       </div>
     </section>
   );
 }
 
-/**
- * Monetization dashboard widgets — wired to mock data today, swap to API
- * later when the package/campaign/entitlement endpoints ship.
- *
- * Same visual conventions as the existing dashboard widgets:
- * - `rounded-2xl border border-border bg-card` shell
- * - Hover lift + soft primary glow
- * - Header with title + small status pill
- * - Empty-state messaging
- */
-
-/* ───────────────────────────────────────────────────────────────────────── */
-/* 1. PackageRevenueWidget                                                    */
-/*    Compact revenue summary from package purchases. Finance + Ops + Super.  */
-/* ───────────────────────────────────────────────────────────────────────── */
-
 export function PackageRevenueWidget() {
-  const paid = MOCK_PURCHASES.filter((p) => p.status === "paid");
-  const totalRevenue = paid.reduce((s, p) => s + p.pricePaid, 0);
+  const [purchases, setPurchases] = useState<PurchaseSnapshot[]>([]);
 
-  // Top-selling package by revenue
+  useEffect(() => {
+    void getAdminPurchases().then(setPurchases).catch(() => setPurchases([]));
+  }, []);
+
+  const paid = purchases.filter((p) => p.status === "paid" || p.status === "completed" || p.status === "COMPLETED");
+  const totalRevenue = paid.reduce((s, p) => s + (p.pricePaid ?? p.amountRwf ?? 0), 0);
+
   const byPackage = new Map<string, { name: string; revenue: number; count: number }>();
   for (const p of paid) {
+    const price = p.pricePaid ?? p.amountRwf ?? 0;
     const existing = byPackage.get(p.packageId);
     if (existing) {
-      existing.revenue += p.pricePaid;
+      existing.revenue += price;
       existing.count += 1;
     } else {
-      byPackage.set(p.packageId, { name: p.packageName, revenue: p.pricePaid, count: 1 });
+      byPackage.set(p.packageId, { name: p.packageName, revenue: price, count: 1 });
     }
   }
   const top = [...byPackage.values()].sort((a, b) => b.revenue - a.revenue)[0] ?? null;
-  const sharePct = top && totalRevenue > 0
-    ? Math.round((top.revenue / totalRevenue) * 100)
-    : 0;
+  const sharePct = top && totalRevenue > 0 ? Math.round((top.revenue / totalRevenue) * 100) : 0;
 
   return (
-    <WidgetShell title="Package revenue" pill="Today">
+    <WidgetShell title="Package revenue" pill="Live">
       <p className="text-2xl font-bold tracking-tight text-foreground">
         {formatRWF(totalRevenue)}
       </p>
@@ -137,13 +120,14 @@ export function PackageRevenueWidget() {
   );
 }
 
-/* ───────────────────────────────────────────────────────────────────────── */
-/* 2. RecentPurchasesWidget                                                   */
-/*    Latest purchases — driver, package, status pill. Ops + Finance + Super. */
-/* ───────────────────────────────────────────────────────────────────────── */
-
 export function RecentPurchasesWidget() {
-  const recent = [...MOCK_PURCHASES]
+  const [purchases, setPurchases] = useState<PurchaseSnapshot[]>([]);
+
+  useEffect(() => {
+    void getAdminPurchases().then(setPurchases).catch(() => setPurchases([]));
+  }, []);
+
+  const recent = [...purchases]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
 
@@ -161,15 +145,15 @@ export function RecentPurchasesWidget() {
                   {p.driverName}
                 </p>
                 <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                  {p.packageName} · {VEHICLE_LABELS[p.vehicleType]}
+                  {p.packageName} · {VEHICLE_LABELS[p.vehicleType ?? "moto"] ?? p.vehicleType}
                 </p>
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-sm font-bold tabular-nums text-foreground">
-                  {formatRWF(p.pricePaid)}
+                  {formatRWF(p.pricePaid ?? p.amountRwf ?? 0)}
                 </p>
                 <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-                  {purchaseStatusLabel(p)}
+                  {p.status}
                 </p>
               </div>
             </li>
@@ -187,13 +171,14 @@ export function RecentPurchasesWidget() {
   );
 }
 
-/* ───────────────────────────────────────────────────────────────────────── */
-/* 3. LowBalanceDriversWidget                                                 */
-/*    Drivers with <10 total rides left. Support + Ops + Super.               */
-/* ───────────────────────────────────────────────────────────────────────── */
-
 export function LowBalanceDriversWidget() {
-  const lowBalance = MOCK_ENTITLEMENTS
+  const [entitlements, setEntitlements] = useState<Entitlement[]>([]);
+
+  useEffect(() => {
+    void getAdminEntitlements().then(setEntitlements).catch(() => setEntitlements([]));
+  }, []);
+
+  const lowBalance = entitlements
     .filter((e) => e.ridesRemaining + e.bonusRidesRemaining < 10)
     .sort(
       (a, b) =>
@@ -224,7 +209,7 @@ export function LowBalanceDriversWidget() {
                     {e.driverName}
                   </p>
                   <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
-                    {VEHICLE_LABELS[e.vehicleType]} · {e.vehiclePlate}
+                    {VEHICLE_LABELS[e.vehicleType] ?? e.vehicleType} · {e.vehiclePlate ?? "—"}
                   </p>
                 </div>
                 <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
@@ -246,14 +231,15 @@ export function LowBalanceDriversWidget() {
   );
 }
 
-/* ───────────────────────────────────────────────────────────────────────── */
-/* 4. ActiveCampaignsWidget                                                   */
-/*    Active + scheduled campaigns. Finance + Ops + Super.                    */
-/* ───────────────────────────────────────────────────────────────────────── */
-
 export function ActiveCampaignsWidget() {
-  const active = MOCK_CAMPAIGNS.filter((c) => c.status === "active");
-  const scheduled = MOCK_CAMPAIGNS.filter((c) => c.status === "scheduled");
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+
+  useEffect(() => {
+    void getAdminCampaigns().then(setCampaigns).catch(() => setCampaigns([]));
+  }, []);
+
+  const active = campaigns.filter((c) => c.status === "active");
+  const scheduled = campaigns.filter((c) => c.status === "scheduled");
   const featured: Campaign[] = [...active, ...scheduled].slice(0, 4);
 
   return (
@@ -270,10 +256,12 @@ export function ActiveCampaignsWidget() {
                     {c.name}
                   </p>
                   <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    {audienceLabel(c)}
+                    {c.description || "Active campaign"}
                   </p>
                 </div>
-                <CampaignBadge status={c.status} />
+                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
+                  {c.status}
+                </span>
               </div>
             </li>
           ))}
@@ -290,40 +278,38 @@ export function ActiveCampaignsWidget() {
   );
 }
 
-/* ───────────────────────────────────────────────────────────────────────── */
-/* PRESENTATIONAL HELPERS                                                     */
-/* ───────────────────────────────────────────────────────────────────────── */
-
 function WidgetShell({
   title,
   pill,
-  pillTone = "default",
-  children,
+  pillTone = "neutral",
   growBody,
+  children,
 }: {
   title: string;
   pill?: string;
-  pillTone?: "default" | "warn";
-  children: React.ReactNode;
+  pillTone?: "neutral" | "warn" | "success";
   growBody?: boolean;
+  children: React.ReactNode;
 }) {
-  const pillClass =
-    pillTone === "warn"
-      ? "bg-amber-100 text-amber-700"
-      : "bg-primary/15 text-primary";
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">
-          {title}
-        </h2>
+    <div className="flex flex-col rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h3 className="text-xs font-semibold text-foreground">{title}</h3>
         {pill ? (
-          <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${pillClass}`}>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              pillTone === "warn"
+                ? "bg-amber-100 text-amber-700"
+                : pillTone === "success"
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
             {pill}
           </span>
         ) : null}
       </div>
-      <div className={`flex flex-col p-4 ${growBody ? "flex-1" : ""}`}>
+      <div className={growBody ? "flex flex-1 flex-col justify-between" : ""}>
         {children}
       </div>
     </div>
@@ -331,67 +317,25 @@ function WidgetShell({
 }
 
 function EmptyState({ label }: { label: string }) {
+  return <p className="py-6 text-center text-xs text-muted-foreground">{label}</p>;
+}
+
+function PurchaseStatusDot({ status }: { status: string }) {
+  const isPaid = status === "paid" || status === "completed" || status === "COMPLETED";
+  const isPending = status === "pending" || status === "PENDING";
   return (
-    <p className="flex flex-1 items-center justify-center py-8 text-center text-[11px] text-muted-foreground">
-      {label}
-    </p>
+    <span
+      className={`h-2 w-2 rounded-full ${
+        isPaid ? "bg-emerald-500" : isPending ? "bg-amber-500" : "bg-rose-500"
+      }`}
+    />
   );
-}
-
-function PurchaseStatusDot({ status }: { status: PurchaseSnapshot["status"] }) {
-  const cls =
-    status === "paid"
-      ? "bg-emerald-500 ring-emerald-200"
-      : status === "pending"
-      ? "bg-amber-500 ring-amber-200"
-      : status === "failed"
-      ? "bg-red-500 ring-red-200"
-      : "bg-zinc-400 ring-zinc-200";
-  return (
-    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ring-4 ${cls}`} aria-hidden />
-  );
-}
-
-function purchaseStatusLabel(p: PurchaseSnapshot): string {
-  if (p.status === "paid") return "Paid";
-  if (p.status === "pending") return "Pending";
-  if (p.status === "failed") return "Failed";
-  if (p.status === "cancelled") return "Cancelled";
-  return "Expired";
-}
-
-function CampaignBadge({ status }: { status: Campaign["status"] }) {
-  if (status === "active") {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-        Live
-      </span>
-    );
-  }
-  if (status === "scheduled") {
-    return (
-      <span className="inline-flex shrink-0 items-center rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-700">
-        Scheduled
-      </span>
-    );
-  }
-  return null;
-}
-
-function audienceLabel(c: Campaign): string {
-  if (c.audience === "all") return "All drivers";
-  if (c.audience === "first-purchase") return "First purchase only";
-  if (c.vehicleTypes && c.vehicleTypes.length > 0) {
-    return c.vehicleTypes.map((v) => VEHICLE_LABELS[v]).join(" · ");
-  }
-  return "Custom audience";
 }
 
 function Chevron() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden>
-      <polyline points="9 18 15 12 9 6" />
+    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
     </svg>
   );
 }

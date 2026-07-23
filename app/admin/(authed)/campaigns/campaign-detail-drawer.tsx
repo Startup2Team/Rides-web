@@ -3,14 +3,37 @@
 import { useEffect, useState } from "react";
 import { StatusPill } from "../_components";
 import { campaignStatusLabel, campaignStatusTone } from "./campaigns-console";
-import { updateCampaignStatus } from "@/lib/api";
-import {
-  VEHICLE_LABELS,
-  formatDate,
-  formatDateTime,
-  formatRWF,
-  type Campaign,
-} from "@/lib/packages-mock";
+import { updateCampaignStatus, type Campaign } from "@/lib/api";
+
+const VEHICLE_LABELS: Record<string, string> = {
+  moto: "Moto Bike",
+  cab: "Cab Taxi",
+  hilux: "Light Hilux",
+  fuso: "Heavy Fuso",
+};
+
+function formatRWF(amount: number): string {
+  return `${amount.toLocaleString()} RWF`;
+}
+
+function formatDate(isoStr: string): string {
+  if (!isoStr) return "—";
+  return new Date(isoStr).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(isoStr: string): string {
+  if (!isoStr) return "—";
+  return new Date(isoStr).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export function CampaignDetailDrawer({
   campaign,
@@ -145,7 +168,7 @@ export function CampaignDetailDrawer({
                 label="Price"
                 base="from package"
                 override={
-                  campaign.priceOverride !== null
+                  campaign.priceOverride != null
                     ? formatRWF(campaign.priceOverride)
                     : null
                 }
@@ -271,7 +294,7 @@ export function CampaignDetailDrawer({
               Lifecycle actions
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Transition this campaign's lifecycle state dynamically in mock mode.
+              Transition this campaign's lifecycle state dynamically.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {isUpcoming ? (

@@ -3,31 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getAdminPackages,
+  getAdminPurchases,
   createPackage,
   updatePackage,
   togglePackage,
   deletePackage,
   type Package as ApiPackage,
+  type PurchaseSnapshot,
 } from "@/lib/api";
 import { Card } from "../_components";
-
-// ── Subscriber types (swap mock for real API later) ───────────────────────────
-type Subscriber = {
-  id: string;
-  name: string;
-  phone: string;
-  purchased_at: string;
-  expires_at: string;
-  rides_remaining: number;
-  rides_total: number;
-};
-
-const MOCK_SUBSCRIBERS: Subscriber[] = [
-  { id: "1", name: "Jean Baptiste", phone: "+250 788 123 456", purchased_at: "2026-06-01", expires_at: "2026-07-01", rides_remaining: 7, rides_total: 10 },
-  { id: "2", name: "Amina Uwase", phone: "+250 722 654 321", purchased_at: "2026-06-05", expires_at: "2026-07-05", rides_remaining: 3, rides_total: 10 },
-  { id: "3", name: "Patrick Nkurunziza", phone: "+250 733 987 654", purchased_at: "2026-06-10", expires_at: "2026-07-10", rides_remaining: 10, rides_total: 10 },
-  { id: "4", name: "Claudine Mukamana", phone: "+250 788 555 777", purchased_at: "2026-06-15", expires_at: "2026-07-15", rides_remaining: 0, rides_total: 10 },
-];
+import { ManualClaimsDrawer } from "./manual-claims-drawer";
 
 const VEHICLE_TYPES = [
   { code: "MOTO_BIKE", name: "Moto" },
@@ -37,8 +22,6 @@ const VEHICLE_TYPES = [
   { code: "TUK_TUK", name: "Tuk Tuk" },
 ];
 
-// The backend Package shape plus a client-only subscriber count. The count is
-// not yet served by the API (see the drawer note), so it stays 0 for now.
 type Package = ApiPackage & { subscribers: number };
 
 const BLANK_FORM = {
@@ -53,6 +36,7 @@ const BLANK_FORM = {
 
 export function PackagesConsole() {
   const [packages, setPackages] = useState<Package[]>([]);
+  const [purchases, setPurchases] = useState<PurchaseSnapshot[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,6 +54,9 @@ export function PackagesConsole() {
   // Subscribers drawer
   const [subDrawerPkg, setSubDrawerPkg] = useState<Package | null>(null);
 
+  // Manual claims drawer
+  const [claimsDrawerOpen, setClaimsDrawerOpen] = useState(false);
+
   // Create form
   const [form, setForm] = useState(BLANK_FORM);
 
@@ -84,8 +71,21 @@ export function PackagesConsole() {
 
   const refresh = useCallback(async () => {
     try {
-      const list = await getAdminPackages();
-      setPackages(list.map((p) => ({ ...p, subscribers: 0 })));
+      const [list, purchaseList] = await Promise.all([
+        getAdminPackages(),
+        getAdminPurchases().catch(() => []),
+      ]);
+
+      setPurchases(purchaseList);
+
+      const pkgSubCounts: Record<string, number> = {};
+      purchaseList.forEach((p) => {
+        if (p.packageId) {
+          pkgSubCounts[p.packageId] = (pkgSubCounts[p.packageId] || 0) + 1;
+        }
+      });
+
+      setPackages(list.map((p) => ({ ...p, subscribers: pkgSubCounts[p.id] || 0 })));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load packages");
@@ -97,6 +97,34 @@ export function PackagesConsole() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const kpis = useMemo(() => {
+    const activePurchases = purchases.filter(
+      (p) => p.status === "paid" || p.status === "completed" || p.status === "COMPLETED"
+    );
+
+    const uniqueDrivers = new Set(activePurchases.map((p) => p.driverId)).size;
+    const totalRevenue = activePurchases.reduce((acc, p) => acc + (p.pricePaid || 0), 0);
+
+    const vehicleCounts: Record<string, number> = { moto: 0, cab: 0, hilux: 0, fuso: 0, rifani: 0 };
+    activePurchases.forEach((p) => {
+      const v = (p.vehicleType || "moto").toLowerCase();
+      if (vehicleCounts[v] !== undefined) vehicleCounts[v]++;
+      else vehicleCounts.moto++;
+    });
+
+    const totalSubs = activePurchases.length || 1;
+    const motoPct = Math.round((vehicleCounts.moto / totalSubs) * 100);
+    const cabPct = Math.round((vehicleCounts.cab / totalSubs) * 100);
+    const hiluxPct = Math.round((vehicleCounts.hilux / totalSubs) * 100);
+    const fusoPct = Math.round((vehicleCounts.fuso / totalSubs) * 100);
+
+    return {
+      subscribers: uniqueDrivers,
+      revenue: totalRevenue,
+      vehicleShare: { motoPct, cabPct, hiluxPct, fusoPct },
+    };
+  }, [purchases]);
 
   const filteredPackages = useMemo(() => {
     return packages.filter((pkg) => {
@@ -221,11 +249,11 @@ export function PackagesConsole() {
         <Card bodyClass="p-5 flex flex-col justify-between h-[125px]">
           <div>
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Active Subscribers</span>
-            <span className="text-2xl font-black text-foreground mt-1 block">1,420 Drivers</span>
+            <span className="text-2xl font-black text-foreground mt-1 block">{kpis.subscribers.toLocaleString()} Drivers</span>
           </div>
           <div className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-            +8.4% increase this week
+            Live subscriber count
           </div>
         </Card>
 
@@ -233,7 +261,7 @@ export function PackagesConsole() {
         <Card bodyClass="p-5 flex flex-col justify-between h-[125px] relative overflow-hidden">
           <div>
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Subscription Revenue</span>
-            <span className="text-2xl font-black text-foreground mt-1 block">8,450,000 RWF</span>
+            <span className="text-2xl font-black text-foreground mt-1 block">{kpis.revenue.toLocaleString()} RWF</span>
           </div>
           {/* Micro sparkline */}
           <div className="absolute right-4 bottom-2 w-20 h-10 text-primary opacity-60">
@@ -249,16 +277,16 @@ export function PackagesConsole() {
           <div className="space-y-1.5">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Subscriber Share</span>
             <div className="h-3 w-full rounded-full bg-muted overflow-hidden flex">
-              <div className="h-full bg-sky-500" style={{ width: "48%" }} title="Moto: 48%" />
-              <div className="h-full bg-emerald-500" style={{ width: "32%" }} title="Cab: 32%" />
-              <div className="h-full bg-amber-500" style={{ width: "15%" }} title="Hilux: 15%" />
-              <div className="h-full bg-purple-500" style={{ width: "5%" }} title="Fuso: 5%" />
+              <div className="h-full bg-sky-500" style={{ width: `${kpis.vehicleShare.motoPct}%` }} title={`Moto: ${kpis.vehicleShare.motoPct}%`} />
+              <div className="h-full bg-emerald-500" style={{ width: `${kpis.vehicleShare.cabPct}%` }} title={`Cab: ${kpis.vehicleShare.cabPct}%`} />
+              <div className="h-full bg-amber-500" style={{ width: `${kpis.vehicleShare.hiluxPct}%` }} title={`Hilux: ${kpis.vehicleShare.hiluxPct}%`} />
+              <div className="h-full bg-purple-500" style={{ width: `${kpis.vehicleShare.fusoPct}%` }} title={`Fuso: ${kpis.vehicleShare.fusoPct}%`} />
             </div>
           </div>
           <div className="flex gap-2 text-[9px] font-bold text-muted-foreground uppercase">
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-sky-500" />Moto (48%)</span>
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Cab (32%)</span>
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Hilux (15%)</span>
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-sky-500" />Moto ({kpis.vehicleShare.motoPct}%)</span>
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Cab ({kpis.vehicleShare.cabPct}%)</span>
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Hilux ({kpis.vehicleShare.hiluxPct}%)</span>
           </div>
         </Card>
       </div>
@@ -268,15 +296,24 @@ export function PackagesConsole() {
         <p className="text-sm text-muted-foreground">
           {packages.length} {packages.length === 1 ? "package" : "packages"} configured
         </p>
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Create Package
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setClaimsDrawerOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-xs transition-all hover:bg-muted"
+          >
+            <span>📋</span>
+            <span>Manual Payment Claims</span>
+          </button>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Create Package
+          </button>
+        </div>
       </div>
 
       {/* Search & Filter Suite */}
@@ -779,9 +816,10 @@ export function PackagesConsole() {
 
       {/* ── Subscribers Drawer ── */}
       {subDrawerPkg && (() => {
-        const active   = MOCK_SUBSCRIBERS.filter(s => new Date(s.expires_at) >= new Date() && s.rides_remaining > 0);
-        const expired  = MOCK_SUBSCRIBERS.filter(s => new Date(s.expires_at) < new Date());
-        const usedUp   = MOCK_SUBSCRIBERS.filter(s => s.rides_remaining === 0 && new Date(s.expires_at) >= new Date());
+        const pkgSubs = purchases.filter((p) => p.packageId === subDrawerPkg.id);
+        const active = pkgSubs.filter((p) => p.status === "paid" || p.status === "completed" || p.status === "COMPLETED");
+        const expired = pkgSubs.filter((p) => p.status === "EXPIRED" || p.status === "FAILED");
+        const usedUp = pkgSubs.filter((p) => p.status === "PENDING");
         const avatarColors = ["bg-violet-500","bg-sky-500","bg-emerald-500","bg-rose-500","bg-amber-500","bg-indigo-500"];
         return (
           <>
@@ -808,7 +846,7 @@ export function PackagesConsole() {
                     { label: "Active", value: active.length, color: "text-emerald-600" },
                     { label: "Expired", value: expired.length, color: "text-muted-foreground" },
                     { label: "Used up", value: usedUp.length, color: "text-amber-600" },
-                  ].map(s => (
+                  ].map((s) => (
                     <div key={s.label} className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-center">
                       <p className={`text-lg font-bold tabular-nums ${s.color}`}>{s.value}</p>
                       <p className="text-[11px] text-muted-foreground">{s.label}</p>
@@ -821,7 +859,7 @@ export function PackagesConsole() {
 
               {/* List */}
               <div className="flex-1 overflow-y-auto px-6 py-4">
-                {MOCK_SUBSCRIBERS.length === 0 ? (
+                {pkgSubs.length === 0 ? (
                   <div className="flex flex-col items-center gap-3 py-24 text-center">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7 text-muted-foreground/50" aria-hidden>
@@ -833,45 +871,39 @@ export function PackagesConsole() {
                   </div>
                 ) : (
                   <ul className="space-y-2">
-                    {MOCK_SUBSCRIBERS.map((sub, i) => {
-                      const pct = Math.round((sub.rides_remaining / sub.rides_total) * 100);
-                      const isExpired  = new Date(sub.expires_at) < new Date();
-                      const isExhausted = sub.rides_remaining === 0;
-                      const statusLabel = isExpired ? "Expired" : isExhausted ? "Used up" : "Active";
-                      const statusCls   = isExpired || isExhausted
-                        ? "bg-muted text-muted-foreground"
-                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
-                      const barCls = pct > 50 ? "bg-emerald-500" : pct > 20 ? "bg-amber-400" : "bg-rose-500";
+                    {pkgSubs.map((sub, i) => {
+                      const totalRides = (sub.ridesGranted || 0) + (sub.bonusRidesGranted || 0);
+                      const pricePaid = sub.pricePaid || 0;
+                      const statusLabel = sub.status ? String(sub.status).toUpperCase() : "PENDING";
+                      const isPaid = sub.status === "paid" || sub.status === "completed" || sub.status === "COMPLETED";
+                      const statusCls = isPaid
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "bg-muted text-muted-foreground";
                       const avatarCls = avatarColors[i % avatarColors.length];
+                      const initials = (sub.driverName || "Driver").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
                       return (
                         <li key={sub.id} className="flex items-center gap-3.5 rounded-2xl border border-border bg-card px-4 py-3.5 transition-colors hover:bg-muted/30">
                           {/* Avatar */}
                           <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${avatarCls}`}>
-                            {sub.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+                            {initials}
                           </div>
 
                           {/* Info */}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="truncate text-sm font-semibold text-foreground">{sub.name}</p>
+                              <p className="truncate text-sm font-semibold text-foreground">{sub.driverName}</p>
                               <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusCls}`}>{statusLabel}</span>
                             </div>
-                            <p className="mt-0.5 text-xs text-muted-foreground">{sub.phone}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">{sub.driverPhone || sub.vehiclePlate}</p>
 
-                            {/* Progress */}
-                            <div className="mt-2 flex items-center gap-2">
-                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-                                <div className={`h-full rounded-full ${barCls}`} style={{ width: `${pct}%` }} />
-                              </div>
-                              <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                                {sub.rides_remaining}/{sub.rides_total} rides
-                              </span>
+                            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                              <span>Granted: {totalRides} rides</span>
+                              <span>{pricePaid.toLocaleString()} RWF</span>
                             </div>
 
-                            {/* Expiry */}
-                            <p className="mt-1.5 text-[11px] text-muted-foreground">
-                              Expires <span className={isExpired ? "font-semibold text-rose-500" : "text-muted-foreground"}>{sub.expires_at}</span>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              Purchased <span className="font-medium text-foreground">{new Date(sub.createdAt).toLocaleDateString()}</span>
                             </p>
                           </div>
                         </li>
@@ -884,7 +916,7 @@ export function PackagesConsole() {
               {/* Footer */}
               <div className="border-t border-border bg-muted/20 px-6 py-3">
                 <p className="text-[11px] text-muted-foreground">
-                  Showing mock data · wire up <code className="rounded bg-muted px-1 font-mono text-[10px]">GET /admin/packages/:id/subscribers</code> for live results
+                  Showing live purchase data for package subscribers
                 </p>
               </div>
             </div>
@@ -907,6 +939,13 @@ export function PackagesConsole() {
           </div>
         </div>
       )}
+
+      {/* ── Manual Claims Drawer ── */}
+      <ManualClaimsDrawer
+        open={claimsDrawerOpen}
+        onClose={() => setClaimsDrawerOpen(false)}
+        onStatusUpdate={() => refresh()}
+      />
     </div>
   );
 }

@@ -3,8 +3,16 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Avatar } from "../_components";
-import type { DriverPerf } from "@/lib/api";
-import { isAnalyticsVehicle, vehicleSharePct } from "@/lib/mock-analytics";
+function isAnalyticsVehicle(slug: string | null | undefined): boolean {
+  return slug === "moto" || slug === "cab" || slug === "hilux" || slug === "fuso";
+}
+function vehicleSharePct(vehicle?: string): number {
+  if (vehicle === "moto") return 55;
+  if (vehicle === "cab") return 30;
+  if (vehicle === "hilux") return 10;
+  if (vehicle === "fuso") return 5;
+  return 100;
+}
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -579,7 +587,7 @@ export function VehicleFilteredSummary({
   );
 }
 
-export function TopDriversList({ drivers }: { drivers: DriverPerf[] }) {
+export function TopDriversList({ drivers }: { drivers: any[] }) {
   return (
     <ul className="divide-y divide-border/60">
       {drivers.map((d, i) => {
