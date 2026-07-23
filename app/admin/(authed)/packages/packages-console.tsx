@@ -12,6 +12,7 @@ import {
   type PurchaseSnapshot,
 } from "@/lib/api";
 import { Card } from "../_components";
+import { ManualClaimsDrawer } from "./manual-claims-drawer";
 
 const VEHICLE_TYPES = [
   { code: "MOTO_BIKE", name: "Moto" },
@@ -52,6 +53,9 @@ export function PackagesConsole() {
 
   // Subscribers drawer
   const [subDrawerPkg, setSubDrawerPkg] = useState<Package | null>(null);
+
+  // Manual claims drawer
+  const [claimsDrawerOpen, setClaimsDrawerOpen] = useState(false);
 
   // Create form
   const [form, setForm] = useState(BLANK_FORM);
@@ -292,15 +296,24 @@ export function PackagesConsole() {
         <p className="text-sm text-muted-foreground">
           {packages.length} {packages.length === 1 ? "package" : "packages"} configured
         </p>
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Create Package
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setClaimsDrawerOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-xs transition-all hover:bg-muted"
+          >
+            <span>📋</span>
+            <span>Manual Payment Claims</span>
+          </button>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Create Package
+          </button>
+        </div>
       </div>
 
       {/* Search & Filter Suite */}
@@ -926,6 +939,13 @@ export function PackagesConsole() {
           </div>
         </div>
       )}
+
+      {/* ── Manual Claims Drawer ── */}
+      <ManualClaimsDrawer
+        open={claimsDrawerOpen}
+        onClose={() => setClaimsDrawerOpen(false)}
+        onStatusUpdate={() => refresh()}
+      />
     </div>
   );
 }

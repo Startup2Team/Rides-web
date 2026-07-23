@@ -1568,6 +1568,53 @@ export const deletePackage = async (id: string) => {
   return request<{ status: string }>(`/admin/packages/${id}`, { method: "DELETE" });
 };
 
+// ── Manual Package Payment Claims (Admin Review) ──────────────────────────────────
+export type ManualClaim = {
+  id: string;
+  driver_id: string;
+  vehicle_id?: string | null;
+  vehicle_type: string;
+  package_name: string;
+  expected_amount_rwf: number;
+  provider: string;
+  payer_phone_number?: string | null;
+  transaction_reference?: string | null;
+  proof_image_id?: string | null;
+  status: "draft" | "submitted" | "approved" | "rejected" | "expired" | "cancelled";
+  submitted_at?: string | null;
+  created_at: string;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  rejection_reason?: string | null;
+  clarification_message?: string | null;
+};
+
+export const getAdminManualClaims = async (status = "submitted", limit = 100): Promise<{ items: ManualClaim[] }> => {
+  return request<{ items: ManualClaim[] }>(`/admin/package-payments/manual-claims?status=${status}&limit=${limit}`);
+};
+
+export const approveManualClaim = async (claimId: string): Promise<{ claim: ManualClaim }> => {
+  return request<{ claim: ManualClaim }>(`/admin/package-payments/manual-claims/${claimId}/approve`, {
+    method: "POST",
+  });
+};
+
+export const rejectManualClaim = async (
+  claimId: string,
+  reason: string,
+  reasonCode = "invalid_receipt",
+  clarificationMessage = ""
+): Promise<{ claim: ManualClaim }> => {
+  return request<{ claim: ManualClaim }>(`/admin/package-payments/manual-claims/${claimId}/reject`, {
+    method: "POST",
+    body: {
+      reason_code: reasonCode,
+      reason,
+      clarification_message: clarificationMessage,
+    },
+  });
+};
+
 // ── Campaigns ─────────────────────────────────────────────────────────────
 // The backend returns AdminCampaign (snake_case, type/target model). The
 // monetization console renders the richer camelCase Campaign view, so we map
