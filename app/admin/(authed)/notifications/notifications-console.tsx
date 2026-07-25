@@ -7,6 +7,7 @@ import { useAuth } from "@/context/auth-context";
 import {
   listNotifications,
   saveNotification,
+  sendNotificationNow,
   removeNotification,
   type AppNotification,
   type NotificationAudience,
@@ -86,10 +87,16 @@ export function NotificationsConsole() {
         imageUrl: draft.imageUrl,
         actionLink: draft.actionLink,
         audience: draft.audience,
+        targetDriverId: draft.targetDriverId,
         status,
         scheduledAt: draft.scheduledAt || null,
         sentAt: status === "sent" ? now : null,
       });
+      // Editing a stored draft/schedule creates the updated campaign, so drop the
+      // superseded row instead of leaving both in the history.
+      if (editing && editing.status !== "sent") {
+        await removeNotification(editing.id);
+      }
 
       setFormOpen(false);
       setEditing(null);
@@ -102,16 +109,7 @@ export function NotificationsConsole() {
 
   async function handleSendNow(notification: AppNotification) {
     try {
-      await saveNotification({
-        title: notification.title,
-        message: notification.message,
-        imageUrl: notification.imageUrl,
-        actionLink: notification.actionLink,
-        audience: notification.audience,
-        status: "sent",
-        scheduledAt: null,
-        sentAt: Date.now(),
-      });
+      await sendNotificationNow(notification.id);
       await refresh();
       showToast("Notification sent");
     } catch (err) {

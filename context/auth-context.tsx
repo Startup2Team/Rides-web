@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getAccount, getRoles, type AdminAccount, NO_BACKEND } from "@/lib/api";
+import { getAccount, getRoles, type AdminAccount } from "@/lib/api";
 import { clearToken } from "@/lib/auth";
 import {
   type Permission,
@@ -43,28 +43,16 @@ const AuthContext = createContext<AuthContextValue>({
   refreshUser: async () => {},
 });
 
-const MOCK_USER: AuthUser = {
-  id: "mock-admin",
-  name: "Admin (Mock)",
-  email: "admin@mock.local",
-  role_id: "mock-role",
-  role_name: "super_admin",
-  two_factor: false,
-  phone: "+250 788 123 456",
-  photo_url: null,
-  photoUrl: null,
-};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(NO_BACKEND ? MOCK_USER : null);
-  const [roleName, setRoleName] = useState<AdminRoleName | null>(NO_BACKEND ? "Super Admin" : null);
-  const [permissions, setPermissions] = useState<Permission[]>(NO_BACKEND ? ["*"] : []);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [roleName, setRoleName] = useState<AdminRoleName | null>(null);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [readOnly, setReadOnly] = useState(false);
-  const [ready, setReady] = useState(NO_BACKEND);
+  const [ready, setReady] = useState(false);
   const [connError, setConnError] = useState<string | null>(null);
 
   const refreshUser = useCallback(async () => {
-    if (NO_BACKEND) return;
     try {
       setConnError(null);
       const account = await getAccount();

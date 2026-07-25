@@ -22,18 +22,6 @@ import {
   type TicketType,
 } from "./ticket-modal";
 
-const MOCK_AVATARS: Record<string, string> = {
-  "Alice Smith": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
-  "John Doe": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
-  "David Miller": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
-  "Sarah Connor": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
-  "James Carter": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-  "Emily Watson": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
-  "Michael Brown": "https://images.unsplash.com/photo-1500048993953-d23a436266cf?w=150",
-  "Jessica Taylor": "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150",
-  "Daniel Wilson": "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150",
-  "Sophie Martin": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150",
-};
 
 function mapApiTicket(t: ApiTicket): Ticket {
   const name = t.from_name ?? t.from_phone ?? "Unknown";
@@ -88,7 +76,6 @@ function mapApiTicket(t: ApiTicket): Ticket {
     fromRole: (t.from_role as string) ?? "Customer",
     fromEmail: "",
     fromPhone: t.from_phone ?? "",
-    avatarUrl: MOCK_AVATARS[name],
     rideId: t.ride_id ?? undefined,
     assignedTo: t.assigned_to ?? undefined,
     createdAt: new Date(t.created_at).toLocaleString(),
@@ -479,15 +466,15 @@ export function SupportConsole() {
                 setToast(assigneeId ? "Ticket assigned successfully" : "Ticket unassigned");
               }}
               onResolve={async (id, reason) => {
-                const myEmail = user?.email || "admin@mock.local";
-                const myName = user?.name || "Admin (Mock)";
+                const myName = user?.name || "Admin";
+                const byline = user?.email ? `${myName} (${user.email})` : myName;
                 const now = new Date();
                 const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
                 const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-                
+
                 const auditMsg = `✅ Solved:
 Reason: ${reason}
-Closed/solved by: ${myName} (${myEmail})
+Closed/solved by: ${byline}
 Date : ${dateStr}
 Time: ${timeStr}`;
 

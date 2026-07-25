@@ -1,6 +1,7 @@
 import {
   getNotificationCampaigns,
   createNotificationCampaign,
+  sendNotificationCampaign,
   deleteNotificationCampaign,
   type BackendNotificationCampaign,
 } from "./api";
@@ -55,8 +56,9 @@ function mapBackendToFrontend(bc: BackendNotificationCampaign): AppNotification 
     imageUrl: null,
     actionLink: "",
     audience,
+    targetDriverId: bc.target_driver_id,
     status: bc.status.toLowerCase() as "sent" | "scheduled" | "draft",
-    scheduledAt: bc.sent_at || null,
+    scheduledAt: bc.scheduled_at || null,
     sentAt: bc.sent_at ? new Date(bc.sent_at).getTime() : null,
     createdBy: bc.created_by || "Admin",
     createdAt: new Date(bc.created_at).getTime(),
@@ -88,13 +90,25 @@ export async function saveNotification(
     single_driver: "SINGLE_DRIVER",
   };
 
+  const status = (notification.status?.toUpperCase() || "SENT") as "SENT" | "DRAFT" | "SCHEDULED";
   const res = await createNotificationCampaign({
     title: notification.title,
     body: notification.message,
     audience: audMap[notification.audience] || "ALL",
+    status,
+    // Only a real schedule carries a time; a draft keeps none.
+    scheduled_at:
+      status === "SCHEDULED" && notification.scheduledAt
+        ? new Date(notification.scheduledAt).toISOString()
+        : null,
     target_driver_id: notification.targetDriverId,
   });
   return mapBackendToFrontend(res);
+}
+
+/** Deliver a stored draft/scheduled campaign now, in place. */
+export async function sendNotificationNow(id: string): Promise<AppNotification> {
+  return mapBackendToFrontend(await sendNotificationCampaign(id));
 }
 
 export async function removeNotification(id: string): Promise<void> {

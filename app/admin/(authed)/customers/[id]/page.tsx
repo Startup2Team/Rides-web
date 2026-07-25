@@ -39,6 +39,7 @@ function vehicleLabel(type: string) {
   const map: Record<string, string> = {
     MOTO_BIKE: "Moto",
     RIFANI: "Rifani",
+    TUK_TUK: "Rifani",
     CAB_TAXI: "Cab",
     LIGHT_HILUX: "Hilux",
     HEAVY_FUSO: "Fuso",
@@ -120,6 +121,7 @@ function VehicleBadge({ type }: { type: string }) {
   const colors: Record<string, string> = {
     MOTO_BIKE: "bg-purple-50 text-purple-700",
     RIFANI: "bg-indigo-50 text-indigo-700",
+    TUK_TUK: "bg-indigo-50 text-indigo-700",
     CAB_TAXI: "bg-sky-50 text-sky-700",
     LIGHT_HILUX: "bg-amber-50 text-amber-700",
     HEAVY_FUSO: "bg-orange-50 text-orange-700",

@@ -14,9 +14,8 @@ import {
   enable2FA,
   uploadFile,
   resolveBackendUrl,
-  NO_BACKEND,
 } from "@/lib/api";
-import { getAdminUser, getToken } from "@/lib/auth";
+import { getToken } from "@/lib/auth";
 import { useAuth } from "@/context/auth-context";
 
 type Tab = "profile" | "security" | "sessions";
@@ -37,41 +36,6 @@ type Session = {
   current?: boolean;
 };
 
-const initialSessions: Session[] = [
-  {
-    id: "s1",
-    device: "MacBook Pro",
-    browser: "Chrome 132",
-    location: "Kacyiru, Kigali",
-    ip: "41.74.198.12",
-    lastActive: "Active now",
-    current: true,
-  },
-  {
-    id: "s2",
-    device: "iPhone 16 Pro",
-    browser: "Safari Mobile",
-    location: "Remera, Kigali",
-    ip: "41.74.220.55",
-    lastActive: "12 minutes ago",
-  },
-  {
-    id: "s3",
-    device: "Dell Latitude",
-    browser: "Edge 130",
-    location: "Office · Kigali Heights",
-    ip: "196.223.18.4",
-    lastActive: "3 hours ago",
-  },
-  {
-    id: "s4",
-    device: "Unknown",
-    browser: "Chrome 128",
-    location: "Nairobi, Kenya",
-    ip: "41.139.92.118",
-    lastActive: "Yesterday",
-  },
-];
 
 function deviceIcon(device: string) {
   if (device.toLowerCase().includes("iphone") || device.toLowerCase().includes("android"))
@@ -172,7 +136,7 @@ export function AccountConsole() {
 
 
   // Sessions
-  const [sessions, setSessions] = useState<Session[]>(NO_BACKEND ? initialSessions : []);
+  const [sessions, setSessions] = useState<Session[]>([]);
 
   const secret = setup2FAData?.secret ?? "";
   const otpAuth = setup2FAData?.otpauth_url ?? "";
@@ -180,17 +144,6 @@ export function AccountConsole() {
 
   // Load profile from API (and localStorage fallback before API responds)
   useEffect(() => {
-    if (NO_BACKEND) {
-      const stored = getAdminUser();
-      if (stored) {
-        setName(stored.name);
-        setEmail(stored.email);
-        setTwoFactorEnabled(stored.twoFactor);
-      }
-      setSessions(initialSessions);
-      return;
-    }
-
     getAccount()
       .then((a) => {
         setName(a.name);
@@ -428,11 +381,9 @@ export function AccountConsole() {
                 <input
                   type="email"
                   value={email}
-                  disabled={!NO_BACKEND}
+                  disabled
                   onChange={(e) => setEmail(e.target.value)}
-                  className={`mt-2 block h-10 w-full rounded-lg border border-border px-3 text-sm text-foreground outline-none focus:border-primary ${
-                    !NO_BACKEND ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : "bg-surface"
-                  }`}
+                  className="mt-2 block h-10 w-full cursor-not-allowed rounded-lg border border-border bg-muted/50 px-3 text-sm text-muted-foreground outline-none"
                 />
               </label>
               <label className="block">

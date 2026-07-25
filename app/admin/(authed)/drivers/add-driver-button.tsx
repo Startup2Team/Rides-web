@@ -9,7 +9,6 @@ import {
   uploadDriverFile,
   sendDriverOTP,
   verifyDriverOTP,
-  NO_BACKEND,
 } from "@/lib/api";
 import { slugToTransportType, VEHICLE_SLUG_LABELS } from "@/lib/drivers";
 import {
@@ -420,14 +419,6 @@ export function AddDriverButton({
     const phoneErr = validateRwandaMobilePhone(form.phone);
     if (phoneErr) { setErrors((e) => ({ ...e, phone: phoneErr })); return; }
 
-    // No backend — auto-verify so the form is testable without a running API.
-    if (NO_BACKEND) {
-      setOtpVerified(true);
-      setOtpSent(true);
-      setOtpError(null);
-      return;
-    }
-
     setOtpBusy(true);
     setOtpError(null);
     try {
@@ -475,55 +466,6 @@ export function AddDriverButton({
       return;
     }
 
-    // No backend — persist driver locally so the review flow can be tested end-to-end.
-    if (NO_BACKEND) {
-      const toDataUrl = (file: File): Promise<string> =>
-        new Promise((res, rej) => {
-          const r = new FileReader();
-          r.onload = () => res(r.result as string);
-          r.onerror = rej;
-          r.readAsDataURL(file);
-        });
-
-      const now = new Date().toISOString();
-      const id = `local-driver-${Date.now()}`;
-
-      const documents: { document_type: string; file_url: string; uploaded_at: string }[] = [];
-
-      if (selfie) {
-        try {
-          const url = await toDataUrl(selfie);
-          documents.push({ document_type: "PROFILE_SELFIE", file_url: url, uploaded_at: now });
-        } catch { /* skip if conversion fails */ }
-      }
-
-      for (const [key, faces] of Object.entries(docs) as [DocKey, DocFaces][]) {
-        const types = DOC_API_TYPE[key];
-        for (let i = 0; i < faces.length; i++) {
-          const file = faces[i];
-          if (file && types[i]) {
-            try {
-              const url = await toDataUrl(file);
-              documents.push({ document_type: types[i], file_url: url, uploaded_at: now });
-            } catch { /* skip */ }
-          }
-        }
-      }
-
-      await createDriver({
-        full_name: form.fullName.trim(),
-        phone: normalizeRwandaMobilePhone(form.phone),
-        transport_type: slugToTransportType(form.vehicleType),
-        vehicle_plate: form.plate.trim().toUpperCase(),
-        license_number: form.license.trim().toUpperCase(),
-      }).catch(() => null);
-
-
-
-      close();
-      window.dispatchEvent(new Event("localDriversUpdated"));
-      return;
-    }
 
     setSubmitting(true);
     setSubmitError(null);

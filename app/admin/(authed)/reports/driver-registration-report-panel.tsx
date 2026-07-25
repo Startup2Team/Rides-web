@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Card } from "../_components";
@@ -38,11 +38,34 @@ export function DriverRegistrationReportPanel({
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
 
-  const report = useMemo(
+  // Shape to render before the drivers list arrives (and if it fails): the same
+  // report with no records, so the table/summary render empty rather than stale.
+  const emptyReport = useMemo(
     () => buildDriverRegistrationReport({ period, customRange }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- depend on primitives, not the fresh customRange object identity
     [period, customRange?.from, customRange?.to],
   );
+
+  const [report, setReport] = useState(emptyReport);
+
+  // The on-screen table has to come from the live /admin/drivers list — building
+  // it locally with no drivers always rendered an empty report.
+  useEffect(() => {
+    let cancelled = false;
+    setReport(emptyReport);
+    setPage(1);
+    getDriverRegistrationReport({ period, customRange })
+      .then((r) => {
+        if (!cancelled) setReport(r);
+      })
+      .catch(() => {
+        /* keep the empty shape */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- depend on primitives, not the fresh customRange object identity
+  }, [period, customRange?.from, customRange?.to, emptyReport]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -64,8 +87,7 @@ export function DriverRegistrationReportPanel({
   async function handleGeneratePdf() {
     setGenerating(true);
     try {
-      const payload = await getDriverRegistrationReport(filters).catch(() => report);
-      downloadDriverRegistrationPdf(payload);
+      downloadDriverRegistrationPdf(report);
       onToast?.(`Driver Registration Report PDF downloaded · ${periodLabel}`);
     } finally {
       setGenerating(false);

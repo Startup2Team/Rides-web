@@ -81,8 +81,6 @@ export type Campaign = {
   createdBy?: string;
 };
 
-export const NO_BACKEND = false;
-
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
 export function resolveBackendUrl(path: string | null | undefined): string | null {
@@ -1179,13 +1177,28 @@ export const addIncidentMessage = (id: string, message: string) =>
 
 // ── Push Notification Campaigns ──────────────────────────────────────────
 
+export type NotificationCampaignAudience =
+  | "ALL"
+  | "DRIVERS"
+  | "CUSTOMERS"
+  | "DRIVER_MOTO"
+  | "DRIVER_CAB"
+  | "DRIVER_HILUX"
+  | "DRIVER_FUSO"
+  | "DRIVER_RIFANI"
+  | "SINGLE_DRIVER";
+
 export type BackendNotificationCampaign = {
   id: string;
   title: string;
   body: string;
-  audience: "ALL" | "DRIVERS" | "CUSTOMERS";
+  audience: NotificationCampaignAudience;
   status: "SENT" | "SCHEDULED" | "DRAFT";
-  sent_at: string;
+  /** null until the campaign actually goes out (drafts, pending schedules). */
+  sent_at: string | null;
+  scheduled_at?: string | null;
+  /** users.id of the recipient, for SINGLE_DRIVER campaigns. */
+  target_driver_id?: string;
   created_by: string;
   created_at: string;
 };
@@ -1200,8 +1213,21 @@ export const getNotificationCampaigns = (params: Record<string, string> = {}) =>
   return request<CampaignsResponse>(`/admin/notifications${qs ? `?${qs}` : ""}`);
 };
 
-export const createNotificationCampaign = (data: { title: string; body: string; audience: string; target_driver_id?: string }) =>
-  request<BackendNotificationCampaign>("/admin/notifications", { method: "POST", body: data });
+export const createNotificationCampaign = (data: {
+  title: string;
+  body: string;
+  audience: string;
+  /** Omit to send immediately. DRAFT and SCHEDULED are recorded, not delivered. */
+  status?: "SENT" | "DRAFT" | "SCHEDULED";
+  /** ISO timestamp; required with SCHEDULED. */
+  scheduled_at?: string | null;
+  /** Driver profile ID or user ID; required with audience SINGLE_DRIVER. */
+  target_driver_id?: string;
+}) => request<BackendNotificationCampaign>("/admin/notifications", { method: "POST", body: data });
+
+/** Deliver an existing draft/scheduled campaign now (no duplicate history row). */
+export const sendNotificationCampaign = (id: string) =>
+  request<BackendNotificationCampaign>(`/admin/notifications/${id}/send`, { method: "POST" });
 
 export const notifyDriver = (driverId: string, data: { title: string; body: string; reason?: string }) =>
   request<{ id: string; status: string; message?: string }>(`/admin/drivers/${driverId}/notify`, {

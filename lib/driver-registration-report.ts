@@ -56,6 +56,7 @@ const TRANSPORT_LABELS: Record<string, string> = {
   LIGHT_HILUX: "Light Hilux",
   HEAVY_FUSO: "Heavy Fuso",
   RIFANI: "Rifani",
+  TUK_TUK: "Rifani",
 };
 
 const PERIOD_LABELS: Record<Period, string> = {

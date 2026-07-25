@@ -126,18 +126,6 @@ function filtersAppliedForTemplate(template: ExportTemplate, filters: ReportFilt
     .filter((x): x is { label: string; value: string } => x !== null);
 }
 
-function mockCustomerOverview(customers: Customer[]) {
-  const suspended = customers.filter((c) => c.is_suspended).length;
-  const activeThisWeek = customers.filter(
-    (c) => c.last_seen_at && Date.now() - new Date(c.last_seen_at).getTime() < 7 * 86400000,
-  ).length;
-  return {
-    total: customers.length,
-    active: customers.length - suspended,
-    suspended,
-    active_this_week: activeThisWeek,
-  };
-}
 
 async function opsSummaryContent(meta: ReportMeta): Promise<Omit<GeneratedReport, "templateId" | "periodLabel" | "filtersApplied" | "periodPhrase" | "dateRangeLabel">> {
   const vehicleId = meta.vehicleId ?? vehicleFromFilters(meta.filters);
