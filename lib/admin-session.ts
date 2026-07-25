@@ -10,8 +10,14 @@ export const ADMIN_UI_TOKEN_COOKIE = "admin_ui_token";
 
 /** Max cookie age (falls back match typical backend defaults). */
 export function accessCookieMaxAgeSeconds(): number {
-  const m = parseInt(process.env.JWT_ACCESS_EXPIRY_MINUTES ?? "15", 10);
-  return Number.isFinite(m) && m > 0 ? m * 60 : 15 * 60;
+  // Admin sessions use JWT_ADMIN_IDLE_MINUTES (60), not the mobile app's
+  // JWT_ACCESS_EXPIRY_MINUTES (15) — the cookie must outlive the token it holds,
+  // or the browser drops it while the token is still valid.
+  const m = parseInt(
+    process.env.JWT_ADMIN_IDLE_MINUTES ?? process.env.JWT_ACCESS_EXPIRY_MINUTES ?? "60",
+    10,
+  );
+  return Number.isFinite(m) && m > 0 ? m * 60 : 60 * 60;
 }
 
 export function refreshCookieMaxAgeSeconds(): number {

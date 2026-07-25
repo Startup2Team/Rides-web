@@ -6,10 +6,17 @@ import { AdminSidebar } from "./admin-sidebar";
 import { AdminTopbar } from "./admin-topbar";
 import { DemandAlertToast } from "./demand-alert-toast";
 import { RoleGuard } from "./role-guard";
+import { useAuth } from "@/context/auth-context";
+import { useSessionRenewal } from "@/lib/use-session-renewal";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const { ready, user } = useAuth();
+
+  // Keep an active admin signed in — the backend session is an idle timeout, and
+  // without renewal a 15-minute token used to boot admins out mid-task.
+  useSessionRenewal(ready && Boolean(user));
 
   // Close drawer on route change.
   useEffect(() => {
