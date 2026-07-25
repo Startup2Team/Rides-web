@@ -51,8 +51,7 @@ export function GrantRidesModal({
     setErrorMessage(null);
     setSubmitting(true);
     try {
-      const [driverId, vehicleTypeId] = target.entitlementId.split(":");
-      await grantEntitlement(driverId, vehicleTypeId, rides, bonusRides, reason.trim());
+      await grantEntitlement(target.entitlementId, rides, bonusRides, reason.trim());
       onGranted();
     } catch (err) {
       setErrorMessage(

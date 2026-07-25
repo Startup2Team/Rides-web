@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Avatar } from "../_components";
 import {
   MessageModal,
@@ -60,11 +60,14 @@ function mapApiMessage(m: ApiMessage): ContactMessage {
 export function InboxConsole() {
   const [messages, setMessages] = useState<ContactMessage[]>([]);
 
-  useEffect(() => {
-    getInbox({ limit: "100", offset: "0" })
-      .then((res) => setMessages((Array.isArray(res.messages) ? res.messages : []).map(mapApiMessage)))
-      .catch(() => null);
+  const refresh = useCallback(async () => {
+    const res = await getInbox({ limit: "100", offset: "0" });
+    setMessages((Array.isArray(res.messages) ? res.messages : []).map(mapApiMessage));
   }, []);
+
+  useEffect(() => {
+    refresh().catch(() => null);
+  }, [refresh]);
   const [tab, setTab] = useState<"all" | "unread" | "read" | "unreplied" | "replied">("all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [periodFilter, setPeriodFilter] = useState("all");
@@ -80,20 +83,6 @@ export function InboxConsole() {
     const t = setTimeout(() => setToast(null), 2500);
     return () => clearTimeout(t);
   }, [toast]);
-
-  // Mark unread message as read on click
-  useEffect(() => {
-    if (!viewingId) return;
-    const msg = messages.find((m) => m.id === viewingId);
-    if (msg && msg.status === "New") {
-      // Instantly clear the blue dot on UI
-      setMessages((prev) =>
-        prev.map((m) => (m.id === viewingId ? { ...m, status: "Replied" } : m))
-      );
-      // Persist to backend database
-      updateMessageStatus(viewingId, "REPLIED").catch(() => null);
-    }
-  }, [viewingId, messages]);
 
   const counts: Record<"all" | "unread" | "read" | "unreplied" | "replied", number> = useMemo(
     () => ({
@@ -464,33 +453,47 @@ export function InboxConsole() {
               message={viewing}
               onClose={() => setViewingId(null)}
               onReply={async (id, body) => {
-                try { await replyToMessage(id, body); } catch { /* ignore */ }
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === id
-                      ? {
-                          ...m,
-                          status: "Replied" as const,
-                          replies: [...m.replies, { id: `r${m.replies.length + 1}`, author: "Admin", time: "Just now", body }],
-                        }
-                      : m,
-                  ),
-                );
+                // The reply must actually land before the UI claims it did — this
+                // used to swallow the error and still toast success.
+                try {
+                  await replyToMessage(id, body);
+                } catch {
+                  setToast("Couldn't send the reply — try again");
+                  return;
+                }
+                await refresh();
                 setToast("Reply sent successfully");
               }}
               onArchive={async (id) => {
-                try { await archiveMessage(id); } catch { /* ignore */ }
+                try {
+                  await archiveMessage(id);
+                } catch {
+                  setToast("Couldn't archive — try again");
+                  return;
+                }
                 update(id, { status: "Archived" });
                 setToast("Message archived");
                 setViewingId(null);
               }}
               onSpam={async (id) => {
-                try { await markSpam(id); } catch { /* ignore */ }
+                try {
+                  await markSpam(id);
+                } catch {
+                  setToast("Couldn't mark as spam — try again");
+                  return;
+                }
                 update(id, { status: "Spam" });
                 setToast("Marked as spam");
                 setViewingId(null);
               }}
-              onUnarchive={(id) => {
+              onUnarchive={async (id) => {
+                // Was local-only, so the message reappeared as Archived on refresh.
+                try {
+                  await updateMessageStatus(id, "NEW");
+                } catch {
+                  setToast("Couldn't move it back — try again");
+                  return;
+                }
                 update(id, { status: "New" });
                 setToast("Moved back to inbox");
               }}

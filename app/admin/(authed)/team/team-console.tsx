@@ -5,7 +5,7 @@ import { Avatar, Card, StatCard } from "../_components";
 import { InviteAdminModal } from "./invite-admin-modal";
 import { SetPasswordModal } from "./set-password-modal";
 import { AdminActivityModal } from "./admin-activity-modal";
-import { DEFAULT_ROLES, type Role } from "./roles";
+import { DEFAULT_ROLES, type Role, type Permission } from "./roles";
 import { RoleDrawer } from "./role-drawer";
 import {
   getTeam,
@@ -95,7 +95,10 @@ export function TeamConsole() {
                 id: r.id,
                 name: r.name,
                 description: r.description,
-                permissions: [],
+                // Must carry the real list: the drawer seeds its checkboxes from
+                // this, and saving writes it back — mapping it to [] wiped the
+                // role's permissions on every save.
+                permissions: Array.isArray(r.permissions) ? (r.permissions as Permission[]) : [],
                 isSystem: r.is_system,
               })),
             );

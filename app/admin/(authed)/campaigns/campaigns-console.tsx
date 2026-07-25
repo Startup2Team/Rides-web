@@ -18,6 +18,7 @@ const VEHICLE_LABELS: Record<string, string> = {
   cab: "Cab Taxi",
   hilux: "Light Hilux",
   fuso: "Heavy Fuso",
+  rifani: "Rifani",
 };
 
 function formatRWF(amount: number): string {

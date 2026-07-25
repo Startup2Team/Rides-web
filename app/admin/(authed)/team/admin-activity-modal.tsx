@@ -4,14 +4,6 @@ import { useEffect, useState } from "react";
 import { Avatar } from "../_components";
 import { getMemberActivity, type AdminActivity } from "@/lib/api";
 
-const FALLBACK: AdminActivity[] = [
-  { id: "a1", action: "Signed in", detail: "via password + authenticator", ip: "41.74.198.12", created_at: "Just now" },
-  { id: "a2", action: "Resolved INC-2847", detail: "SOS · marked safe after driver call", ip: "41.74.198.12", created_at: "12 min ago" },
-  { id: "a3", action: "Suspended customer", detail: "Sandrine Uwimana · fraudulent chargeback", ip: "41.74.198.12", created_at: "1h ago" },
-  { id: "a4", action: "Approved driver KYC", detail: "Florence Ingabire · Moto Bike", ip: "41.74.198.12", created_at: "2h ago" },
-  { id: "a5", action: "Updated commission", detail: "Cab Taxi 15% → 16%", ip: "41.74.198.12", created_at: "Yesterday" },
-  { id: "a6", action: "Ran payout batch", detail: "412 drivers · 2.6M RWF", ip: "41.74.198.12", created_at: "Yesterday" },
-];
 
 export function AdminActivityModal({
   admin,
@@ -24,13 +16,16 @@ export function AdminActivityModal({
 }) {
   const [activity, setActivity] = useState<AdminActivity[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (!admin) return;
     setLoading(true);
+    setLoadError(false);
     getMemberActivity(admin.id)
-      .then((res) => setActivity(res.activity ?? FALLBACK))
-      .catch(() => setActivity(FALLBACK))
+      // Showed six fabricated audit rows (with a fake IP) on any failure.
+      .then((res) => setActivity(res.activity ?? []))
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, [admin]);
 
@@ -102,6 +97,10 @@ export function AdminActivityModal({
                 <div key={i} className="h-12 animate-pulse rounded-xl bg-surface" />
               ))}
             </div>
+          ) : loadError ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              Couldn&apos;t load this admin&apos;s activity.
+            </p>
           ) : activity.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
               No recent activity yet.

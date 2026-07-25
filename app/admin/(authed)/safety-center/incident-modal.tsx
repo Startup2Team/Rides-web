@@ -68,7 +68,7 @@ export function IncidentModal({
   onAcknowledge: (id: string) => void;
   onEscalate: (id: string) => void;
   onResolve: (id: string) => void;
-  onMessage: (id: string, party: "Customer" | "Driver") => void;
+  onMessage: (id: string, party: "Customer" | "Driver", message: string) => void | Promise<void>;
 }) {
   useEffect(() => {
     if (!incident) return;
@@ -176,7 +176,10 @@ export function IncidentModal({
                     <p className="text-[11px] text-muted-foreground">{party.phone}</p>
                     <button
                       type="button"
-                      onClick={() => onMessage(incident.id, party.role)}
+                      onClick={() => {
+                        const message = window.prompt(`Message to the ${party.role.toLowerCase()}`)?.trim();
+                        if (message) void onMessage(incident.id, party.role, message);
+                      }}
                       className="inline-flex h-7 items-center rounded-lg border border-border bg-card px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-surface"
                     >
                       Message

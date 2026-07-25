@@ -160,11 +160,13 @@ export function AccountConsole() {
         setSessions(
           res.sessions.map((s) => ({
             id: s.id,
-            device: "Active session",
+            // GET /admin/account/sessions returns {id, current} only — device,
+            // browser, location, IP and last-active were fabricated here.
+            device: s.current ? "This device" : "Signed-in session",
             browser: "",
-            location: "—",
-            ip: "—",
-            lastActive: "Active now",
+            location: "",
+            ip: "",
+            lastActive: "",
             current: s.current,
           })),
         );
@@ -666,7 +668,14 @@ export function AccountConsole() {
             sessions.some((s) => !s.current) ? (
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
+                  const others = sessions.filter((s) => !s.current);
+                  try {
+                    await Promise.all(others.map((s) => revokeSession(s.id)));
+                  } catch {
+                    setToast("Couldn't sign out every session — try again");
+                    return;
+                  }
                   setSessions((prev) => prev.filter((s) => s.current));
                   setToast("Signed out of all other sessions");
                 }}

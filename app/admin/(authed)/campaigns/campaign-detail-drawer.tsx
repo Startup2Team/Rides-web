@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { StatusPill } from "../_components";
 import { campaignStatusLabel, campaignStatusTone } from "./campaigns-console";
 import { updateCampaignStatus, type Campaign } from "@/lib/api";
+import { QRCode } from "../account/qr-code";
 
 const VEHICLE_LABELS: Record<string, string> = {
   moto: "Moto Bike",
   cab: "Cab Taxi",
   hilux: "Light Hilux",
   fuso: "Heavy Fuso",
+  rifani: "Rifani",
 };
 
 function formatRWF(amount: number): string {
@@ -46,6 +48,20 @@ export function CampaignDetailDrawer({
 }) {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const attributionUrl = `https://rides.rw/signup?ref=${campaign.slug}`;
+
+  // Pull the rendered QR canvas out of the DOM and save it — the button used to
+  // just alert() that a download had started.
+  const downloadQr = () => {
+    const canvas = document.querySelector<HTMLCanvasElement>("[data-campaign-qr] canvas");
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = `campaign-${campaign.slug}-qr.png`;
+    link.click();
+  };
 
   const handleStatusUpdate = async (status: any) => {
     setUpdating(true);
@@ -218,31 +234,20 @@ export function CampaignDetailDrawer({
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">Track signups and conversions driven by partner advertising QR code.</p>
               </div>
-              <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary animate-pulse">
-                Active Tracking
+              <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                Not tracked
               </span>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3 items-center">
               {/* QR Code Graphic */}
               <div className="flex flex-col items-center justify-center p-3 border border-border rounded-2xl bg-muted/20 relative group">
-                <svg viewBox="0 0 100 100" className="w-24 h-24 text-foreground bg-white p-1 rounded-lg shadow-sm">
-                  <rect x="5" y="5" width="25" height="25" fill="none" stroke="currentColor" strokeWidth="6" />
-                  <rect x="11" y="11" width="13" height="13" fill="currentColor" />
-                  
-                  <rect x="70" y="5" width="25" height="25" fill="none" stroke="currentColor" strokeWidth="6" />
-                  <rect x="76" y="11" width="13" height="13" fill="currentColor" />
-                  
-                  <rect x="5" y="70" width="25" height="25" fill="none" stroke="currentColor" strokeWidth="6" />
-                  <rect x="11" y="76" width="13" height="13" fill="currentColor" />
-                  
-                  <rect x="44" y="44" width="12" height="12" fill="var(--primary)" rx="2" />
-                  
-                  <path d="M 38 10 h 10 M 50 15 h 5 M 38 25 h 5 M 45 30 h 10 M 70 38 h 10 M 85 45 h 5 M 70 50 h 8 M 80 58 h 10 M 15 38 h 5 M 25 45 h 10 M 10 50 h 8 M 20 58 h 10 M 38 70 h 8 M 48 76 h 10 M 38 85 h 5 M 45 90 h 10 M 70 70 h 5 M 80 76 h 8 M 70 85 h 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-                </svg>
+                <div data-campaign-qr>
+                  <QRCode seed={attributionUrl} size={96} />
+                </div>
                 <button
                   type="button"
-                  onClick={() => alert("QR code download initiated for campaign partner.")}
+                  onClick={downloadQr}
                   className="mt-2 text-[10px] font-bold text-primary hover:underline"
                 >
                   Download QR Code
@@ -251,15 +256,9 @@ export function CampaignDetailDrawer({
 
               {/* Attribution Statistics */}
               <div className="sm:col-span-2 space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="rounded-xl border border-border/80 bg-muted/10 p-2.5">
-                    <span className="text-muted-foreground block text-[9px] uppercase font-bold tracking-wider">QR Scans</span>
-                    <span className="text-foreground font-bold mt-0.5 block text-base">2,840</span>
-                  </div>
-                  <div className="rounded-xl border border-border/80 bg-muted/10 p-2.5">
-                    <span className="text-muted-foreground block text-[9px] uppercase font-bold tracking-wider">Signups</span>
-                    <span className="text-emerald-600 font-bold mt-0.5 block text-base">942 <span className="text-[10px] text-muted-foreground font-normal">(33.1%)</span></span>
-                  </div>
+                <div className="rounded-xl border border-border/80 bg-muted/10 p-2.5 text-xs text-muted-foreground">
+                  Scan and signup attribution isn&apos;t recorded yet — the referral link
+                  below is live, but no counts are collected for it.
                 </div>
 
                 {/* Promo link copy */}
@@ -269,18 +268,18 @@ export function CampaignDetailDrawer({
                     <input
                       type="text"
                       readOnly
-                      value={`https://rides.rw/signup?ref=${campaign.slug}`}
+                      value={attributionUrl}
                       className="block h-9 flex-1 rounded-xl border border-border bg-muted/20 px-3 text-xs text-muted-foreground outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        navigator.clipboard.writeText(`https://rides.rw/signup?ref=${campaign.slug}`);
-                        alert("Attribution URL copied to clipboard!");
+                        void navigator.clipboard.writeText(attributionUrl);
+                        setCopied(true);
                       }}
                       className="h-9 px-3 rounded-xl border border-border hover:bg-muted text-xs font-semibold text-foreground transition-colors shrink-0"
                     >
-                      Copy Link
+                      {copied ? "Copied" : "Copy Link"}
                     </button>
                   </div>
                 </div>
@@ -321,12 +320,6 @@ export function CampaignDetailDrawer({
                   onClick={() => handleStatusUpdate("archived")}
                 />
               ) : null}
-              <ActionButton
-                label="Preview in app"
-                tone="neutral"
-                disabled={updating}
-                onClick={() => alert("Campaign preview matches package setup.")}
-              />
             </div>
           </section>
 

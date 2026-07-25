@@ -12,15 +12,12 @@ import {
   readCustomRange,
   readPeriod,
 } from "../_period-filter";
-function isAnalyticsVehicle(slug: string | null | undefined): boolean {
-  return slug === "moto" || slug === "cab" || slug === "hilux" || slug === "fuso";
-}
-function vehicleSharePct(vehicle?: string): number {
-  if (vehicle === "moto") return 55;
-  if (vehicle === "cab") return 30;
-  if (vehicle === "hilux") return 10;
-  if (vehicle === "fuso") return 5;
-  return 100;
+// Canonical transport_type codes — the filter chips and the ?vehicle= param both
+// use these. This used to compare against slugs ("moto"), so readVehicleFilter
+// rejected its own chip values and the filter never applied.
+const ANALYTICS_VEHICLES = ["MOTO_BIKE", "CAB_TAXI", "LIGHT_HILUX", "HEAVY_FUSO", "TUK_TUK"];
+function isAnalyticsVehicle(code: string | null | undefined): boolean {
+  return !!code && ANALYTICS_VEHICLES.includes(code);
 }
 import {
   getRidesDaily,
@@ -60,6 +57,7 @@ const VEHICLE_FILTERS: { id: string; label: string }[] = [
   { id: "CAB_TAXI", label: "Cab Taxi" },
   { id: "LIGHT_HILUX", label: "Light Hilux" },
   { id: "HEAVY_FUSO", label: "Heavy Fuso" },
+  { id: "TUK_TUK", label: "Rifani" },
 ];
 
 function readVehicleFilter(params: { get(k: string): string | null }): string {
@@ -249,6 +247,14 @@ export function AnalyticsConsole() {
     rides: v.rides,
   }));
 
+  // Share of trips for the selected vehicle, from real mix data. The KPI used to
+  // read a hardcoded 55/30/10/5 table labelled "typical share of all trips".
+  const selectedVehicleRides =
+    vehicleFilter === "all"
+      ? 0
+      : vehicleMix.find((v) => v.transport_type === vehicleFilter)?.rides ?? 0;
+  const selectedVehicleSharePct = Math.round((selectedVehicleRides / totalVehicleRides) * 100);
+
   const topVehicleLabel =
     vehicleFilter === "all" && vehicleMixUI.length > 0
       ? [...vehicleMixUI].sort((a, b) => b.pct - a.pct)[0]?.vehicle ?? null
@@ -264,6 +270,7 @@ export function AnalyticsConsole() {
     peakHour,
     topVehicleLabel,
     vehicleFilter,
+    vehicleSharePct: selectedVehicleSharePct,
     rangeLabel,
     totalCompleted,
     priorPeriodLabel: priorPeriodLabel(period),
@@ -302,8 +309,8 @@ export function AnalyticsConsole() {
     vehicleFilter !== "all" && isAnalyticsVehicle(vehicleFilter)
       ? {
           label: "Platform share",
-          value: loading ? "…" : `${vehicleSharePct(vehicleFilter)}%`,
-          hint: "typical share of all trips",
+          value: loading ? "…" : `${selectedVehicleSharePct}%`,
+          hint: "share of all trips in this period",
           tone: "primary",
           icon: "completion",
         }
@@ -411,6 +418,7 @@ export function AnalyticsConsole() {
             <VehicleFilteredSummary
               vehicleLabel={vehicleMixUI[0]!.vehicle}
               vehicleCode={vehicleFilter}
+              sharePct={selectedVehicleSharePct}
               trips={vehicleMixUI[0]!.rides}
               revenue={vehicleMixUI[0]!.revenue}
             />

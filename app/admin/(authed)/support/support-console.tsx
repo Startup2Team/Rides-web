@@ -23,6 +23,22 @@ import {
 } from "./ticket-modal";
 
 
+const TICKET_TYPE_LABELS: Record<string, TicketType> = {
+  RIDE_DISPUTE: "Ride dispute",
+  REFUND: "Refund",
+  LOST_ITEM: "Lost item",
+  DRIVER: "Driver",
+  PAYMENT: "Payment",
+  ACCOUNT: "Account",
+  OTHER: "Other",
+};
+
+/** Backend stores uppercase codes; the UI filters and pills use display labels. */
+function mapTicketType(raw: string | null | undefined): TicketType {
+  if (!raw) return "Other";
+  return TICKET_TYPE_LABELS[raw.toUpperCase().replace(/[\s-]+/g, "_")] ?? "Other";
+}
+
 function mapApiTicket(t: ApiTicket): Ticket {
   const name = t.from_name ?? t.from_phone ?? "Unknown";
   const messages = (t.messages ?? []).map((m: ApiMsg) => {
@@ -35,7 +51,11 @@ function mapApiTicket(t: ApiTicket): Ticket {
       m.author === "System";
     return {
       id: m.id,
-      from: isSystem ? ("system" as const) : m.from_role === "ADMIN" ? ("agent" as const) : ("customer" as const),
+      from: isSystem
+        ? ("system" as const)
+        : m.from_role === "ADMIN" || m.from_role === "agent" || m.from_role === "AGENT"
+          ? ("agent" as const)
+          : ("customer" as const),
       author: m.author,
       time: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       body: m.body,
@@ -69,7 +89,7 @@ function mapApiTicket(t: ApiTicket): Ticket {
   return {
     id: t.id,
     subject: t.subject,
-    type: (t.type as TicketType) ?? "Other",
+    type: mapTicketType(t.type),
     priority: priorityMapped,
     status: statusMapped,
     fromName: name,
@@ -500,7 +520,7 @@ Time: ${timeStr}`;
                 setToast("Ticket resolved and logged");
               }}
               onCloseTicket={async (id, reason) => {
-                const myEmail = user?.email || "admin@rides.rw";
+                const myEmail = user?.email || "";
                 const myName = user?.name || "Admin";
                 const now = new Date();
                 const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });

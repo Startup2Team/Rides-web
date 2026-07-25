@@ -3,15 +3,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Avatar } from "../_components";
-function isAnalyticsVehicle(slug: string | null | undefined): boolean {
-  return slug === "moto" || slug === "cab" || slug === "hilux" || slug === "fuso";
-}
-function vehicleSharePct(vehicle?: string): number {
-  if (vehicle === "moto") return 55;
-  if (vehicle === "cab") return 30;
-  if (vehicle === "hilux") return 10;
-  if (vehicle === "fuso") return 5;
-  return 100;
+const ANALYTICS_VEHICLES = ["MOTO_BIKE", "CAB_TAXI", "LIGHT_HILUX", "HEAVY_FUSO", "TUK_TUK"];
+function isAnalyticsVehicle(code: string | null | undefined): boolean {
+  return !!code && ANALYTICS_VEHICLES.includes(code);
 }
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -77,6 +71,7 @@ export function buildInsights(input: {
   peakHour: string | null;
   topVehicleLabel: string | null;
   vehicleFilter: string;
+  vehicleSharePct: number;
   rangeLabel: string;
   totalCompleted: number;
   priorPeriodLabel: string;
@@ -102,7 +97,7 @@ export function buildInsights(input: {
     lines.push(`${input.topVehicleLabel} carries the largest share of trips this period.`);
   } else if (isAnalyticsVehicle(input.vehicleFilter)) {
     lines.push(
-      `${TRANSPORT_DISPLAY[input.vehicleFilter]} ≈ ${vehicleSharePct(input.vehicleFilter)}% of typical platform volume.`,
+      `${TRANSPORT_DISPLAY[input.vehicleFilter]} accounts for ${input.vehicleSharePct}% of trips in this period.`,
     );
   }
 
@@ -553,13 +548,15 @@ export function VehicleFilteredSummary({
   vehicleCode,
   trips,
   revenue,
+  sharePct,
 }: {
   vehicleLabel: string;
   vehicleCode: string;
   trips: number;
   revenue: number;
+  sharePct?: number;
 }) {
-  const share = isAnalyticsVehicle(vehicleCode) ? vehicleSharePct(vehicleCode) : null;
+  const share = isAnalyticsVehicle(vehicleCode) && sharePct != null ? sharePct : null;
 
   return (
     <div className="space-y-4 py-1">

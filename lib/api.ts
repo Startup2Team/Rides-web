@@ -5,7 +5,9 @@ import {
   type LiveDemandHeatZone,
 } from "./live-demand-heatmap";
 
-export type MonetizationVehicleType = "moto" | "cab" | "hilux" | "fuso";
+// "rifani" (a.k.a. lifani) is the local name for the tuk-tuk; TUK_TUK is the
+// canonical backend code.
+export type MonetizationVehicleType = "moto" | "cab" | "hilux" | "fuso" | "rifani";
 export type CampaignAudience = "all" | "first-purchase" | "vehicle-type" | "new_drivers" | "high_performers" | "inactive_drivers";
 export type CampaignStatus = "active" | "scheduled" | "ended" | "draft" | "expired" | "archived";
 export type EntitlementTransactionKind = "PURCHASE" | "CONSUMPTION" | "EXPIRATION" | "ADJUSTMENT" | "admin-grant";
@@ -1332,7 +1334,9 @@ export const getInbox = (params: Record<string, string> = {}) => {
 export const getMessage = (id: string) => request<InboxMessage>(`/admin/inbox/${id}`);
 
 export const replyToMessage = (id: string, message: string) =>
-  request<void>(`/admin/inbox/${id}/reply`, { method: "POST", body: { reply_body: message } });
+  // The API field is `body` (the DB column happens to be reply_body) — sending
+  // reply_body made every reply 400.
+  request<void>(`/admin/inbox/${id}/reply`, { method: "POST", body: { body: message } });
 
 export const archiveMessage = (id: string) =>
   request<void>(`/admin/inbox/${id}/archive`, { method: "POST" });
@@ -1446,6 +1450,14 @@ export const updateNegotiationSettings = (data: Record<string, unknown>) =>
 
 export const updateFareSettings = (data: Record<string, unknown>) =>
   request<void>("/admin/settings/fares", { method: "PUT", body: data });
+
+// These two routes have always existed; the console edited the toggles and then
+// dropped them on Save because no wrapper called them.
+export const updateIntegrationSettings = (data: Record<string, unknown>) =>
+  request<void>("/admin/settings/integrations", { method: "PUT", body: data });
+
+export const updateNotificationSettings = (data: Record<string, unknown>) =>
+  request<void>("/admin/settings/notifications", { method: "PUT", body: data });
 
 // ── Pricing ───────────────────────────────────────────────────────────────
 
@@ -1668,6 +1680,9 @@ const VEHICLE_CODE_TO_VIEW: Record<string, MonetizationVehicleType> = {
   CAB_TAXI: "cab",
   LIGHT_HILUX: "hilux",
   HEAVY_FUSO: "fuso",
+  // Without this, every tuk-tuk purchase/entitlement fell through `?? "moto"`
+  // and was displayed and counted as a moto.
+  TUK_TUK: "rifani",
 };
 
 function mapCampaign(c: BackendCampaign): Campaign {
@@ -1719,7 +1734,8 @@ export const createCampaign = async (data: {
 export const updateCampaignStatus = async (campaignId: string, status: CampaignStatus): Promise<Campaign> => {
   return request<Campaign>(`/admin/campaigns/${campaignId}/status`, {
     method: "POST",
-    body: { status },
+    // ride_campaigns.status is matched as 'ACTIVE' by the mobile catalog query.
+    body: { status: status.toUpperCase() },
   });
 };
 
@@ -1814,7 +1830,8 @@ type BackendEntitlement = {
   driver_id: string;
   driver_name: string;
   driver_phone: string;
-  vehicle_type_code: string;
+  /** Handler's json tag is `vehicle_type` (not _code) — see AdminEntitlementRow. */
+  vehicle_type: string;
   vehicle_plate: string;
   rides_remaining: number;
   bonus_rides_remaining: number;
@@ -1830,7 +1847,7 @@ function mapEntitlement(e: BackendEntitlement): Entitlement {
     driverName: e.driver_name,
     driverPhone: e.driver_phone,
     vehicleId: "",
-    vehicleType: VEHICLE_CODE_TO_VIEW[e.vehicle_type_code] ?? "moto",
+    vehicleType: VEHICLE_CODE_TO_VIEW[e.vehicle_type] ?? "moto",
     vehiclePlate: e.vehicle_plate,
     ridesRemaining: e.rides_remaining,
     bonusRidesRemaining: e.bonus_rides_remaining,
@@ -1853,22 +1870,29 @@ function mapEntitlement(e: BackendEntitlement): Entitlement {
 }
 
 export const getAdminEntitlements = async (): Promise<Entitlement[]> => {
-  const res = await request<{ entitlements: BackendEntitlement[] }>("/admin/entitlements");
-  return (res?.entitlements ?? []).map(mapEntitlement);
+  // The handler responds with a bare array (request() already unwraps `data`),
+  // so reading `.entitlements` off it yielded undefined and an empty console.
+  // include_transactions is required before the ledger rows are populated.
+  const res = await request<BackendEntitlement[]>("/admin/entitlements?include_transactions=true");
+  return (Array.isArray(res) ? res : []).map(mapEntitlement);
 };
 
-// Grant credits to a driver's vehicle-type entitlement. driverId + vehicleTypeId
-// come from splitting the entitlement id ("driver_id:vehicle_type_id").
+/** Grant rides to one driver entitlement. The API resolves the driver and
+ *  vehicle type from the entitlement id itself. */
 export const grantEntitlement = async (
-  driverId: string,
-  vehicleTypeId: string,
+  entitlementId: string,
   rides: number,
   bonusRides: number,
   reason: string,
 ) => {
-  return request<void>("/admin/entitlements/grant", {
+  return request<{ status: string }>("/admin/entitlements/grant", {
     method: "POST",
-    body: { driver_id: driverId, vehicle_type_id: vehicleTypeId, rides, bonus_rides: bonusRides, reason },
+    body: {
+      entitlement_id: entitlementId,
+      rides_delta: rides,
+      bonus_rides_delta: bonusRides,
+      reason,
+    },
   });
 };
 

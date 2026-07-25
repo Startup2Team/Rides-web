@@ -98,7 +98,7 @@ function newLocalReport(template: ExportTemplate, scope: string, format: ReportF
     format,
     generatedAt: new Date(now).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
     generatedAtMs: now,
-    size: format === "PDF" ? "~840 KB" : "~160 KB",
+    size: "—",
     createdBy: "You",
     hasContent: true,
   };
@@ -114,7 +114,7 @@ function mapSavedReport(r: ReturnType<typeof listSavedReports>[number]): Downloa
     format: r.format,
     generatedAt: new Date(r.generatedAtMs).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
     generatedAtMs: r.generatedAtMs,
-    size: r.format === "PDF" ? "~840 KB" : "~160 KB",
+    size: "—",
     createdBy: r.createdBy,
     hasContent: true,
   };
@@ -450,7 +450,7 @@ export function ReportsConsole() {
         format: payload.format,
         generatedAt: new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
         generatedAtMs: Date.now(),
-        size: payload.format === "PDF" ? "~840 KB" : "~160 KB",
+        size: "—",
         createdBy: user?.name ?? "Admin",
         hasContent: true,
       };
@@ -794,7 +794,7 @@ export function ReportsConsole() {
         onClose={() => setScheduleOpen(false)}
         onGenerate={() => {
           setScheduleOpen(false);
-          setToast("Scheduled report saved (demo)");
+          setToast("Scheduled reports aren't stored yet — nothing was saved");
         }}
       />
 

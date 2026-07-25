@@ -10,6 +10,7 @@ const VEHICLE_LABELS: Record<string, string> = {
   cab: "Cab Taxi",
   hilux: "Light Hilux",
   fuso: "Heavy Fuso",
+  rifani: "Rifani",
 };
 
 const VEHICLE_ORDER: string[] = ["moto", "cab", "hilux", "fuso"];
@@ -41,20 +42,6 @@ const STATUS_TONE: Record<string, "success" | "warn" | "danger" | "neutral"> = {
   EXPIRED: "neutral",
 };
 
-const DRIVER_AVATARS: Record<string, string> = {
-  "jean uwamahoro": "https://images.unsplash.com/photo-1489980508314-941910ded1f4?auto=format&fit=crop&w=150&h=150&q=80",
-  "aïsha mukamana": "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=150&h=150&q=80",
-  "aisha mukamana": "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=150&h=150&q=80",
-  "patrick ndayisaba": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&h=150&q=80",
-  "claude habimana": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80",
-  "eric ntwari": "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=150&h=150&q=80",
-  "sarah ingabire": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80",
-};
-
-function getDriverAvatar(name: string): string | undefined {
-  const norm = name.toLowerCase().trim();
-  return DRIVER_AVATARS[norm];
-}
 
 type VehicleFilter = "all" | string;
 type PackageFilter = "all" | string;
@@ -315,7 +302,7 @@ export function PurchasesConsole() {
                   >
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <Avatar name={p.driverName} size="sm" url={getDriverAvatar(p.driverName)} />
+                        <Avatar name={p.driverName} size="sm" />
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground">
                             {p.driverName}
@@ -521,7 +508,7 @@ function PurchaseDetailsDrawer({
         {/* Header */}
         <header className="flex items-start justify-between gap-4 border-b border-border px-6 py-5 bg-muted/10">
           <div className="flex items-start gap-3 min-w-0">
-            <Avatar name={purchase.driverName} url={getDriverAvatar(purchase.driverName)} />
+            <Avatar name={purchase.driverName} />
             <div className="min-w-0">
               <h2 className="text-lg font-bold tracking-tight text-foreground truncate">
                 {purchase.driverName}
