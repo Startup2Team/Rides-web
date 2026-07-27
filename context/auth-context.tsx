@@ -14,12 +14,13 @@ import {
   type Permission,
   resolveRole,
   roleByName,
+  ROLE_DEFINITIONS,
   type AdminRoleName,
 } from "@/lib/admin-permissions";
 
 export type AuthUser = Pick<
   AdminAccount,
-  "id" | "name" | "email" | "role_id" | "role_name" | "two_factor"
+  "id" | "name" | "email" | "role_id" | "role_name" | "two_factor" | "phone" | "photo_url" | "photoUrl"
 >;
 
 type AuthContextValue = {
@@ -42,27 +43,16 @@ const AuthContext = createContext<AuthContextValue>({
   refreshUser: async () => {},
 });
 
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
-
-const MOCK_USER: AuthUser = {
-  id: "mock-admin",
-  name: "Admin (Mock)",
-  email: "admin@mock.local",
-  role_id: "mock-role",
-  role_name: "super_admin",
-  two_factor: false,
-};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(NO_BACKEND ? MOCK_USER : null);
-  const [roleName, setRoleName] = useState<AdminRoleName | null>(NO_BACKEND ? "Super Admin" : null);
-  const [permissions, setPermissions] = useState<Permission[]>(["*"]);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [roleName, setRoleName] = useState<AdminRoleName | null>(null);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [readOnly, setReadOnly] = useState(false);
-  const [ready, setReady] = useState(NO_BACKEND);
+  const [ready, setReady] = useState(false);
   const [connError, setConnError] = useState<string | null>(null);
 
   const refreshUser = useCallback(async () => {
-    if (NO_BACKEND) return;
     try {
       setConnError(null);
       const account = await getAccount();
@@ -74,11 +64,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         apiPerms = undefined;
       }
-      const role = resolveRole(account.role_name, apiPerms) ?? roleByName(account.role_name);
+      const role = resolveRole(account.role_name, apiPerms)
+        ?? roleByName(account.role_name)
+        ?? ROLE_DEFINITIONS.find((r) =>
+            r.name.toLowerCase().replace(/[^a-z]/g, "") ===
+            account.role_name.toLowerCase().replace(/[^a-z]/g, "")
+          );
       setUser({
         id: account.id,
         name: account.name,
         email: account.email,
+        phone: account.phone,
+        photo_url: account.photo_url || account.photoUrl || null,
+        photoUrl: account.photo_url || account.photoUrl || null,
         role_id: account.role_id,
         role_name: account.role_name,
         two_factor: account.two_factor,

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Avatar } from "../_components";
+import { ReferredDriversSection } from "./referred-drivers-section";
+import { resolveBackendUrl } from "@/lib/api";
 
 export type DriverDocument = {
   document_type: string;
@@ -55,6 +57,8 @@ export type VerifyDriver = {
   documents?: DriverDocument[];
   /** Past admin decisions on this driver, newest first. Empty if no prior reviews. */
   reviewHistory?: ReviewHistoryEntry[];
+  /** Number of other drivers this driver referred onto the platform. */
+  referralCount: number;
 };
 
 const RWANDA_PLATE = /^R[A-Z]{2}\s\d{3}\s[A-Z]$/;
@@ -194,7 +198,7 @@ function docUrlFor(driver: VerifyDriver, kind: DocKey): string | null {
   const doc = driver.documents?.find((d) =>
     keys.some((k) => d.document_type.toLowerCase().includes(k.toLowerCase())),
   );
-  return doc?.file_url?.trim() || null;
+  return resolveBackendUrl(doc?.file_url?.trim()) || null;
 }
 
 function DocumentPreview({
@@ -549,6 +553,10 @@ export function VerifyDriverModal({
               <Detail label="Licence" value={driver.kyc.licenseNumber} mono />
               <Detail label="Payment" value={`${driver.kyc.momoProvider} · ${driver.kyc.momoCode}`} className="sm:col-span-2" />
             </div>
+          </section>
+
+          <section className="mt-5 rounded-xl border border-border bg-surface/30 p-4">
+            <ReferredDriversSection driverId={driver.id} count={driver.referralCount} compact />
           </section>
 
           <section className="mt-5">

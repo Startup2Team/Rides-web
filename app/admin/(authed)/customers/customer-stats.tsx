@@ -1,67 +1,58 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { StatCard } from "../_components";
-import { getCustomersOverview, type CustomerOverview } from "@/lib/api";
-import { MOCK_API_CUSTOMERS } from "@/lib/mock-customers";
 
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
-
-function mockOverview(): CustomerOverview {
-  const active = MOCK_API_CUSTOMERS.filter((c) => !c.is_suspended).length;
-  const suspended = MOCK_API_CUSTOMERS.filter((c) => c.is_suspended).length;
-  return {
-    total: MOCK_API_CUSTOMERS.length,
-    active,
-    suspended,
-    active_this_week: active,
-  };
+function StatCardSkeleton() {
+  return (
+    <div className="animate-pulse rounded-2xl border border-border bg-card p-4">
+      <div className="h-2.5 w-24 rounded bg-muted/60" />
+      <div className="mt-4 h-6 w-16 rounded bg-muted/60" />
+      <div className="mt-2 h-2 w-32 rounded bg-muted/60" />
+    </div>
+  );
 }
 
-export function CustomerStats() {
-  const [data, setData] = useState<CustomerOverview | null>(
-    NO_BACKEND ? mockOverview() : null,
-  );
-
-  useEffect(() => {
-    if (NO_BACKEND) return;
-    getCustomersOverview()
-      .then((res) => {
-        setData({
-          total: res.total + MOCK_API_CUSTOMERS.length,
-          active: res.active + MOCK_API_CUSTOMERS.filter((c) => !c.is_suspended).length,
-          suspended: res.suspended + MOCK_API_CUSTOMERS.filter((c) => c.is_suspended).length,
-          active_this_week: res.active_this_week + MOCK_API_CUSTOMERS.filter((c) => !c.is_suspended).length,
-        });
-      })
-      .catch(() => null);
-  }, []);
+export function CustomerStats({
+  total,
+  active,
+  suspended,
+  loading = false,
+}: {
+  total: number;
+  active: number;
+  suspended: number;
+  loading?: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <StatCardSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
 
   const stats = [
     {
       label: "Total Customers",
-      value: data ? data.total.toLocaleString() : "—",
+      value: total.toLocaleString(),
       hint: "all registered users",
     },
     {
-      label: "Active This Week",
-      value: data ? data.active_this_week.toLocaleString() : "—",
-      hint: "placed ≥ 1 trip",
-    },
-    {
       label: "Active Accounts",
-      value: data ? data.active.toLocaleString() : "—",
+      value: active.toLocaleString(),
       hint: "not suspended",
     },
     {
       label: "Suspended",
-      value: data ? data.suspended.toLocaleString() : "—",
+      value: suspended.toLocaleString(),
       hint: "restricted access",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {stats.map((s) => (
         <StatCard key={s.label} {...s} />
       ))}

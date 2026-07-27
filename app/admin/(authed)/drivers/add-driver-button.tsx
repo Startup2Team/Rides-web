@@ -39,7 +39,7 @@ import {
   getSectors,
 } from "@/lib/rwanda-locations";
 import { ImageCaptureField } from "./image-capture-field";
-import { saveLocalDriver } from "@/lib/local-drivers";
+
 
 const VEHICLE_TYPES: { value: VehicleSlug; label: string; description: string }[] = [
   { value: "moto",   label: "Moto Bike",   description: "Motorcycle transport" },
@@ -51,8 +51,7 @@ const VEHICLE_TYPES: { value: VehicleSlug; label: string; description: string }[
 
 const STEPS = ["Personal Info", "Vehicle Info", "Documents", "Payment"] as const;
 
-// When no API base URL is configured, skip OTP so the form can be tested locally.
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+
 
 type FormState = {
   fullName: string;
@@ -420,14 +419,6 @@ export function AddDriverButton({
     const phoneErr = validateRwandaMobilePhone(form.phone);
     if (phoneErr) { setErrors((e) => ({ ...e, phone: phoneErr })); return; }
 
-    // No backend — auto-verify so the form is testable without a running API.
-    if (NO_BACKEND) {
-      setOtpVerified(true);
-      setOtpSent(true);
-      setOtpError(null);
-      return;
-    }
-
     setOtpBusy(true);
     setOtpError(null);
     try {
@@ -475,71 +466,6 @@ export function AddDriverButton({
       return;
     }
 
-    // No backend — persist driver locally so the review flow can be tested end-to-end.
-    if (NO_BACKEND) {
-      const toDataUrl = (file: File): Promise<string> =>
-        new Promise((res, rej) => {
-          const r = new FileReader();
-          r.onload = () => res(r.result as string);
-          r.onerror = rej;
-          r.readAsDataURL(file);
-        });
-
-      const now = new Date().toISOString();
-      const id = `local-driver-${Date.now()}`;
-
-      const documents: { document_type: string; file_url: string; uploaded_at: string }[] = [];
-
-      if (selfie) {
-        try {
-          const url = await toDataUrl(selfie);
-          documents.push({ document_type: "PROFILE_SELFIE", file_url: url, uploaded_at: now });
-        } catch { /* skip if conversion fails */ }
-      }
-
-      for (const [key, faces] of Object.entries(docs) as [DocKey, DocFaces][]) {
-        const types = DOC_API_TYPE[key];
-        for (let i = 0; i < faces.length; i++) {
-          const file = faces[i];
-          if (file && types[i]) {
-            try {
-              const url = await toDataUrl(file);
-              documents.push({ document_type: types[i], file_url: url, uploaded_at: now });
-            } catch { /* skip */ }
-          }
-        }
-      }
-
-      saveLocalDriver({
-        id,
-        full_name: form.fullName.trim(),
-        phone: normalizeRwandaMobilePhone(form.phone),
-        transport_type: slugToTransportType(form.vehicleType),
-        vehicle_plate: form.plate.trim().toUpperCase(),
-        national_id_number: form.nationalIdNumber.trim().toUpperCase(),
-        license_number: form.license.trim().toUpperCase(),
-        date_of_birth: form.dob,
-        city: "Kigali",
-        address: {
-          province: form.province,
-          district: form.district,
-          sector: form.sector,
-          cell: form.cell,
-          village: form.village,
-        },
-        momo_provider: form.momoProvider,
-        momo_pay_code: form.momoCode ? normalizeRwandaMobilePhone(form.momoCode) : "",
-        approval_status: "APPROVED",
-        created_at: now,
-        is_online: false,
-        documents,
-        review_history: [],
-      });
-
-      close();
-      window.dispatchEvent(new Event("localDriversUpdated"));
-      return;
-    }
 
     setSubmitting(true);
     setSubmitError(null);

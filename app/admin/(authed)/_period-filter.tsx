@@ -7,16 +7,108 @@ export type Period = "today" | "week" | "month" | "custom";
 
 const periods: { id: Period; label: string }[] = [
   { id: "today", label: "Today" },
-  { id: "week", label: "Week" },
-  { id: "month", label: "Month" },
+  { id: "week", label: "This week" },
+  { id: "month", label: "This month" },
   { id: "custom", label: "Custom" },
 ];
 
+function startOfLocalDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+function endOfLocalDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
+}
+
+function parseISODateLocal(iso: string): Date {
+  const [y, m, day] = iso.split("-").map((s) => parseInt(s, 10));
+  return new Date(y, m - 1, day);
+}
+
+function startOfLocalWeek(d: Date): number {
+  const weekday = d.getDay();
+  const daysFromMonday = weekday === 0 ? 6 : weekday - 1;
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysFromMonday);
+  return startOfLocalDay(monday);
+}
+
+function startOfLocalMonth(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+}
+
+/** True when `timestampMs` falls inside the selected admin period (local calendar). */
+export function timestampInPeriod(
+  timestampMs: number,
+  period: Period,
+  customRange: { from: string; to: string } | null,
+): boolean {
+  const now = new Date();
+  switch (period) {
+    case "today":
+      return timestampMs >= startOfLocalDay(now) && timestampMs <= endOfLocalDay(now);
+    case "week":
+      return timestampMs >= startOfLocalWeek(now) && timestampMs <= endOfLocalDay(now);
+    case "month":
+      return timestampMs >= startOfLocalMonth(now) && timestampMs <= endOfLocalDay(now);
+    case "custom":
+      if (!customRange) return false;
+      return (
+        timestampMs >= startOfLocalDay(parseISODateLocal(customRange.from)) &&
+        timestampMs <= endOfLocalDay(parseISODateLocal(customRange.to))
+      );
+    default:
+      return true;
+  }
+}
+
 export function periodToDays(p: Period): number {
   switch (p) {
-    case "week": return 7;
-    case "month": return 30;
-    default: return 1;
+    case "week":
+      return 7;
+    case "month":
+      return 30;
+    default:
+      return 1;
+  }
+}
+
+/** Inclusive day count for API `days=` query params. */
+export function periodToQueryDays(
+  p: Period,
+  customRange: { from: string; to: string } | null,
+): number {
+  if (p === "custom" && customRange) {
+    const start = parseISODateLocal(customRange.from).getTime();
+    const end = parseISODateLocal(customRange.to).getTime();
+    const days = Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1;
+    return Math.min(365, Math.max(1, days));
+  }
+  return periodToDays(p);
+}
+
+export function priorPeriodLabel(p: Period): string {
+  switch (p) {
+    case "week":
+      return "prior week";
+    case "month":
+      return "prior month";
+    case "custom":
+      return "prior range";
+    default:
+      return "yesterday";
+  }
+}
+
+export function periodCompareHint(p: Period): string {
+  switch (p) {
+    case "week":
+      return "vs last week";
+    case "month":
+      return "vs last month";
+    case "custom":
+      return "selected range";
+    default:
+      return "vs yesterday";
   }
 }
 

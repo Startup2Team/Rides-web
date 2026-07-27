@@ -8,7 +8,9 @@ export function NegotiationsStatsCards() {
   const [data, setData] = useState<NegotiationsStats | null>(null);
 
   useEffect(() => {
-    getNegotiationsStats().then(setData).catch(() => null);
+    getNegotiationsStats()
+      .then(setData)
+      .catch(() => setData(null));
   }, []);
 
   const successRate =
@@ -17,22 +19,25 @@ export function NegotiationsStatsCards() {
       : null;
 
   const stats = [
-    { label: "Total Today", value: data ? String(data.total_today) : "—", hint: "negotiations started" },
     {
-      label: "Agreed",
+      label: "Agreed today",
       value: data ? String(data.agreed_today) : "—",
-      hint: successRate !== null ? `${successRate}% success rate` : "fare locked",
+      hint: successRate !== null ? `${successRate}% of negotiations` : "both parties accepted",
     },
-    { label: "Failed", value: data ? String(data.failed_today) : "—", hint: "walked away" },
     {
-      label: "Avg Rounds",
-      value: data ? data.avg_rounds.toFixed(1) : "—",
-      hint: "per negotiation",
+      label: "Failed today",
+      value: data ? String(data.failed_today) : "—",
+      hint: "declined or expired",
+    },
+    {
+      label: "Total today",
+      value: data ? String(data.total_today) : "—",
+      hint: "all negotiations started",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {stats.map((s) => (
         <StatCard key={s.label} {...s} />
       ))}

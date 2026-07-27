@@ -2,49 +2,66 @@
 
 import { useEffect, useState } from "react";
 import { StatCard } from "../_components";
-import { getHeatmapZones, getActivityHeatmap, type HeatZone, type ActivityCell } from "@/lib/api";
+import { getLiveDemandHeatmap } from "@/lib/api";
 
 export function HeatmapStatsCards() {
-  const [zones, setZones] = useState<HeatZone[] | null>(null);
-  const [activity, setActivity] = useState<ActivityCell[] | null>(null);
+  const [waitingNow, setWaitingNow] = useState<number | null>(null);
+  const [liveHotZones, setLiveHotZones] = useState<number | null>(null);
+  const [hottestZone, setHottestZone] = useState<string | null>(null);
+  const [hottestCount, setHottestCount] = useState<number | null>(null);
 
   useEffect(() => {
-    getHeatmapZones().then((d) => setZones(d ?? [])).catch(() => setZones([]));
-    getActivityHeatmap().then((d) => setActivity(d ?? [])).catch(() => setActivity([]));
+    const loadLive = () => {
+      getLiveDemandHeatmap()
+        .then((d) => {
+          const list = Array.isArray(d) ? d : [];
+          setLiveHotZones(list.length);
+          setWaitingNow(list.reduce((sum, z) => sum + z.waitingRiders, 0));
+          if (list.length === 0) {
+            setHottestZone(null);
+            setHottestCount(null);
+            return;
+          }
+          const top = [...list].sort((a, b) => b.waitingRiders - a.waitingRiders)[0];
+          const label = top.pickupLabel.replace(/,?\s*Kigali.*$/i, "").trim() || top.pickupLabel;
+          setHottestZone(label);
+          setHottestCount(top.waitingRiders);
+        })
+        .catch(() => {
+          setLiveHotZones(0);
+          setWaitingNow(0);
+          setHottestZone(null);
+          setHottestCount(null);
+        });
+    };
+    loadLive();
+    const id = setInterval(loadLive, 15_000);
+    return () => clearInterval(id);
   }, []);
 
-  const safeZones = Array.isArray(zones) ? zones : [];
-  const safeActivity = Array.isArray(activity) ? activity : [];
-
-  const hotZones = zones !== null ? safeZones.filter((z) => z.demand > 0).length : null;
-
-  const peakHour = (() => {
-    if (safeActivity.length === 0) return null;
-    const byHour = new Array(24).fill(0);
-    for (const c of safeActivity) byHour[c.hour] += c.count;
-    const max = Math.max(...byHour);
-    const idx = byHour.indexOf(max);
-    return `${idx.toString().padStart(2, "0")}:00`;
-  })();
-
-  const totalTrips = zones !== null ? safeZones.reduce((s, z) => s + z.trips, 0) : null;
-
-  const avgFare = (() => {
-    if (safeZones.length === 0) return null;
-    const withFare = safeZones.filter((z) => z.avg_fare > 0);
-    if (withFare.length === 0) return null;
-    return Math.round(withFare.reduce((s, z) => s + z.avg_fare, 0) / withFare.length);
-  })();
-
   const stats = [
-    { label: "Active Hot Zones", value: hotZones !== null ? String(hotZones) : "—", hint: "with ride data (7d)" },
-    { label: "Peak Hour", value: peakHour ?? "—", hint: "city-wide (90d)" },
-    { label: "Total Trips (7d)", value: totalTrips !== null ? totalTrips.toLocaleString() : "—", hint: "completed pickups" },
-    { label: "Avg Fare", value: avgFare !== null ? `${avgFare.toLocaleString()} RWF` : "—", hint: "across all zones" },
+    {
+      label: "Riders waiting now",
+      value: waitingNow !== null ? String(waitingNow) : "—",
+      hint: "live pickup demand",
+    },
+    {
+      label: "Hot zones",
+      value: liveHotZones !== null ? String(liveHotZones) : "—",
+      hint: "pickup clusters",
+    },
+    {
+      label: "Busiest pickup",
+      value: hottestZone ?? "—",
+      hint:
+        hottestCount !== null
+          ? `${hottestCount} rider${hottestCount === 1 ? "" : "s"} waiting`
+          : "right now",
+    },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {stats.map((s) => (
         <StatCard key={s.label} {...s} />
       ))}

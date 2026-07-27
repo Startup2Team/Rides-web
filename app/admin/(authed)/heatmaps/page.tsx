@@ -13,7 +13,7 @@ export default function AdminHeatmapsPage() {
       <AdminPageHeader
         eyebrow="Insights"
         title="Demand heatmaps"
-        subtitle="Visualize where demand is hot, where supply runs short, and act before the gap widens."
+        subtitle="Where riders are waiting right now in Kigali — grouped by pickup. Hotter zones mean more customers at the same place."
       />
 
       <HeatmapStatsCards />

@@ -25,8 +25,10 @@ export type CustomerProfile = {
   name: string;
   email: string;
   phone: string;
+  photo_url?: string | null;
   location: string;
   joined: string;
+  createdAt?: string;
   trips: number;
   spend: number;
   avgFare: number;
@@ -142,7 +144,7 @@ export function CustomerModal({
                 <StatusPill status={customer.status} tone={tone} />
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Member since {customer.joined} · {customer.email}
+                Member since {customer.joined}
               </p>
             </div>
           </div>
@@ -172,7 +174,6 @@ export function CustomerModal({
                 Contact
               </p>
               <div className="mt-2">
-                <InfoRow label="Email" value={customer.email} />
                 <InfoRow label="Phone" value={customer.phone} />
                 <InfoRow label="Location" value={customer.location} />
                 <InfoRow label="Last trip" value={customer.lastTrip} />

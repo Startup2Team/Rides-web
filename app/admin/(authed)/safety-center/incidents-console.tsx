@@ -12,6 +12,7 @@ import {
   type IncidentType,
 } from "./incident-modal";
 import {
+  addIncidentMessage,
   getIncidents,
   getIncident,
   acknowledgeIncident,
@@ -464,7 +465,16 @@ export function IncidentsConsole() {
           setToast(`${id} resolved`);
           setViewingId(null);
         }}
-        onMessage={(id, party) => setToast(`Message sent to ${party} on ${id}`)}
+        onMessage={async (id, party, message) => {
+          // Used to toast success with no API call at all.
+          try {
+            await addIncidentMessage(id, `To ${party}: ${message}`);
+          } catch {
+            setToast("Couldn't send the message — try again");
+            return;
+          }
+          setToast(`Message sent to ${party} on ${id}`);
+        }}
       />
 
       {toast ? (

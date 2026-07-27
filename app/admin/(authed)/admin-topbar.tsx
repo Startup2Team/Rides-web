@@ -3,9 +3,35 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import { getDrivers, getCustomers, getRides } from "@/lib/api";
+import { useAdminNotifications } from "@/context/admin-notifications-context";
+import { getDrivers, getCustomers, getRides, resolveBackendUrl } from "@/lib/api";
+import { groups as navGroups, bottomItems as navBottomItems } from "./admin-sidebar";
+
+/** Flattened lookup of every nav href → label (including Drivers' vehicle
+ * sub-links and the bottom-pinned Profile/Admins & Roles), used to show the
+ * current section's name in the topbar. */
+const allNavItems: { label: string; href: string }[] = [
+  ...navGroups.flatMap((g) => g.items.flatMap((item) => [item, ...(item.children ?? [])])),
+  ...navBottomItems,
+];
+
+function activeNavLabel(pathname: string, searchParams: URLSearchParams): string {
+  const withQuery = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+  const exact = allNavItems.find((item) => item.href === withQuery);
+  if (exact) return exact.label;
+
+  const byPath = allNavItems
+    .filter((item) => {
+      const base = item.href.split("?")[0]!;
+      return base === pathname || (base !== "/admin" && pathname.startsWith(`${base}/`));
+    })
+    .sort((a, b) => b.href.length - a.href.length)[0];
+  if (byPath) return byPath.label;
+
+  return pathname === "/admin" ? "Dashboard" : "";
+}
 
 function initialsFrom(name: string | undefined, email: string | undefined): string {
   const source = (name?.trim() || email?.split("@")[0] || "").replace(/[._-]+/g, " ");
@@ -88,66 +114,12 @@ function Icon({ children }: { children: ReactNode }) {
   );
 }
 
-type Notification = {
-  id: string;
-  tone: "danger" | "warn" | "info";
-  title: string;
-  detail: string;
-  time: string;
-  unread: boolean;
-  href: string;
-};
-
-const notifications: Notification[] = [
-  {
-    id: "n1",
-    tone: "danger",
-    title: "SOS triggered on ride #4821",
-    detail: "Aiden M. · Kimironko area",
-    time: "Just now",
-    unread: true,
-    href: "/admin/safety-center",
-  },
-  {
-    id: "n2",
-    tone: "warn",
-    title: "Driver complaint received",
-    detail: "Unsafe driving · Trip #4815",
-    time: "14m ago",
-    unread: true,
-    href: "/admin/support",
-  },
-  {
-    id: "n3",
-    tone: "warn",
-    title: "Possible fraud detected",
-    detail: "Unusual cancellation pattern · 3 accounts",
-    time: "32m ago",
-    unread: true,
-    href: "/admin/safety-center",
-  },
-  {
-    id: "n4",
-    tone: "info",
-    title: "Payment gateway latency",
-    detail: "MoMo API responding above threshold",
-    time: "1h ago",
-    unread: false,
-    href: "/admin/settings",
-  },
-  {
-    id: "n5",
-    tone: "info",
-    title: "New driver application",
-    detail: "Florence I. submitted documents",
-    time: "2h ago",
-    unread: false,
-    href: "/admin/drivers",
-  },
-];
 
 export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeLabel = useMemo(() => activeNavLabel(pathname, searchParams), [pathname, searchParams]);
   const searchRef = useRef<HTMLInputElement>(null);
   const searchDropRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -157,7 +129,16 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
   const [openUser, setOpenUser] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
+  // Notification state evolves client-side (polling, demand alerts) independently
+  // of what the server computes when re-rendering this shared layout during a
+  // client-side navigation — gate the badge on mount so the very first client
+  // render matches the server's, instead of a stale-vs-live count mismatch.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const { user, ready } = useAuth();
+  const { notifications, unreadCount: liveUnreadCount, markAllRead, markRead } = useAdminNotifications();
+  const unreadCount = mounted ? liveUnreadCount : 0;
   const displayName = user?.name?.trim() || user?.email?.split("@")[0] || "Account";
   const displayEmail = user?.email ?? "";
   const initials = useMemo(() => initialsFrom(user?.name, user?.email), [user?.name, user?.email]);
@@ -166,6 +147,8 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+
+
 
   // Debounced global search
   useEffect(() => {
@@ -230,11 +213,27 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
-
   return (
-    <header className="sticky top-0 z-30 grid h-20 shrink-0 grid-cols-[1fr_minmax(0,28rem)_1fr] items-center gap-4 border-b border-border/60 bg-card/70 px-4 backdrop-blur-xl backdrop-saturate-150 lg:px-6">
-      <div />
+    <header className="sticky top-0 z-30 grid h-[82px] shrink-0 grid-cols-[1fr_minmax(0,28rem)_1fr] items-center gap-4 border-b border-border/60 bg-card/70 px-4 backdrop-blur-xl backdrop-saturate-150 lg:px-6">
+      <div className="flex min-w-0 items-center gap-3">
+        {onOpenMobile ? (
+          <button
+            type="button"
+            onClick={onOpenMobile}
+            aria-label="Open menu"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-surface hover:text-foreground lg:hidden"
+          >
+            <Icon>
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </Icon>
+          </button>
+        ) : null}
+        {activeLabel ? (
+          <p className="truncate text-base font-semibold tracking-[-0.01em] text-foreground">{activeLabel}</p>
+        ) : null}
+      </div>
 
       <div className="relative">
         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -253,7 +252,7 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
           value={searchQuery ?? ""}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search drivers, customers, rides…"
-          className="block h-10 w-full rounded-xl border border-border bg-surface pl-10 pr-3.5 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+          className="block h-10 w-full rounded-full border border-primary/30 bg-surface pl-10 pr-3.5 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
 
         {searchOpen && (searchResults.length > 0 || searchLoading) ? (
@@ -338,8 +337,8 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
               <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
             </Icon>
             {unreadCount > 0 ? (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white ring-2 ring-card">
-                {unreadCount}
+              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-white ring-2 ring-card">
+                {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             ) : null}
           </button>
@@ -356,7 +355,11 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                     </span>
                   ) : null}
                 </div>
-                <button className="text-[11px] font-medium text-muted-foreground hover:text-primary">
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="text-[11px] font-medium text-muted-foreground hover:text-primary"
+                >
                   Mark all read
                 </button>
               </div>
@@ -365,7 +368,10 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                   <li key={n.id}>
                     <Link
                       href={n.href}
-                      onClick={() => setOpenNotif(false)}
+                      onClick={() => {
+                        markRead(n.id);
+                        setOpenNotif(false);
+                      }}
                       className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface ${
                         n.unread ? "bg-primary/[0.02]" : ""
                       }`}
@@ -427,9 +433,17 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
             }}
             className="flex h-10 items-center gap-2.5 rounded-full border border-border bg-card pl-1 pr-3 transition-colors hover:bg-surface"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
+            <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
               {ready ? (
-                <span className="text-xs font-bold tracking-tight">{initials}</span>
+                user?.photo_url || user?.photoUrl ? (
+                  <img
+                    src={resolveBackendUrl(user.photo_url || user.photoUrl) ?? undefined}
+                    alt={displayName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xs font-bold tracking-tight">{initials}</span>
+                )
               ) : (
                 <span className="block h-3 w-3 animate-pulse rounded-full bg-white/40" aria-hidden />
               )}
@@ -444,8 +458,16 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
           {openUser ? (
             <div className="absolute right-0 top-full mt-2 w-64 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
               <div className="flex items-center gap-3 border-b border-border bg-surface/40 px-4 py-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
-                  <span className="text-sm font-bold tracking-tight">{initials}</span>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
+                  {user?.photo_url || user?.photoUrl ? (
+                    <img
+                      src={resolveBackendUrl(user.photo_url || user.photoUrl) ?? undefined}
+                      alt={displayName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-sm font-bold tracking-tight">{initials}</span>
+                  )}
                 </span>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold tracking-tight text-foreground">
@@ -461,65 +483,27 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                   <Link
                     href="/admin/account"
                     onClick={() => setOpenUser(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-normal text-foreground transition-colors hover:bg-primary/10"
                   >
-                    <span className="text-muted-foreground">
-                      <Icon>
-                        <circle cx="12" cy="8" r="4" />
-                        <path d="M5 20a7 7 0 0 1 14 0" />
-                      </Icon>
-                    </span>
-                    Account settings
+                    <Icon>
+                      <circle cx="12" cy="8" r="4" />
+                      <path d="M5 20a7 7 0 0 1 14 0" />
+                    </Icon>
+                    Profile
                   </Link>
                 </li>
                 <li>
                   <Link
                     href="/admin/settings"
                     onClick={() => setOpenUser(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-normal text-foreground transition-colors hover:bg-primary/10"
                   >
-                    <span className="text-muted-foreground">
-                      <Icon>
-                        <circle cx="12" cy="12" r="3" />
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                      </Icon>
-                    </span>
+                    <Icon>
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </Icon>
                     Settings
                   </Link>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="flex items-center justify-between gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <span className="text-muted-foreground">
-                        <Icon>
-                          <rect x="2" y="4" width="20" height="16" rx="2" />
-                          <path d="M6 8h.01M10 8h.01M14 8h.01M6 12h12M6 16h8" />
-                        </Icon>
-                      </span>
-                      Keyboard shortcuts
-                    </span>
-                    <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
-                      ?
-                    </kbd>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface"
-                  >
-                    <span className="text-muted-foreground">
-                      <Icon>
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                        <line x1="12" y1="17" x2="12.01" y2="17" />
-                      </Icon>
-                    </span>
-                    Help & support
-                  </a>
                 </li>
               </ul>
               <div className="border-t border-border p-1.5">
@@ -527,15 +511,13 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                   type="button"
                   onClick={handleSignOut}
                   disabled={signingOut}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface disabled:opacity-50"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-normal text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
                 >
-                  <span className="text-muted-foreground">
-                    <Icon>
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                      <polyline points="16 17 21 12 16 7" />
-                      <line x1="21" y1="12" x2="9" y2="12" />
-                    </Icon>
-                  </span>
+                  <Icon>
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </Icon>
                   {signingOut ? "Signing out…" : "Sign out"}
                 </button>
               </div>

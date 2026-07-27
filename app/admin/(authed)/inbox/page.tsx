@@ -1,5 +1,4 @@
 import { AdminPageHeader } from "../_components";
-import { InboxStatsCards } from "./inbox-stats";
 import { InboxConsole } from "./inbox-console";
 
 export const metadata = {
@@ -9,14 +8,15 @@ export const metadata = {
 
 export default function AdminInboxPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 flex flex-col h-full flex-1 overflow-hidden">
       <AdminPageHeader
-        eyebrow="Trust"
-        title="Contact inbox"
-        subtitle="Messages from the public contact form — partnerships, driver applications, press, and general inquiries."
+        eyebrow=""
+        title="Inbox"
+        subtitle="Listen to our community, connect with care, and support our users on their journey."
       />
-      <InboxStatsCards />
-      <InboxConsole />
+      <div className="flex-1 min-h-0">
+        <InboxConsole />
+      </div>
     </div>
   );
 }

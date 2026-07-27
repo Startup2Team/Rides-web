@@ -77,13 +77,13 @@ export function Card({
   bodyClass?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card">
+    <div className="rounded-2xl border border-border bg-card shadow-sm shadow-black/[0.01] transition-all duration-300 hover:shadow-md hover:shadow-primary/[0.02] hover:border-border/80">
       {title ? (
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 px-5 py-4">
+          <h2 className="text-sm font-bold tracking-tight text-foreground">
             {title}
           </h2>
-          {action ? <div>{action}</div> : null}
+          {action ? <div className="w-full sm:w-auto">{action}</div> : null}
         </div>
       ) : null}
       <div className={bodyClass}>{children}</div>
@@ -118,12 +118,28 @@ export function Avatar({
   name,
   tone = "primary",
   size = "md",
+  url,
 }: {
   name: string;
   tone?: "primary" | "neutral";
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
+  url?: string | null;
 }) {
-  const sizeClass = size === "sm" ? "h-7 w-7 text-[10px]" : "h-9 w-9 text-xs";
+  const sizeClass =
+    size === "sm"
+      ? "h-7 w-7 text-[10px]"
+      : size === "lg"
+      ? "h-20 w-20 text-2xl"
+      : "h-9 w-9 text-xs";
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={name}
+        className={`shrink-0 rounded-full object-cover ${sizeClass}`}
+      />
+    );
+  }
   return (
     <span
       className={`flex shrink-0 items-center justify-center rounded-full font-bold ${sizeClass} ${
@@ -132,7 +148,7 @@ export function Avatar({
           : "bg-muted text-foreground/80 ring-1 ring-inset ring-border"
       }`}
     >
-      {name.charAt(0).toUpperCase()}
+      {name ? name.charAt(0).toUpperCase() : ""}
     </span>
   );
 }

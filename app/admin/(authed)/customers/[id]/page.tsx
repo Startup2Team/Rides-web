@@ -11,12 +11,8 @@ import {
   type CustomerTrip,
 } from "@/lib/api";
 import { Avatar, StatusPill } from "../../_components";
-import {
-  isMockCustomerId,
-  MOCK_CUSTOMERS,
-} from "@/lib/mock-customers";
 
-const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL;
+
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 
@@ -43,6 +39,7 @@ function vehicleLabel(type: string) {
   const map: Record<string, string> = {
     MOTO_BIKE: "Moto",
     RIFANI: "Rifani",
+    TUK_TUK: "Rifani",
     CAB_TAXI: "Cab",
     LIGHT_HILUX: "Hilux",
     HEAVY_FUSO: "Fuso",
@@ -124,6 +121,7 @@ function VehicleBadge({ type }: { type: string }) {
   const colors: Record<string, string> = {
     MOTO_BIKE: "bg-purple-50 text-purple-700",
     RIFANI: "bg-indigo-50 text-indigo-700",
+    TUK_TUK: "bg-indigo-50 text-indigo-700",
     CAB_TAXI: "bg-sky-50 text-sky-700",
     LIGHT_HILUX: "bg-amber-50 text-amber-700",
     HEAVY_FUSO: "bg-orange-50 text-orange-700",
@@ -150,12 +148,6 @@ export default function CustomerProfilePage() {
 
   useEffect(() => {
     if (!id) return;
-    if (NO_BACKEND || isMockCustomerId(id)) {
-      const mock = isMockCustomerId(id) ? MOCK_CUSTOMERS[id] : null;
-      setDetail(mock);
-      setLoading(false);
-      return;
-    }
     getCustomer(id)
       .then(setDetail)
       .catch(() => setDetail(null))
@@ -172,7 +164,7 @@ export default function CustomerProfilePage() {
     if (!detail) return;
     setActing(true);
     try {
-      if (!NO_BACKEND) await suspendCustomer(detail.id, 24);
+      await suspendCustomer(detail.id, 24);
       setDetail((d) => d ? { ...d, is_suspended: true } : d);
       setToast("Customer suspended");
     } finally {
@@ -184,7 +176,7 @@ export default function CustomerProfilePage() {
     if (!detail) return;
     setActing(true);
     try {
-      if (!NO_BACKEND) await reinstateCustomer(detail.id);
+      await reinstateCustomer(detail.id);
       setDetail((d) => d ? { ...d, is_suspended: false } : d);
       setToast("Customer reinstated");
     } finally {
@@ -222,11 +214,10 @@ export default function CustomerProfilePage() {
       : 0;
 
 
-
   return (
     <div className="space-y-6">
-      {/* back + page title */}
-      <div className="flex items-center gap-3">
+      {/* Back button */}
+      <div>
         <Link
           href="/admin/customers"
           className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface"
@@ -234,17 +225,50 @@ export default function CustomerProfilePage() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          Customers
+          Back to customers
         </Link>
-        <h1 className="text-sm font-semibold text-foreground">{name}</h1>
-        <StatusPill
-          status={status}
-          tone={status === "Active" ? "success" : "danger"}
-        />
+      </div>
+
+      {/* Portfolio/Profile Header Card (No Cover Banner) */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+          {/* Profile picture (Avatar) at top-left */}
+          <div className="relative shrink-0 rounded-full bg-card overflow-hidden">
+            <Avatar name={name} url={detail.photo_url} size="lg" tone="neutral" />
+          </div>
+          
+          {/* Profile Metadata */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{name}</h1>
+              <StatusPill
+                status={status}
+                tone={status === "Active" ? "success" : "danger"}
+              />
+            </div>
+            
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-3.5 w-3.5">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+                {detail.phone}
+              </span>
+
+              <span className="flex items-center gap-1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-3.5 w-3.5">
+                  <rect width="18" height="18" x="3" y="4" rx="2" />
+                  <path d="M16 2v4M8 2v4M3 10h18" />
+                </svg>
+                Joined {fmt(detail.created_at)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 2-col layout */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
         {/* ── main ────────────────────────────────────────────────────────── */}
         <div className="space-y-6">
           {/* Trip history */}
@@ -283,37 +307,55 @@ export default function CustomerProfilePage() {
             )}
           </section>
 
+          {/* Account notes if set */}
+          {detail.notes ? (
+            <section className="rounded-2xl border border-border bg-card p-5 space-y-2">
+              <h2 className="text-sm font-semibold text-foreground">Account notes</h2>
+              <p className="text-xs text-muted-foreground bg-surface/50 rounded-xl border border-border p-4 leading-relaxed whitespace-pre-wrap">
+                {detail.notes}
+              </p>
+            </section>
+          ) : null}
         </div>
 
         {/* ── sidebar ─────────────────────────────────────────────────────── */}
         <aside className="sticky top-6 self-start space-y-4">
-          {/* Profile card */}
-          <div className="rounded-2xl border border-border bg-card p-5">
-            {/* avatar + name */}
-            <div className="flex flex-col items-center gap-2 text-center">
-              <div className="relative">
-                <Avatar name={name} tone="neutral" />
-              </div>
-              <div>
-                <p className="text-base font-bold tracking-tight text-foreground leading-tight">
-                  {name}
-                </p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  Customer account
-                </p>
-              </div>
-              <StatusPill
-                status={status}
-                tone={status === "Active" ? "success" : "danger"}
+          {/* Stats overview card */}
+          <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Lifetime Overview
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <StatBox
+                label="Total trips"
+                value={detail.total_rides}
+              />
+              <StatBox
+                label="Avg fare"
+                value={avgFare ? `${Math.round(avgFare / 1000)}K` : "—"}
+                sub={avgFare ? "RWF" : undefined}
+              />
+              <StatBox
+                label="Total spend"
+                value={
+                  detail.total_spend
+                    ? `${Math.round(detail.total_spend / 1000)}K`
+                    : "—"
+                }
+                sub={detail.total_spend ? "RWF" : undefined}
               />
             </div>
+          </div>
 
-            <div className="mt-4 border-t border-border pt-4 space-y-0 divide-y divide-border/60">
-              <InfoRow label="Phone" value={detail.phone} />
-              <InfoRow label="Email" value={detail.email ?? "—"} />
-              <InfoRow label="Member since" value={fmt(detail.created_at)} />
+          {/* Account Details metadata */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              Account Details
+            </p>
+            <div className="space-y-0 divide-y divide-border/60">
+              <InfoRow label="Account State" value={detail.role_state} />
               <InfoRow
-                label="Last seen"
+                label="Last active"
                 value={
                   detail.last_seen_at ? (
                     <span title={fmtDateTime(detail.last_seen_at)}>
@@ -326,29 +368,6 @@ export default function CustomerProfilePage() {
                 <InfoRow label="Suspended until" value={fmt(detail.suspension_until)} />
               ) : null}
             </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-2">
-            <StatBox
-              label="Total trips"
-              value={detail.total_rides}
-            />
-            <StatBox
-              label="Avg fare"
-              value={avgFare ? `${Math.round(avgFare / 1000)}K` : "—"}
-              sub={avgFare ? "RWF" : undefined}
-            />
-            <StatBox
-              label="Total spend"
-              value={
-                detail.total_spend
-                  ? `${Math.round(detail.total_spend / 1000)}K`
-                  : "—"
-              }
-              sub={detail.total_spend ? "RWF" : undefined}
-              className="col-span-2"
-            />
           </div>
 
           {/* Actions */}
@@ -399,11 +418,7 @@ function TripRow({ trip }: { trip: CustomerTrip }) {
   return (
     <tr className="hover:bg-surface/50">
       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-        {new Date(trip.created_at).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })}
+        {fmtDateTime(trip.created_at)}
       </td>
       <td className="px-4 py-3">
         <div className="flex flex-col gap-0.5 text-xs">

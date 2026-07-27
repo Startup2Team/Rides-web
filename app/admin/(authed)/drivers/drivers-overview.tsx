@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getDriversOverview } from "@/lib/api";
 import {
@@ -10,10 +10,9 @@ import {
   type VehicleSlug,
 } from "@/lib/drivers";
 import type { VehicleSlug as DriverFormSlug } from "@/lib/driver-registration";
-import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
-import { getLocalApiDrivers } from "@/lib/local-drivers";
 import { AdminPageHeader, StatCard } from "../_components";
 import { AddDriverButton } from "./add-driver-button";
+import { GenerateReportButton } from "../reports/generate-report-button";
 
 type Card = { label: string; value: string; hint: string };
 
@@ -23,7 +22,7 @@ type CategoryView = {
   eyebrow: string;
   addLabel: string;
   defaultVehicle?: VehicleSlug;
-  cards: (stats: DriversOverviewStats) => [Card, Card, Card, Card];
+  cards: (stats: DriversOverviewStats) => [Card, Card, Card, Card, Card];
 };
 
 const all: CategoryView = {
@@ -39,6 +38,11 @@ const all: CategoryView = {
       label: "Pending Verification",
       value: String(s.pending),
       hint: "awaiting review",
+    },
+    {
+      label: "Total Referrals",
+      value: String(s.totalReferrals),
+      hint: "drivers referred by drivers",
     },
   ],
 };
@@ -56,6 +60,7 @@ const byCategory: Record<VehicleSlug, CategoryView> = {
       { label: "Riding Now", value: String(s.online), hint: "online and available" },
       { label: "On Delivery", value: String(s.onTrip), hint: "trips in progress" },
       { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
+      { label: "Referrals", value: String(s.totalReferrals), hint: "drivers referred by Moto riders" },
     ],
   },
   cab: {
@@ -70,6 +75,7 @@ const byCategory: Record<VehicleSlug, CategoryView> = {
       { label: "On Duty", value: String(s.online), hint: "ready for trips" },
       { label: "Passengers Onboard", value: String(s.onTrip), hint: "active trips" },
       { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
+      { label: "Referrals", value: String(s.totalReferrals), hint: "drivers referred by Cab drivers" },
     ],
   },
   hilux: {
@@ -84,6 +90,7 @@ const byCategory: Record<VehicleSlug, CategoryView> = {
       { label: "Available", value: String(s.online), hint: "online and idle" },
       { label: "On Cargo Run", value: String(s.onTrip), hint: "deliveries in progress" },
       { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
+      { label: "Referrals", value: String(s.totalReferrals), hint: "drivers referred by Hilux drivers" },
     ],
   },
   rifani: {
@@ -97,6 +104,7 @@ const byCategory: Record<VehicleSlug, CategoryView> = {
       { label: "On Duty", value: String(s.online), hint: "online and available" },
       { label: "On Trip", value: String(s.onTrip), hint: "trips in progress" },
       { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
+      { label: "Referrals", value: String(s.totalReferrals), hint: "drivers referred by Rifani drivers" },
     ],
   },
   fuso: {
@@ -110,6 +118,7 @@ const byCategory: Record<VehicleSlug, CategoryView> = {
       { label: "Available", value: String(s.online), hint: "ready to haul" },
       { label: "Hauling", value: String(s.onTrip), hint: "loads in transit" },
       { label: "KYC Pending", value: String(s.pending), hint: "awaiting review" },
+      { label: "Referrals", value: String(s.totalReferrals), hint: "drivers referred by Fuso drivers" },
     ],
   },
 };
@@ -120,6 +129,7 @@ const emptyStats: DriversOverviewStats = {
   onTrip: 0,
   pending: 0,
   suspended: 0,
+  totalReferrals: 0,
 };
 
 function StatCardSkeleton() {
@@ -141,12 +151,16 @@ export function DriversOverview() {
   const [stats, setStats] = useState<DriversOverviewStats>(emptyStats);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const firstLoad = useRef(true);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      setLoading(true);
+      if (firstLoad.current) {
+        setLoading(true);
+        firstLoad.current = false;
+      }
       setError(null);
       try {
         const vehicleType = slug ? vehicleTypeFromSlug(slug) : undefined;
@@ -155,18 +169,13 @@ export function DriversOverview() {
 
         const res = await getDriversOverview(params);
         if (cancelled) return;
-        const extras = [
-          ...MOCK_API_DRIVERS,
-          ...getLocalApiDrivers(),
-        ].filter((d) => !vehicleType || d.transport_type === vehicleType);
-        const isPending = (d: { approval_status?: string }) =>
-          ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
         setStats({
-          total: (res.total ?? 0) + extras.length,
+          total: res.total ?? 0,
           online: res.online ?? 0,
           onTrip: res.on_trip ?? 0,
-          pending: (res.pending ?? 0) + extras.filter(isPending).length,
+          pending: res.pending ?? 0,
           suspended: res.suspended ?? 0,
+          totalReferrals: res.total_referrals ?? 0,
         });
       } catch (err) {
         if (cancelled) return;
@@ -178,8 +187,10 @@ export function DriversOverview() {
     }
 
     void load();
+    const id = setInterval(load, 5_000);
     return () => {
       cancelled = true;
+      clearInterval(id);
     };
   }, [slug]);
 
@@ -193,17 +204,13 @@ export function DriversOverview() {
           if (vehicleType) params.vehicle_type = vehicleType;
           const res = await getDriversOverview(params);
           if (cancelled) return;
-          const extras = [...MOCK_API_DRIVERS, ...getLocalApiDrivers()].filter(
-            (d) => !vehicleType || d.transport_type === vehicleType,
-          );
-          const isPending = (d: { approval_status?: string }) =>
-            ["PENDING_REVIEW", "PENDING"].includes(d.approval_status?.toUpperCase() ?? "");
           setStats({
-            total: (res.total ?? 0) + extras.length,
+            total: res.total ?? 0,
             online: res.online ?? 0,
             onTrip: res.on_trip ?? 0,
-            pending: (res.pending ?? 0) + extras.filter(isPending).length,
+            pending: res.pending ?? 0,
             suspended: res.suspended ?? 0,
+            totalReferrals: res.total_referrals ?? 0,
           });
         } catch {
           /* ignore — keep previous stats */
@@ -224,15 +231,21 @@ export function DriversOverview() {
         title={view.title}
         subtitle={view.subtitle}
         action={
-          <AddDriverButton
-            key={slug ?? "all"}
-            label={view.addLabel}
-            defaultVehicle={
-              slug
-                ? (slug as DriverFormSlug)
-                : undefined
-            }
-          />
+          <div className="flex items-center gap-2">
+            <GenerateReportButton
+              templateId="driver-registrations"
+              meta={{ scopeLabel: "This month", period: "month", customRange: null, filters: {} }}
+            />
+            <AddDriverButton
+              key={slug ?? "all"}
+              label={view.addLabel}
+              defaultVehicle={
+                slug
+                  ? (slug as DriverFormSlug)
+                  : undefined
+              }
+            />
+          </div>
         }
       />
 
@@ -242,9 +255,9 @@ export function DriversOverview() {
         </p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {loading
-          ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          ? Array.from({ length: 5 }).map((_, i) => <StatCardSkeleton key={i} />)
           : cards.map((c) => (
               <StatCard
                 key={c.label}
