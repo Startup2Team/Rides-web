@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { markSessionActivity, millisSinceLastActivity } from "./session-activity";
+
 /** Renew at most this often, however much the admin clicks. */
 const MIN_RENEW_INTERVAL_MS = 5 * 60_000;
 /** Activity within this window counts as "still here" for the periodic check. */
@@ -12,22 +14,23 @@ const CHECK_INTERVAL_MS = 60_000;
 /**
  * Keeps an active admin signed in.
  *
- * The backend session is an idle timeout (JWT_ADMIN_IDLE_MINUTES, 60 by default).
+ * The backend session is an idle timeout (JWT_ADMIN_IDLE_MINUTES).
  * This hook renews it while there is real activity, so a working admin is never
  * bounced to the login screen mid-task, while an abandoned tab still expires.
  *
  * Deliberately does NOT renew on a timer alone — that would keep a session alive
  * forever on a forgotten monitor, which is the opposite of an idle timeout.
+ * "Activity" means input events OR an accepted API call (see session-activity),
+ * because an admin reading a page is working even though they are not clicking.
  */
 export function useSessionRenewal(enabled: boolean) {
-  const lastActivityRef = useRef(Date.now());
   const lastRenewRef = useRef(Date.now());
 
   useEffect(() => {
     if (!enabled) return;
 
     const markActivity = () => {
-      lastActivityRef.current = Date.now();
+      markSessionActivity();
     };
 
     const events: (keyof DocumentEventMap)[] = [
@@ -40,7 +43,7 @@ export function useSessionRenewal(enabled: boolean) {
 
     const renewIfNeeded = () => {
       const now = Date.now();
-      const activeRecently = now - lastActivityRef.current < ACTIVE_WINDOW_MS;
+      const activeRecently = millisSinceLastActivity() < ACTIVE_WINDOW_MS;
       const dueForRenewal = now - lastRenewRef.current > MIN_RENEW_INTERVAL_MS;
       if (!activeRecently || !dueForRenewal) return;
 

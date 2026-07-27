@@ -153,14 +153,25 @@ function CodeBoxes({
   );
 }
 
+/**
+ * Is this failure the sign-in session dying, as opposed to a bad code?
+ *
+ * Matches on the error CODE. It used to also scan the message for "expired",
+ * which swallowed INVALID_2FA_CODE — the backend phrases that as "authenticator
+ * code is invalid or expired", and the substring matched. So one mistyped or
+ * rolled-over digit was reported as "your sign-in session expired", sending the
+ * admin back to re-enter their password when all they needed was the next
+ * 6-digit code. Both admins hit this and concluded 2FA was broken.
+ *
+ * The message fallback is kept for responses that carry no code, but narrowed
+ * to phrases that only ever describe the session itself.
+ */
 function isSessionExpiredError(message: string, code?: string) {
+  if (code) {
+    return code === "TOKEN_EXPIRED" || code === "INVALID_PRE_AUTH_TOKEN";
+  }
   const lower = message.toLowerCase();
-  return (
-    code === "TOKEN_EXPIRED" ||
-    code === "INVALID_PRE_AUTH_TOKEN" ||
-    lower.includes("expired") ||
-    lower.includes("pre-auth")
-  );
+  return lower.includes("pre-auth") || lower.includes("session expired");
 }
 
 export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {

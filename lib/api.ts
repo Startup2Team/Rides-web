@@ -1,4 +1,5 @@
 import { clearToken, getToken } from "./auth";
+import { markSessionActivity } from "./session-activity";
 import {
   clusterWaitingRides,
   clustersToHeatZones,
@@ -123,6 +124,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     headers,
     body: body !== undefined ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
   });
+
+  // A backend call that the server accepted means the admin is still working,
+  // even if they have not touched the mouse — reviewing documents or watching
+  // the live map fires no input events. Reported before the 401 branch is
+  // irrelevant: an unauthorized call proves nothing about presence.
+  if (res.status !== 401) {
+    markSessionActivity();
+  }
 
   if (res.status === 401) {
     clearToken();
