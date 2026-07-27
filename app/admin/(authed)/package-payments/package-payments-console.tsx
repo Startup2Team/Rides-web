@@ -2,7 +2,33 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, StatCard, StatusPill, Avatar } from "../_components";
-import { VEHICLE_LABELS, formatDateTime, formatRWF, type VehicleType } from "@/lib/packages-mock";
+type VehicleType = "moto" | "cab" | "hilux" | "fuso";
+
+const VEHICLE_LABELS: Record<string, string> = {
+  moto: "Moto Bike",
+  cab: "Cab Taxi",
+  hilux: "Light Hilux",
+  fuso: "Heavy Fuso",
+  MOTO_BIKE: "Moto Bike",
+  CAB_TAXI: "Cab Taxi",
+  LIGHT_HILUX: "Light Hilux",
+  HEAVY_FUSO: "Heavy Fuso",
+  TUK_TUK: "Tuk Tuk",
+};
+
+function formatRWF(amount: number): string {
+  return `${(amount ?? 0).toLocaleString()} RWF`;
+}
+
+function formatDateTime(isoStr: string | null | undefined): string {
+  if (!isoStr) return "—";
+  try {
+    return new Date(isoStr).toLocaleString();
+  } catch {
+    return isoStr;
+  }
+}
+
 import {
   approveManualPaymentClaim,
   getManualPaymentClaims,

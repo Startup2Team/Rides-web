@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { rejectManualPaymentClaim, type ManualPaymentClaim } from "@/lib/api";
-import { formatRWF } from "@/lib/packages-mock";
+function formatRWF(amount: number): string {
+  return `${(amount ?? 0).toLocaleString()} RWF`;
+}
 
 /**
  * Modal for rejecting a submitted manual payment claim. A reason is required
