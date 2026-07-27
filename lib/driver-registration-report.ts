@@ -8,7 +8,6 @@
  */
 
 import { timestampInPeriod, type Period } from "@/app/admin/(authed)/_period-filter";
-import { getAllMockDriversForReport } from "./mock-drivers";
 import type { Driver, DriverDetail } from "./api";
 
 export type DriverRegistrationFilters = {
@@ -57,6 +56,7 @@ const TRANSPORT_LABELS: Record<string, string> = {
   LIGHT_HILUX: "Light Hilux",
   HEAVY_FUSO: "Heavy Fuso",
   RIFANI: "Rifani",
+  TUK_TUK: "Rifani",
 };
 
 const PERIOD_LABELS: Record<Period, string> = {
@@ -207,7 +207,7 @@ export function buildDriverRegistrationReportFromDrivers(
   return buildReportFromDrivers(drivers, filters);
 }
 
-/** Mock fallback — used when the backend is unreachable or unconfigured. */
-export function buildDriverRegistrationReport(filters: DriverRegistrationFilters): DriverRegistrationReport {
-  return buildReportFromDrivers(getAllMockDriversForReport(), filters);
+/** Default path — pass drivers array directly or fallback to empty list. */
+export function buildDriverRegistrationReport(filters: DriverRegistrationFilters, drivers: Driver[] = []): DriverRegistrationReport {
+  return buildReportFromDrivers(drivers, filters);
 }

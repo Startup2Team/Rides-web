@@ -1,52 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AdminPageHeader, Avatar, Card, StatusPill } from "../_components";
 import { PartnerFormModal, type PartnerDraft } from "./partner-form-modal";
 import { PartnerDetailDrawer } from "./partner-detail-drawer";
-import { listPartners, listAdverts, savePartner, removePartner, type Partner } from "@/lib/partner-store";
+import { listPartners, listAdverts, savePartner, removePartner, type Partner, type Advert } from "@/lib/partner-store";
 
 export function PartnersConsole() {
-  const [partners, setPartners] = useState<Partner[]>(() => listPartners());
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [adverts, setAdverts] = useState<Advert[]>([]);
+  const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
   const [viewingPartner, setViewingPartner] = useState<Partner | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  function refresh() {
-    setPartners(listPartners());
-  }
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [pData, aData] = await Promise.all([listPartners(), listAdverts()]);
+      setPartners(pData);
+      setAdverts(aData);
+    } catch (err) {
+      console.error("Failed to refresh monetization data:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   function showToast(message: string) {
     setToast(message);
     setTimeout(() => setToast(null), 2500);
   }
 
-  function handleSavePartner(draft: PartnerDraft) {
-    const id = editingPartner?.id ?? `PTR-${Date.now().toString(36).toUpperCase()}`;
-    const updated: Partner = {
-      id,
+  async function handleSavePartner(draft: PartnerDraft) {
+    const isNew = !editingPartner;
+    const partnerId = editingPartner?.id ?? "";
+    const payload: Partial<Partner> = {
       name: draft.name,
       logoUrl: draft.logoUrl,
       contactName: draft.contactName,
       contactEmail: draft.contactEmail,
       contactPhone: draft.contactPhone,
       status: draft.status,
-      createdAt: editingPartner?.createdAt ?? Date.now(),
     };
-    savePartner(updated);
-    setFormOpen(false);
-    setEditingPartner(null);
-    if (viewingPartner?.id === id) setViewingPartner(updated);
-    refresh();
-    showToast(editingPartner ? "Partner updated" : "Partner added");
+    try {
+      await savePartner(payload, partnerId || undefined);
+      setFormOpen(false);
+      setEditingPartner(null);
+      await refresh();
+      showToast(isNew ? "Partner added" : "Partner updated");
+    } catch (err) {
+      console.error(err);
+      showToast("Error saving partner");
+    }
   }
 
-  function handleDeletePartner(id: string) {
-    removePartner(id);
-    if (viewingPartner?.id === id) setViewingPartner(null);
-    refresh();
-    showToast("Partner removed");
+  async function handleDeletePartner(id: string) {
+    try {
+      await removePartner(id);
+      if (viewingPartner?.id === id) setViewingPartner(null);
+      await refresh();
+      showToast("Partner removed");
+    } catch (err) {
+      console.error(err);
+      showToast("Error removing partner");
+    }
   }
 
   return (
@@ -69,7 +92,13 @@ export function PartnersConsole() {
         }
       />
 
-      {partners.length === 0 ? (
+      {loading ? (
+        <Card>
+          <div className="px-5 py-12 text-center text-sm text-muted-foreground">
+            Loading monetization partners...
+          </div>
+        </Card>
+      ) : partners.length === 0 ? (
         <Card>
           <div className="px-5 py-12 text-center">
             <p className="text-sm text-muted-foreground">No partners yet.</p>
@@ -85,8 +114,8 @@ export function PartnersConsole() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {partners.map((partner) => {
-            const adverts = listAdverts(partner.id);
-            const activeCount = adverts.filter((a) => a.active).length;
+            const partnerAdverts = adverts.filter((a) => a.partnerId === partner.id);
+            const activeCount = partnerAdverts.filter((a) => a.active).length;
             return (
               <div
                 key={partner.id}
@@ -108,7 +137,7 @@ export function PartnersConsole() {
                     <StatusPill status={partner.status === "active" ? "Active" : "Inactive"} tone={partner.status === "active" ? "success" : "neutral"} />
                   </div>
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-[11px] text-muted-foreground">
-                    <span>{adverts.length} advert{adverts.length === 1 ? "" : "s"}</span>
+                    <span>{partnerAdverts.length} advert{partnerAdverts.length === 1 ? "" : "s"}</span>
                     <span>{activeCount} active</span>
                   </div>
                   <div className="mt-3 flex justify-end border-t border-border pt-3">
@@ -116,7 +145,7 @@ export function PartnersConsole() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeletePartner(partner.id);
+                        void handleDeletePartner(partner.id);
                       }}
                       className="text-[11px] font-medium text-muted-foreground hover:text-red-600"
                     >
@@ -145,7 +174,7 @@ export function PartnersConsole() {
           partner={viewingPartner}
           onClose={() => {
             setViewingPartner(null);
-            refresh();
+            void refresh();
           }}
           onEditPartner={() => {
             setEditingPartner(viewingPartner);

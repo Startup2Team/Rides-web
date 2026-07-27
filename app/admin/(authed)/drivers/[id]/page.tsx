@@ -12,10 +12,9 @@ import {
   resolveBackendUrl,
 } from "@/lib/api";
 import { mapDriverDetailToVerify } from "@/lib/drivers";
-import { getMockDriverById, isMockDriverId, isMockReferredId, setMockDriverStatus, type MockDriverId } from "@/lib/mock-drivers";
-import { isLocalDriverId, getLocalDriverDetail, updateLocalDriverStatus } from "@/lib/local-drivers";
 import type { VerifyDriver, ReviewHistoryEntry } from "../verify-driver-modal";
 import { ReferredDriversSection } from "../referred-drivers-section";
+import { NotifyDriverModal } from "../notify-driver-modal";
 
 type DocKey = "profile_photo" | "national_id" | "license" | "insurance" | "authorization";
 
@@ -130,8 +129,7 @@ function docFacesFor(driver: VerifyDriver, kind: DocKey): { front: string | null
  * (older approvals didn't persist per-document decisions).
  */
 function buildInitialDecisions(
-  driver: VerifyDriver | null,
-  isLocal: boolean,
+  driver: VerifyDriver,
 ): Record<DocKey, DocDecision> {
   const keys: DocKey[] = ["profile_photo", "national_id", "license", "insurance", "authorization"];
   const base = (status: FaceDecision["status"]): DocDecision => ({
@@ -139,12 +137,7 @@ function buildInitialDecisions(
     back: emptyFace(status),
   });
 
-  if (isLocal) {
-    return keys.reduce(
-      (acc, key) => ({ ...acc, [key]: base("accepted") }),
-      {} as Record<DocKey, DocDecision>,
-    );
-  }
+
   if (!driver) {
     return keys.reduce(
       (acc, key) => ({ ...acc, [key]: base("none") }),
@@ -648,15 +641,10 @@ export default function DriverReviewPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [notifyOpen, setNotifyOpen] = useState(false);
 
-  const isMock = isMockDriverId(id) || isMockReferredId(id);
-  const isLocal = isLocalDriverId(id);
-
-  // Admin-added drivers are trusted — pre-accept all documents on load. Everyone else
-  // gets their decisions rebuilt from the driver record once it loads (see below), so a
-  // previously-approved document stays checked instead of resetting to unreviewed.
   const [decisions, setDecisions] = useState<Record<DocKey, DocDecision>>(() => {
-    const s: FaceDecision["status"] = isLocal ? "accepted" : "none";
+    const s: FaceDecision["status"] = "none";
     const base = (): DocDecision => ({ front: emptyFace(s), back: emptyFace(s) });
     return { profile_photo: base(), national_id: base(), license: base(), insurance: base(), authorization: base() };
   });
@@ -668,41 +656,11 @@ export default function DriverReviewPage() {
   useEffect(() => {
     setLoading(true);
     draftReadyRef.current = false;
-    if (isMock) {
-      const t = setTimeout(() => {
-        const detail = getMockDriverById(id);
-        if (!detail) {
-          setError("Driver profile not found.");
-          setDriver(null);
-          setLoading(false);
-          return;
-        }
-        const mapped = mapDriverDetailToVerify(detail);
-        setDriver(mapped);
-        setDecisions(loadDraftDecisions(id) ?? buildInitialDecisions(mapped, isLocal));
-        draftReadyRef.current = true;
-        setLoading(false);
-      }, 400);
-      return () => clearTimeout(t);
-    }
-    if (isLocal) {
-      const detail = getLocalDriverDetail(id);
-      if (detail) {
-        const mapped = mapDriverDetailToVerify(detail);
-        setDriver(mapped);
-        setDecisions(loadDraftDecisions(id) ?? buildInitialDecisions(mapped, isLocal));
-        draftReadyRef.current = true;
-      } else {
-        setError("Locally-saved driver not found. It may have been cleared from storage.");
-      }
-      setLoading(false);
-      return;
-    }
     getDriver(id)
       .then((detail) => {
         const mapped = mapDriverDetailToVerify(detail);
         setDriver(mapped);
-        setDecisions(loadDraftDecisions(id) ?? buildInitialDecisions(mapped, isLocal));
+        setDecisions(loadDraftDecisions(id) ?? buildInitialDecisions(mapped));
         draftReadyRef.current = true;
       })
       .catch((err) => {
@@ -711,7 +669,7 @@ export default function DriverReviewPage() {
       .finally(() => {
         setLoading(false);
       });
-  }, [id, isMock, isLocal]);
+  }, [id]);
 
   useEffect(() => {
     if (!draftReadyRef.current) return;
@@ -761,17 +719,9 @@ export default function DriverReviewPage() {
     if (!driver) return;
     setActionLoading(true);
     try {
-      if (isMock) {
-        setMockDriverStatus(id as MockDriverId, "APPROVED");
-        window.dispatchEvent(new Event("localDriversUpdated"));
-      } else if (isLocal) {
-        updateLocalDriverStatus(driver.id, "APPROVED");
-        window.dispatchEvent(new Event("localDriversUpdated"));
-      } else {
-        await approveDriver(driver.id);
-      }
+      await approveDriver(driver.id);
       clearDraftDecisions(driver.id);
-      setToast(isMock || isLocal ? "[Local] Driver approved — no real API call made." : "Driver approved successfully!");
+      setToast("Driver approved successfully!");
       setTimeout(() => router.push("/admin/drivers"), 1500);
     } catch (err) {
       setToast(err instanceof Error ? err.message : "Failed to approve driver");
@@ -796,17 +746,9 @@ export default function DriverReviewPage() {
       })
       .join("; ");
     try {
-      if (isMock) {
-        setMockDriverStatus(id as MockDriverId, "REJECTED");
-        window.dispatchEvent(new Event("localDriversUpdated"));
-      } else if (isLocal) {
-        updateLocalDriverStatus(driver.id, "REJECTED");
-        window.dispatchEvent(new Event("localDriversUpdated"));
-      } else {
-        await rejectDriver(driver.id, reasons || "Application rejected by admin");
-      }
+      await rejectDriver(driver.id, reasons || "Application rejected by admin");
       clearDraftDecisions(driver.id);
-      setToast(isMock || isLocal ? "[Local] Application rejected — no real API call made." : "Driver application rejected");
+      setToast("Driver application rejected");
       setTimeout(() => router.push("/admin/drivers"), 1500);
     } catch (err) {
       setToast(err instanceof Error ? err.message : "Failed to reject application");
@@ -840,13 +782,9 @@ export default function DriverReviewPage() {
     });
     const reason = `Please re-upload the following document(s): ${flaggedDocs.map((d) => d.label).join(", ")}`;
     try {
-      if (!isMock && !isLocal) await requestDriverMoreInfo(driver.id, reason, documents);
+      await requestDriverMoreInfo(driver.id, reason, documents);
       clearDraftDecisions(driver.id);
-      setToast(
-        isMock || isLocal
-          ? "[Local] Re-upload request sent — no real API call made."
-          : "Driver asked to re-upload the flagged documents.",
-      );
+      setToast("Driver asked to re-upload the flagged documents.");
       setTimeout(() => router.push("/admin/drivers"), 1500);
     } catch (err) {
       setToast(err instanceof Error ? err.message : "Failed to send re-upload request");
@@ -980,15 +918,32 @@ export default function DriverReviewPage() {
             </div>
           </div>
         </div>
-        <Link
-          href="/admin/drivers"
-          className="inline-flex h-9 shrink-0 items-center rounded-xl border border-border bg-card px-4 text-xs font-semibold text-foreground hover:bg-surface"
-        >
-          ← Back to Drivers
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setNotifyOpen(true)}
+            className="inline-flex h-9 items-center rounded-xl bg-primary/10 border border-primary/20 px-3.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+          >
+            💬 Send Message
+          </button>
+          <Link
+            href="/admin/drivers"
+            className="inline-flex h-9 shrink-0 items-center rounded-xl border border-border bg-card px-4 text-xs font-semibold text-foreground hover:bg-surface"
+          >
+            ← Back to Drivers
+          </Link>
+        </div>
       </div>
 
-      {!isLocal && driver.reviewHistory && driver.reviewHistory.length > 0 ? (
+      <NotifyDriverModal
+        open={notifyOpen}
+        driverId={driver.id}
+        driverName={driver.name}
+        onClose={() => setNotifyOpen(false)}
+        onSuccess={() => setToast("Direct push notification sent to driver!")}
+      />
+
+      {driver.reviewHistory && driver.reviewHistory.length > 0 ? (
         <ReviewHistorySection history={driver.reviewHistory} />
       ) : null}
 

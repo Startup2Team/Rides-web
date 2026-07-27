@@ -29,14 +29,14 @@ function draftFromAdvert(advert: Advert | null): AdvertDraft {
     };
   }
   return {
-    imageUrl: advert.imageUrl,
+    imageUrl: advert.imageUrl ?? "",
     headline: advert.headline,
-    ctaLabel: advert.ctaLabel,
-    ctaLink: advert.ctaLink,
+    ctaLabel: advert.ctaLabel ?? "",
+    ctaLink: advert.ctaLink ?? "",
     active: advert.active,
     startDate: advert.startDate ?? "",
     endDate: advert.endDate ?? "",
-    priority: advert.priority,
+    priority: advert.priority ?? 0,
   };
 }
 

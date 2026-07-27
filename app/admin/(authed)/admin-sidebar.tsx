@@ -374,8 +374,12 @@ export function AdminSidebar({
   useEffect(() => {
     let cancelled = false;
     const loadCounts = () => {
-      const pending = listNotifications().filter((n) => n.status === "draft" || n.status === "scheduled").length;
-      if (!cancelled) setCounts((prev) => ({ ...prev, "/admin/notifications": pending }));
+      listNotifications()
+        .then((list) => {
+          const pending = list.filter((n) => n.status === "draft" || n.status === "scheduled").length;
+          if (!cancelled) setCounts((prev) => ({ ...prev, "/admin/notifications": pending }));
+        })
+        .catch((err) => console.error("[sidebar] listNotifications failed:", err));
 
       getInboxStats()
         .then((s) => !cancelled && setCounts((prev) => ({ ...prev, "/admin/inbox": s.new })))

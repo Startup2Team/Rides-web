@@ -2,31 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { StatCard } from "../_components";
-import { getNegotiationsStats, type NegotiationsStats, NO_BACKEND } from "@/lib/api";
-import { MOCK_NEGOTIATIONS, MOCK_NEGOTIATIONS_STATS } from "@/lib/mock-negotiations";
+import { getNegotiationsStats, type NegotiationsStats } from "@/lib/api";
 
 export function NegotiationsStatsCards() {
   const [data, setData] = useState<NegotiationsStats | null>(null);
 
   useEffect(() => {
     getNegotiationsStats()
-      .then((stats) => setData(stats.total_today > 0 ? stats : (NO_BACKEND ? MOCK_NEGOTIATIONS_STATS : stats)))
-      .catch(() => setData(NO_BACKEND ? MOCK_NEGOTIATIONS_STATS : null));
+      .then(setData)
+      .catch(() => setData(null));
   }, []);
 
   const successRate =
     data && data.total_today > 0
       ? Math.round((data.agreed_today / data.total_today) * 100)
-      : null;
-
-  const avgAgreed =
-    data && data.agreed_today > 0
-      ? Math.round(
-          MOCK_NEGOTIATIONS.filter((n) => n.agreed_fare != null).reduce(
-            (s, n) => s + (n.agreed_fare ?? 0),
-            0,
-          ) / MOCK_NEGOTIATIONS.filter((n) => n.agreed_fare != null).length,
-        )
       : null;
 
   const stats = [
@@ -36,9 +25,9 @@ export function NegotiationsStatsCards() {
       hint: successRate !== null ? `${successRate}% of negotiations` : "both parties accepted",
     },
     {
-      label: "Avg agreed",
-      value: avgAgreed !== null ? `${avgAgreed.toLocaleString()} RWF` : "—",
-      hint: "final locked fare",
+      label: "Failed today",
+      value: data ? String(data.failed_today) : "—",
+      hint: "declined or expired",
     },
     {
       label: "Total today",

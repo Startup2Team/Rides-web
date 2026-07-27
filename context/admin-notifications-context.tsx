@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "@/context/auth-context";
-import { getLiveDemandHeatmap, getDashboardAlerts, NO_BACKEND } from "@/lib/api";
+import { getLiveDemandHeatmap, getDashboardAlerts } from "@/lib/api";
 import {
   evaluateDemandAlerts,
   filterAlertsByCooldown,
@@ -45,61 +45,9 @@ type AdminNotificationsContextValue = {
 
 const POLL_MS = 30_000;
 
-const SEED_NOTIFICATIONS: AdminNotification[] = [
-  {
-    id: "n1",
-    tone: "danger",
-    title: "SOS triggered on ride #4821",
-    detail: "Aiden M. · Kimironko area",
-    time: "Just now",
-    unread: true,
-    href: "/admin/safety-center",
-    source: "system",
-  },
-  {
-    id: "n2",
-    tone: "warn",
-    title: "Driver complaint received",
-    detail: "Unsafe driving · Trip #4815",
-    time: "14m ago",
-    unread: true,
-    href: "/admin/support",
-    source: "system",
-  },
-  {
-    id: "n3",
-    tone: "warn",
-    title: "Possible fraud detected",
-    detail: "Unusual cancellation pattern · 3 accounts",
-    time: "32m ago",
-    unread: true,
-    href: "/admin/safety-center",
-    source: "system",
-  },
-  {
-    id: "n4",
-    tone: "info",
-    title: "Payment gateway latency",
-    detail: "MoMo API responding above threshold",
-    time: "1h ago",
-    unread: false,
-    href: "/admin/settings",
-    source: "system",
-  },
-  {
-    id: "n5",
-    tone: "info",
-    title: "New driver application",
-    detail: "Florence I. submitted documents",
-    time: "2h ago",
-    unread: false,
-    href: "/admin/drivers",
-    source: "system",
-  },
-];
 
 const AdminNotificationsContext = createContext<AdminNotificationsContextValue>({
-  notifications: SEED_NOTIFICATIONS,
+  notifications: [],
   unreadCount: 0,
   markAllRead: () => {},
   markRead: () => {},
@@ -153,7 +101,7 @@ export function AdminNotificationsProvider({ children }: { children: ReactNode }
   const { permissions, ready } = useAuth();
   const canMonitorDemand = ready && hasPermission(permissions, "/admin/heatmaps");
 
-  const [notifications, setNotifications] = useState<AdminNotification[]>(NO_BACKEND ? SEED_NOTIFICATIONS : []);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [latestToast, setLatestToast] = useState<AdminNotification | null>(null);
   const [demandAlertsEnabled, setDemandAlertsEnabledState] = useState(true);
 
@@ -210,8 +158,6 @@ export function AdminNotificationsProvider({ children }: { children: ReactNode }
   }, [canMonitorDemand, demandAlertsEnabled, pushDemandAlerts]);
 
   useEffect(() => {
-    if (NO_BACKEND) return;
-
     let cancelled = false;
 
     const fetchSystemAlerts = () => {

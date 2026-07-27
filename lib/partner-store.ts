@@ -1,71 +1,125 @@
-/**
- * Local persistence for Partners and Adverts. No backend endpoint exists for
- * this yet, so partner/advert records (including uploaded banner images, kept
- * as data URLs) live in the browser's localStorage — same pattern as
- * report-store.ts. Seeded from mock data on first read so the page isn't
- * empty on a fresh browser.
- */
-import { MOCK_PARTNERS, MOCK_ADVERTS, type Partner, type Advert } from "./mock-partners";
+import {
+  getPartners as apiGetPartners,
+  savePartner as apiSavePartner,
+  removePartner as apiRemovePartner,
+  getAdverts as apiGetAdverts,
+  saveAdvert as apiSaveAdvert,
+  removeAdvert as apiRemoveAdvert,
+  type ApiPartner,
+  type ApiAdvert,
+} from "./api";
 
-export type { Partner, Advert } from "./mock-partners";
+export type Partner = {
+  id: string;
+  name: string;
+  logoUrl?: string | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  status: "active" | "inactive";
+  createdAt: number;
+};
 
-const PARTNERS_KEY = "taravelis:partners";
-const ADVERTS_KEY = "taravelis:adverts";
+export type Advert = {
+  id: string;
+  partnerId: string;
+  imageUrl: string | null;
+  headline: string;
+  ctaLabel?: string | null;
+  ctaLink?: string | null;
+  active: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+  priority?: number | null;
+  createdAt: number;
+};
 
-function readAll<T>(key: string, seed: T[]): T[] {
-  if (typeof window === "undefined") return seed;
+function mapPartner(p: ApiPartner): Partner {
+  return {
+    id: p.id,
+    name: p.name,
+    logoUrl: p.logoUrl,
+    contactName: p.contactName,
+    contactEmail: p.contactEmail,
+    contactPhone: p.contactPhone,
+    status: p.status,
+    createdAt: new Date(p.createdAt).getTime(),
+  };
+}
+
+function mapAdvert(a: ApiAdvert): Advert {
+  return {
+    id: a.id,
+    partnerId: a.partnerId,
+    imageUrl: a.imageUrl,
+    headline: a.headline,
+    ctaLabel: a.ctaLabel,
+    ctaLink: a.ctaLink,
+    active: a.active,
+    startDate: a.startDate,
+    endDate: a.endDate,
+    priority: a.priority,
+    createdAt: new Date(a.createdAt).getTime(),
+  };
+}
+
+export async function listPartners(): Promise<Partner[]> {
   try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) {
-      window.localStorage.setItem(key, JSON.stringify(seed));
-      return seed;
-    }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : seed;
-  } catch {
-    return seed;
+    const list = await apiGetPartners();
+    return (list ?? []).map(mapPartner);
+  } catch (err) {
+    console.error("listPartners error", err);
+    return [];
   }
 }
 
-function writeAll<T>(key: string, entries: T[]) {
-  if (typeof window === "undefined") return;
+export async function getPartner(id: string): Promise<Partner | null> {
+  const all = await listPartners();
+  return all.find((p) => p.id === id) ?? null;
+}
+
+export async function savePartner(partner: Partial<Partner>, id?: string): Promise<void> {
+  const payload: Partial<ApiPartner> = {
+    name: partner.name,
+    logoUrl: partner.logoUrl ?? undefined,
+    contactName: partner.contactName ?? undefined,
+    contactEmail: partner.contactEmail ?? undefined,
+    contactPhone: partner.contactPhone ?? undefined,
+    status: partner.status,
+  };
+  await apiSavePartner(payload, id);
+}
+
+export async function removePartner(id: string): Promise<void> {
+  await apiRemovePartner(id);
+}
+
+export async function listAdverts(partnerId?: string): Promise<Advert[]> {
   try {
-    window.localStorage.setItem(key, JSON.stringify(entries));
-  } catch {
-    // storage full/unavailable — non-fatal, edits just won't persist
+    const list = await apiGetAdverts();
+    const mapped = (list ?? []).map(mapAdvert);
+    return partnerId ? mapped.filter((a) => a.partnerId === partnerId) : mapped;
+  } catch (err) {
+    console.error("listAdverts error", err);
+    return [];
   }
 }
 
-export function listPartners(): Partner[] {
-  return readAll(PARTNERS_KEY, MOCK_PARTNERS).sort((a, b) => b.createdAt - a.createdAt);
+export async function saveAdvert(advert: Partial<Advert>, id?: string): Promise<void> {
+  const payload: Partial<ApiAdvert> = {
+    partnerId: advert.partnerId,
+    imageUrl: advert.imageUrl ?? undefined,
+    headline: advert.headline,
+    ctaLabel: advert.ctaLabel ?? undefined,
+    ctaLink: advert.ctaLink ?? undefined,
+    active: advert.active,
+    startDate: advert.startDate ?? undefined,
+    endDate: advert.endDate ?? undefined,
+    priority: advert.priority ?? undefined,
+  };
+  await apiSaveAdvert(payload, id);
 }
 
-export function getPartner(id: string): Partner | null {
-  return readAll(PARTNERS_KEY, MOCK_PARTNERS).find((p) => p.id === id) ?? null;
-}
-
-export function savePartner(partner: Partner) {
-  const all = readAll(PARTNERS_KEY, MOCK_PARTNERS).filter((p) => p.id !== partner.id);
-  all.unshift(partner);
-  writeAll(PARTNERS_KEY, all);
-}
-
-export function removePartner(id: string) {
-  writeAll(PARTNERS_KEY, readAll(PARTNERS_KEY, MOCK_PARTNERS).filter((p) => p.id !== id));
-  writeAll(ADVERTS_KEY, readAll(ADVERTS_KEY, MOCK_ADVERTS).filter((a) => a.partnerId !== id));
-}
-
-export function listAdverts(partnerId?: string): Advert[] {
-  const all = readAll(ADVERTS_KEY, MOCK_ADVERTS).sort((a, b) => a.priority - b.priority || b.createdAt - a.createdAt);
-  return partnerId ? all.filter((a) => a.partnerId === partnerId) : all;
-}
-
-export function saveAdvert(advert: Advert) {
-  const all = readAll(ADVERTS_KEY, MOCK_ADVERTS).filter((a) => a.id !== advert.id);
-  all.unshift(advert);
-  writeAll(ADVERTS_KEY, all);
-}
-
-export function removeAdvert(id: string) {
-  writeAll(ADVERTS_KEY, readAll(ADVERTS_KEY, MOCK_ADVERTS).filter((a) => a.id !== id));
+export async function removeAdvert(id: string): Promise<void> {
+  await apiRemoveAdvert(id);
 }

@@ -180,36 +180,10 @@ export function TicketModal({
             const isAgent = m.from === "agent";
             const isSystem = m.from === "system";
             
-            let messageBody = m.body;
-            if (isSystem && (messageBody.startsWith("⚠️ Ticket Closed:") || messageBody.startsWith("⚠️ Closed:")) && !messageBody.includes("Closed/solved by:")) {
-              const reason = messageBody.replace("⚠️ Ticket Closed:", "").replace("⚠️ Closed:", "").trim();
-              const adminName = getAssigneeName(ticket.assignedTo) || user?.name || "Admin (Mock)";
-              const admin = admins.find((a) => a.id === ticket.assignedTo || a.name === ticket.assignedTo);
-              const adminEmail = (admin ? admin.email : null) || user?.email || "admin@mock.local";
-              const d = new Date(ticket.lastActivity);
-              const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-              const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-              
-              messageBody = `⚠️ Closed:
-Reason: ${reason}
-Closed/solved by: ${adminName} (${adminEmail})
-Date : ${dateStr}
-Time: ${timeStr}`;
-            } else if (isSystem && (messageBody.startsWith("✅ Case Marked Solved:") || messageBody.startsWith("✅ Solved:")) && !messageBody.includes("Closed/solved by:")) {
-              const reason = messageBody.replace("✅ Case Marked Solved:", "").replace("✅ Solved:", "").trim();
-              const adminName = getAssigneeName(ticket.assignedTo) || user?.name || "Admin (Mock)";
-              const admin = admins.find((a) => a.id === ticket.assignedTo || a.name === ticket.assignedTo);
-              const adminEmail = (admin ? admin.email : null) || user?.email || "admin@mock.local";
-              const d = new Date(ticket.lastActivity);
-              const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-              const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-              
-              messageBody = `✅ Solved:
-Reason: ${reason}
-Closed/solved by: ${adminName} (${adminEmail})
-Date : ${dateStr}
-Time: ${timeStr}`;
-            }
+            // Render exactly what is stored. This used to rewrite older audit
+            // messages, inventing the closing admin, their email and a timestamp
+            // from the ticket's last-activity date — a fabricated audit trail.
+            const messageBody = m.body;
 
             return (
               <div

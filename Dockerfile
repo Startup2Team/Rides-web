@@ -16,10 +16,6 @@ COPY . .
 # API URLs must be passed as build args, not runtime env vars.
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-# NEXT_PUBLIC_API_BASE_URL toggles NO_BACKEND in lib/api.ts: when set, the admin
-# calls the real backend instead of the built-in mock data.
-ARG NEXT_PUBLIC_API_BASE_URL
-ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

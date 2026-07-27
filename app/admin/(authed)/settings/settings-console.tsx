@@ -3,7 +3,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useAdminNotifications } from "@/context/admin-notifications-context";
 import { isDemandAlertsEnabled } from "@/lib/demand-alerts";
-import { getSettings, updateCommissionSettings, updateNegotiationSettings, updateFareSettings } from "@/lib/api";
+import {
+  getSettings,
+  updateCommissionSettings,
+  updateNegotiationSettings,
+  updateFareSettings,
+  updateIntegrationSettings,
+  updateNotificationSettings,
+} from "@/lib/api";
 import { Card } from "../_components";
 
 type Tab = "commission" | "negotiation" | "fares" | "regions" | "integrations" | "notifications";
@@ -61,13 +68,9 @@ const initial: State = {
     fusoBase: "3000",
     fusoPerKm: "800",
   },
-  regions: [
-    { id: "r1", name: "Kigali · Central", status: "Active", drivers: 89 },
-    { id: "r2", name: "Kigali · East", status: "Active", drivers: 32 },
-    { id: "r3", name: "Kigali · West", status: "Active", drivers: 21 },
-    { id: "r4", name: "Musanze", status: "Pilot", drivers: 8 },
-    { id: "r5", name: "Huye", status: "Coming soon", drivers: 0 },
-  ],
+  // Regions come from GET /admin/settings; there is no fixture. This used to ship
+  // five invented regions with invented driver counts.
+  regions: [],
   integrations: {
     mtnMomo: true,
     airtelMoney: true,
@@ -296,8 +299,15 @@ export function SettingsConsole() {
                   updateCommissionSettings(state.commission),
                   updateNegotiationSettings(state.negotiation),
                   updateFareSettings(state.fares),
+                  // Both routes existed all along; these panels used to edit
+                  // local state and lose it on Save.
+                  updateIntegrationSettings(state.integrations),
+                  updateNotificationSettings(state.notifications),
                 ]);
-              } catch { /* ignore individual failures */ }
+              } catch {
+                setToast("Couldn't save settings — try again");
+                return;
+              }
               setSavedState(state);
               setToast("Settings saved");
             }}
@@ -433,6 +443,11 @@ export function SettingsConsole() {
 
       {tab === "regions" ? (
         <Card title="Service regions">
+          {state.regions.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+              No service regions configured yet.
+            </p>
+          ) : null}
           <ul className="divide-y divide-border">
             {state.regions.map((r) => (
               <li

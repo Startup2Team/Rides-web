@@ -104,8 +104,6 @@ type PeriodData = {
   avgFareDelta: number;
   trend: { label: string; value: number }[];
   byVehicle: { vehicle: string; pct: number; amount: number; color: string }[];
-  byPayment: { method: string; pct: number; amount: number; color: string }[];
-  topZones: { name: string; revenue: number; trend: number }[];
 };
 
 
@@ -377,8 +375,6 @@ function mapRevenueToPeriodData(raw: Record<string, unknown> | null | undefined)
       amount: v.amount ?? 0,
       color: byVehicleColors[v.vehicle ?? ""] ?? "bg-muted",
     })),
-    byPayment: [],
-    topZones: [],
   };
 }
 
@@ -386,7 +382,7 @@ const emptyPeriodData: PeriodData = {
   gross: 0, commission: 0, payouts: 0, trips: 0,
   pendingPayouts: 0, pendingCount: 0,
   grossDelta: 0, commissionDelta: 0, payoutsDelta: 0, avgFareDelta: 0,
-  trend: [], byVehicle: [], byPayment: [], topZones: [],
+  trend: [], byVehicle: [],
 };
 
 export function RevenueConsole() {
@@ -654,49 +650,6 @@ export function RevenueConsole() {
           </div>
         </Card>
 
-        <Card title="By payment method" bodyClass="p-4">
-          <div className="flex items-center gap-4">
-            <Donut
-              slices={p.byPayment.map((v) => ({ pct: v.pct, color: v.color }))}
-              centerLabel="Methods"
-              centerValue={`${p.byPayment.length}`}
-            />
-            <ul className="flex-1 space-y-2 text-xs">
-              {p.byPayment.map((v) => (
-                <li key={v.method} className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <span className={`block h-2 w-2 rounded-full ${v.color}`} />
-                    {v.method}
-                  </span>
-                  <div className="text-right">
-                    <span className="font-bold text-foreground">{v.pct}%</span>
-                    <span className="ml-1.5 text-[10px] text-muted-foreground">
-                      {formatLargeRWF(v.amount)}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </Card>
-
-        <Card title="Top zones by revenue">
-          <ul className="divide-y divide-border">
-            {p.topZones.map((z) => (
-              <li key={z.name} className="flex items-center justify-between gap-2 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold tracking-tight text-foreground">
-                    {z.name}
-                  </p>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {formatLargeRWF(z.revenue)}
-                  </p>
-                </div>
-                <DeltaPill value={z.trend} />
-              </li>
-            ))}
-          </ul>
-        </Card>
       </div>
 
       <Card

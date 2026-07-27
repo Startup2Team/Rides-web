@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { StatCard } from "../_components";
-import { getLiveRidesStats, type LiveRidesStats, NO_BACKEND } from "@/lib/api";
-import { MOCK_LIVE_RIDES_STATS } from "@/lib/mock-live-rides";
+import { getLiveRidesStats, type LiveRidesStats } from "@/lib/api";
 
 const EMPTY_STATS: LiveRidesStats = { total: 0, searching: 0, negotiating: 0, driver_en_route: 0, on_trip: 0 };
 
@@ -17,13 +16,10 @@ export function LiveRidesStatsCards() {
     return () => clearInterval(interval);
   }, []);
 
-  // This bar monitors real activity — mocks only stand in when there are genuinely
-  // zero real active rides, never added on top of a real count.
-  const effective = data ? (data.total > 0 ? data : (NO_BACKEND ? MOCK_LIVE_RIDES_STATS : data)) : null;
-  const total = effective?.total ?? null;
-  const searching = effective?.searching ?? null;
-  const negotiating = effective?.negotiating ?? null;
-  const onTrip = effective?.on_trip ?? null;
+  const total = data?.total ?? null;
+  const searching = data?.searching ?? null;
+  const negotiating = data?.negotiating ?? null;
+  const onTrip = data?.on_trip ?? null;
 
   const stats = [
     { label: "Active Rides", value: total != null ? String(total) : "—", hint: "in progress now" },

@@ -19,39 +19,38 @@ import {
   type RideDetail as ApiRideDetail,
   type LiveMapDriver,
   type Driver as ApiDriver,
-  NO_BACKEND,
 } from "@/lib/api";
-import {
-  isMockLiveRideId,
-  MOCK_LIVE_RIDES,
-  MOCK_LIVE_RIDE_DETAILS,
-  MOCK_LIVE_MAP_DRIVERS,
-  MOCK_ONLINE_DRIVERS,
-  nearestKigaliPlace,
-} from "@/lib/mock-live-rides";
+
+// There is no reverse-geocoding endpoint yet, so show the actual coordinates
+// rather than a constant that looks like a resolved place name.
+function formatCoords(lat: number, lng: number): string {
+  return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+}
 
 // ── Transport type helpers ────────────────────────────────────────────────
 
-type VehicleType = "Moto Bike" | "Cab Taxi" | "Light Hilux" | "Heavy Fuso";
+type VehicleType = "Moto Bike" | "Cab Taxi" | "Light Hilux" | "Heavy Fuso" | "Rifani";
 
 const TRANSPORT_DISPLAY: Record<string, VehicleType> = {
   MOTO_BIKE:   "Moto Bike",
   CAB_TAXI:    "Cab Taxi",
   LIGHT_HILUX: "Light Hilux",
   HEAVY_FUSO:  "Heavy Fuso",
+  TUK_TUK:     "Rifani",
 };
 
 function toVehicleType(code: string): VehicleType {
-  return TRANSPORT_DISPLAY[code] ?? ("Cab Taxi" as VehicleType);
+  // No silent default: an unmapped code used to be shown as a Cab Taxi.
+  return TRANSPORT_DISPLAY[code] ?? (code as VehicleType);
 }
 
 // ── Status helpers ────────────────────────────────────────────────────────
 
 function mapRideStatus(s: string): RideStatus {
   if (s === "NEGOTIATING") return "Negotiating";
-  if (s === "DRIVER_EN_ROUTE" || s === "DRIVER_FOUND") return "Driver arriving";
-  if (s === "DRIVER_ARRIVED") return "Driver arriving";
-  if (s === "ON_TRIP") return "On trip";
+  if (s === "MATCHED" || s === "CONFIRMED") return "Negotiating";
+  if (s === "DRIVER_EN_ROUTE" || s === "DRIVER_ARRIVED") return "Driver arriving";
+  if (s === "IN_PROGRESS") return "On trip";
   return "Searching";
 }
 
@@ -74,7 +73,7 @@ function mapApiRide(r: ApiRide): Ride {
           phone: r.driver?.phone ?? "",
           vehicleType: toVehicleType(r.transport_type),
           plate: r.driver?.plate ?? "—",
-          rating: 0,
+          rating: null,
         }
       : null,
     pickup: r.pickup_address,
@@ -90,7 +89,7 @@ function mapApiRide(r: ApiRide): Ride {
     startedAt: new Date(r.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     eta: null,
     fare: r.agreed_fare ?? 0,
-    paymentMethod: "Cash",
+    paymentMethod: null,
     district: "—",
     timeline: [],
     negotiation: [],
@@ -126,7 +125,7 @@ function mapApiDetail(r: ApiRideDetail, base: Ride): Ride {
           phone: r.driver.phone ?? "",
           vehicleType: toVehicleType(r.transport_type),
           plate: r.driver.plate ?? "—",
-          rating: 0,
+          rating: null,
         }
       : base.driver,
   };
@@ -363,7 +362,7 @@ type OnlineDriver = {
 
 function driverWaitingLabel(lat: number | null, lng: number | null): string {
   if (lat == null || lng == null) return "Location unavailable — Kigali, Rwanda";
-  return `Waiting at ${nearestKigaliPlace(lat, lng)}, Kigali`;
+  return `Waiting at ${formatCoords(lat, lng)}, Kigali`;
 }
 
 function buildOnlineDrivers(apiDrivers: ApiDriver[], positions: LiveMapDriver[]): OnlineDriver[] {
@@ -391,18 +390,6 @@ function buildOnlineDrivers(apiDrivers: ApiDriver[], positions: LiveMapDriver[])
       };
     });
 }
-
-const MOCK_ONLINE_DRIVERS_DISPLAY: OnlineDriver[] = MOCK_ONLINE_DRIVERS.filter((d) => !d.onTrip).map((d) => ({
-  id: d.id,
-  name: d.name,
-  phone: d.phone,
-  vehicleType: toVehicleType(d.transportType),
-  _transportCode: d.transportType,
-  plate: d.plate,
-  lat: d.lat,
-  lng: d.lng,
-  positionLabel: driverWaitingLabel(d.lat, d.lng),
-}));
 
 function OnlineDriverCard({ driver }: { driver: OnlineDriver }) {
   return (
@@ -735,10 +722,9 @@ export function LiveRidesConsole() {
         .then(([driversRes, mapRes]) => {
           if (cancelled) return;
           const real = buildOnlineDrivers(driversRes.drivers ?? [], mapRes.drivers ?? []);
-          // Same rule as rides: mocks only stand in when there's genuinely no real online driver.
-          setOnlineDrivers(real.length > 0 ? real : (NO_BACKEND ? MOCK_ONLINE_DRIVERS_DISPLAY : []));
+          setOnlineDrivers(real);
         })
-        .catch(() => !cancelled && setOnlineDrivers(NO_BACKEND ? MOCK_ONLINE_DRIVERS_DISPLAY : []));
+        .catch(() => !cancelled && setOnlineDrivers([]));
     };
     load();
     const id = setInterval(load, 15_000);
@@ -757,10 +743,9 @@ export function LiveRidesConsole() {
       getLiveMap()
         .then((d) => {
           if (cancelled) return;
-          const real = d.drivers ?? [];
-          setDriverPositions(real.length > 0 ? real : (NO_BACKEND ? MOCK_LIVE_MAP_DRIVERS : []));
+          setDriverPositions(d.drivers ?? []);
         })
-        .catch(() => !cancelled && setDriverPositions(NO_BACKEND ? MOCK_LIVE_MAP_DRIVERS : []));
+        .catch(() => !cancelled && setDriverPositions([]));
     };
     load();
     const id = setInterval(load, 15_000);
@@ -771,10 +756,9 @@ export function LiveRidesConsole() {
   }, []);
 
   const mergeRides = useCallback((apiRides: ApiRide[]) => {
-    const combined = apiRides.length > 0 ? apiRides : (NO_BACKEND ? MOCK_LIVE_RIDES : []);
     setRides((prev) => {
       const existing = new Map(prev.map((r) => [r.id, r]));
-      return combined.map((r) => {
+      return apiRides.map((r) => {
         const e = existing.get(r.id);
         const mapped = mapApiRide(r);
         return e ? { ...mapped, timeline: e.timeline, negotiation: e.negotiation } : mapped;
@@ -808,11 +792,6 @@ export function LiveRidesConsole() {
 
   const openRide = (id: string) => {
     setOpeningId(id);
-    if (isMockLiveRideId(id)) {
-      const detail = MOCK_LIVE_RIDE_DETAILS[id];
-      setRides((prev) => prev.map((r) => (r.id === id ? mapApiDetail(detail, r) : r)));
-      return;
-    }
     getLiveRide(id)
       .then((detail) => {
         setRides((prev) => prev.map((r) => (r.id === id ? mapApiDetail(detail, r) : r)));
