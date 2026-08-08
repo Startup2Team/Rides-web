@@ -124,6 +124,16 @@ const icons = {
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </Icon>
   ),
+  rides: (
+    <Icon>
+      <path d="M3 6h18" />
+      <path d="M3 12h18" />
+      <path d="M3 18h18" />
+      <circle cx="7" cy="6" r="1.5" />
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="17" cy="18" r="1.5" />
+    </Icon>
+  ),
   liveRides: (
     <Icon>
       <circle cx="12" cy="12" r="2" />
@@ -295,6 +305,7 @@ export const groups: {
     items: [
       { label: "Drivers", href: "/admin/drivers", icon: icons.drivers, children: driverCategories },
       { label: "Customers", href: "/admin/customers", icon: icons.customers },
+      { label: "Rides", href: "/admin/rides", icon: icons.rides },
       { label: "Live Rides", href: "/admin/live-rides", icon: icons.liveRides },
       { label: "Fare Negotiations", href: "/admin/negotiations", icon: icons.negotiations },
       { label: "Demand Heatmap", href: "/admin/heatmaps", icon: icons.heatmaps },
