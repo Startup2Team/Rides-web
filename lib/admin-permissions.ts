@@ -8,6 +8,7 @@ export type Permission =
   | "/admin"
   | "/admin/drivers"
   | "/admin/customers"
+  | "/admin/rides"
   | "/admin/live-rides"
   | "/admin/negotiations"
   | "/admin/heatmaps"
@@ -57,6 +58,7 @@ export const SIDEBAR_ITEMS: {
   { href: "/admin", label: "Dashboard", group: "Overview" },
   { href: "/admin/drivers", label: "Drivers", group: "Operations" },
   { href: "/admin/customers", label: "Customers", group: "Operations" },
+  { href: "/admin/rides", label: "Rides", group: "Operations" },
   { href: "/admin/live-rides", label: "Live Rides", group: "Operations" },
   { href: "/admin/negotiations", label: "Negotiations", group: "Operations" },
   { href: "/admin/heatmaps", label: "Heatmaps", group: "Operations" },
@@ -125,6 +127,7 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       "/admin",
       "/admin/drivers",
       "/admin/customers",
+      "/admin/rides",
       "/admin/live-rides",
       "/admin/negotiations",
       "/admin/heatmaps",
@@ -164,6 +167,7 @@ export function normalizePermissions(raw: unknown): Permission[] {
     "/admin",
     "/admin/drivers",
     "/admin/customers",
+    "/admin/rides",
     "/admin/live-rides",
     "/admin/negotiations",
     "/admin/heatmaps",

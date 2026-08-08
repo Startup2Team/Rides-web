@@ -888,7 +888,10 @@ export type Ride = {
   initial_fare: number | null;
   distance_km: number | null;
   created_at: string;
+  started_at?: string | null;
   completed_at: string | null;
+  /** Trip length in minutes, from pickup (or request, if never started) to completion. */
+  duration_minutes?: number | null;
 };
 
 export type NegotiationRound = {
