@@ -65,6 +65,27 @@ function formatCompletedAt(iso: string | null) {
   });
 }
 
+/**
+ * Quick ranges, in minutes back from now.
+ *
+ * Whole-date inputs alone cannot express "the last 30 minutes" — the shortest
+ * window they allow is a full day. These are relative to the moment of the
+ * fetch, so "last hour" keeps meaning the last hour as the console sits open
+ * and refetches, rather than an hour pinned to when the page loaded.
+ */
+const RANGE_PRESETS: { id: string; label: string; minutes: number | null }[] = [
+  { id: "30m", label: "30 min", minutes: 30 },
+  { id: "1h", label: "1 hour", minutes: 60 },
+  { id: "6h", label: "6 hours", minutes: 6 * 60 },
+  { id: "24h", label: "24 hours", minutes: 24 * 60 },
+  { id: "7d", label: "7 days", minutes: 7 * 24 * 60 },
+  { id: "30d", label: "30 days", minutes: 30 * 24 * 60 },
+  // All time is the default: a console that opens empty because the window is
+  // narrower than the data reads as broken.
+  { id: "all", label: "All time", minutes: null },
+  { id: "custom", label: "Custom", minutes: null },
+];
+
 /** Local calendar day → ISO instant, so the range is inclusive of both days. */
 function startOfDayISO(date: string) {
   return new Date(`${date}T00:00:00`).toISOString();
@@ -86,6 +107,7 @@ export function RidesConsole() {
   const [searchFilter, setSearchFilter] = useState("");
   const [fromFilter, setFromFilter] = useState("");
   const [toFilter, setToFilter] = useState("");
+  const [rangePreset, setRangePreset] = useState("all");
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -101,8 +123,16 @@ export function RidesConsole() {
     };
     if (statusFilter) params.status = statusFilter;
     if (searchFilter) params.search = searchFilter;
-    if (fromFilter) params.from = startOfDayISO(fromFilter);
-    if (toFilter) params.to = endOfDayISO(toFilter);
+
+    const preset = RANGE_PRESETS.find((r) => r.id === rangePreset);
+    if (rangePreset === "custom") {
+      if (fromFilter) params.from = startOfDayISO(fromFilter);
+      if (toFilter) params.to = endOfDayISO(toFilter);
+    } else if (preset?.minutes != null) {
+      // Relative to now, computed per fetch — no `to`, since the window always
+      // runs up to the present moment.
+      params.from = new Date(Date.now() - preset.minutes * 60_000).toISOString();
+    }
 
     getRides(params)
       .then((data) => {
@@ -121,7 +151,7 @@ export function RidesConsole() {
     return () => {
       cancelled = true;
     };
-  }, [page, statusFilter, searchFilter, fromFilter, toFilter]);
+  }, [page, statusFilter, searchFilter, fromFilter, toFilter, rangePreset]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +172,35 @@ export function RidesConsole() {
 
   return (
     <div className="space-y-6">
+      {/* Quick ranges — the common question is "what happened in the last N",
+          which whole-date inputs cannot answer below a full day. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">
+          Period
+        </span>
+        {RANGE_PRESETS.map((r) => {
+          const active = rangePreset === r.id;
+          return (
+            <button
+              key={r.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                setPage(1);
+                setRangePreset(r.id);
+              }}
+              className={`h-9 rounded-xl border px-3.5 text-sm font-medium transition-all ${
+                active
+                  ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40"
+              }`}
+            >
+              {r.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Filter Bar */}
       <form
         onSubmit={handleSearchSubmit}
@@ -188,45 +247,49 @@ export function RidesConsole() {
           </select>
         </div>
 
-        <div className="space-y-1.5">
-          <label
-            htmlFor="ride-from"
-            className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-          >
-            From Date
-          </label>
-          <input
-            id="ride-from"
-            type="date"
-            value={fromFilter}
-            max={toFilter || undefined}
-            onChange={(e) => {
-              setPage(1);
-              setFromFilter(e.target.value);
-            }}
-            className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
+        {rangePreset === "custom" ? (
+          <>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="ride-from"
+                className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+              >
+                From Date
+              </label>
+              <input
+                id="ride-from"
+                type="date"
+                value={fromFilter}
+                max={toFilter || undefined}
+                onChange={(e) => {
+                  setPage(1);
+                  setFromFilter(e.target.value);
+                }}
+                className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
 
-        <div className="space-y-1.5">
-          <label
-            htmlFor="ride-to"
-            className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-          >
-            To Date
-          </label>
-          <input
-            id="ride-to"
-            type="date"
-            value={toFilter}
-            min={fromFilter || undefined}
-            onChange={(e) => {
-              setPage(1);
-              setToFilter(e.target.value);
-            }}
-            className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="ride-to"
+                className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+              >
+                To Date
+              </label>
+              <input
+                id="ride-to"
+                type="date"
+                value={toFilter}
+                min={fromFilter || undefined}
+                onChange={(e) => {
+                  setPage(1);
+                  setToFilter(e.target.value);
+                }}
+                className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          </>
+        ) : null}
 
         <div className="flex gap-2">
           <button
