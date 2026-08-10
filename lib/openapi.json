@@ -1633,6 +1633,54 @@
         "tags": ["Admin Audits"],
         "summary": "Audit All Platform Rides",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Exact ride status, e.g. COMPLETED",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "transport_type",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Matches customer/driver name or phone, or ride id",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Start of the window on completion time (creation time when the ride never completed)",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "End of the same window",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" }
+          }
+        ],
         "responses": {
           "200": { "description": "Full ride logs list" }
         }

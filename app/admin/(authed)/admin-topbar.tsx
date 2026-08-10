@@ -88,7 +88,9 @@ async function runSearch(q: string): Promise<SearchResult[]> {
         id: r.id,
         label: r.pickup_address,
         sub: `→ ${r.destination_address} · ${r.status}`,
-        href: `/admin/live-rides`,
+        // Global search hits every ride history, not just the in-flight ones,
+        // so send them to the rides browser rather than the live-ops board.
+        href: `/admin/rides`,
         group: "Rides",
       });
     }
