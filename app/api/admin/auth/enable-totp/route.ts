@@ -51,19 +51,30 @@ export async function POST(request: Request) {
     secret = setupEnvelope.data.secret;
   }
 
-  // Step 2: enable 2FA with the user-entered TOTP code
-  const enableRes = await fetch(`${base}/api/v1/admin/account/2fa/enable`, {
+  // Step 2: complete TOTP enrollment with the user-entered code
+  let enableRes = await fetch(`${base}/api/v1/admin/auth/totp/enroll-complete`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${challenge_token}`,
-    },
-    body: JSON.stringify({ secret, code: totp_code }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ setup_token: challenge_token, secret, code: totp_code }),
     cache: "no-store",
   });
 
-  let enableEnvelope: ApiEnvelope<{ two_factor_enabled?: boolean; backup_codes?: string[] }> = {};
+  let enableEnvelope: ApiEnvelope<{ access_token?: string; backup_codes?: string[] }> = {};
   try { enableEnvelope = await enableRes.json(); } catch { enableEnvelope = {}; }
+
+  if (!enableRes.ok) {
+    // Fallback to legacy POST /account/2fa/enable
+    enableRes = await fetch(`${base}/api/v1/admin/account/2fa/enable`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${challenge_token}`,
+      },
+      body: JSON.stringify({ secret, code: totp_code }),
+      cache: "no-store",
+    });
+    try { enableEnvelope = await enableRes.json(); } catch { enableEnvelope = {}; }
+  }
 
   if (!enableRes.ok) {
     return NextResponse.json(
@@ -72,6 +83,7 @@ export async function POST(request: Request) {
     );
   }
 
+  const accessToken = enableEnvelope.data?.access_token ?? challenge_token;
   const backup_codes = enableEnvelope.data?.backup_codes ?? [];
 
   // 2FA enabled — set the access_token cookie and return backup codes
@@ -81,7 +93,6 @@ export async function POST(request: Request) {
       backup_codes,
     },
   });
-
-  applyAdminTokenCookies(response, challenge_token);
+  applyAdminTokenCookies(response, accessToken);
   return response;
 }

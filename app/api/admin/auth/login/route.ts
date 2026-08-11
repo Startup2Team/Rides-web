@@ -67,5 +67,12 @@ export async function POST(request: Request) {
     });
   }
 
+  // Admin needing 2FA setup gets a setup_token → show QR code setup screen.
+  if (data.two_factor_setup_required === true && data.setup_token) {
+    return NextResponse.json({
+      data: { status: "totp_setup_required", challenge_token: data.setup_token },
+    });
+  }
+
   return NextResponse.json({ error: { code: "SERVER_ERROR", message: "Unexpected login response" } }, { status: 502 });
 }

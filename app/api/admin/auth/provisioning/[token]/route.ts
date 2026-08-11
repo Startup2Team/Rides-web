@@ -13,11 +13,21 @@ export async function GET(_request: Request, ctx: RouteCtx) {
     return NextResponse.json({ error: { code: "BAD_REQUEST", message: "Missing token" } }, { status: 400 });
   }
 
-  const url = `${getBackendOrigin()}/api/v1/admin/account/2fa/setup`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
+  const url = `${getBackendOrigin()}/api/v1/admin/auth/totp/enroll-begin`;
+  let res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ setup_token: token }),
     cache: "no-store",
   });
+
+  if (!res.ok) {
+    // Fallback to legacy GET /api/v1/admin/account/2fa/setup
+    res = await fetch(`${getBackendOrigin()}/api/v1/admin/account/2fa/setup`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+  }
 
   let envelope: ApiEnvelope<{ secret?: string; otpauth_url?: string }> = {};
   try {

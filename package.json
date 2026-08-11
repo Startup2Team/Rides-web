@@ -4,7 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:staging": "NEXT_PUBLIC_API_URL=https://stg-api.rides.rw/api/v1 next dev",
     "build": "next build",
+    "build:staging": "NEXT_PUBLIC_API_URL=https://stg-api.rides.rw/api/v1 next build",
+    "build:prod": "NEXT_PUBLIC_API_URL=https://api.rides.rw/api/v1 next build",
     "start": "next start",
     "lint": "eslint"
   },
