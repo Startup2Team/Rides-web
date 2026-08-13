@@ -30,69 +30,108 @@
     "terms": "Terms"
   },
   "about": {
-    "heroHeadline": "A better way to move. Designed for real journeys.",
-    "heroSub": "Transparent pricing. Fair negotiation. Safer rides.",
-    "welcomeHeading": "Why we built Rides.",
-    "welcomeP1": "Transportation should be fair, transparent, and built around the people who use it not the other way around.",
-    "welcomeP2": "Rides gives riders and drivers the trip details, the fare logic, and the freedom to negotiate before the trip begins. Trust comes from transparency. Fairness comes from choice.",
-    "standForHeading": "What we stand for.",
-    "faqHeading": "Frequently asked questions.",
-    "bullets": [
+    "eyebrow": "About Us",
+    "heroHeadline": "Building Opportunities Through Technology",
+    "heroP1": "We are building more than a transportation platform. We are creating a people-powered technology ecosystem that connects individuals, businesses, and communities through mobility, logistics, and digital solutions.",
+    "heroP2": "Our platforms are designed to make everyday services more accessible, affordable, and flexible while creating sustainable income opportunities for millions of people.",
+    "beliefLead": "Every product we build is guided by one simple belief:",
+    "beliefHighlight": "Technology should create opportunities, not barriers.",
+    "purposeTitle": "Our Purpose",
+    "purposeBody": "Serving people, empowering communities, and creating opportunities.",
+    "visionTitle": "Our Vision",
+    "visionParts": [
       {
-        "title": "Transparency from the first tap",
-        "body": "Riders see the route, estimated time, distance, and fare before the trip begins. Drivers know what they're earning before they accept a ride. No surprises. No hidden calculations."
+        "text": "To become the world's most trusted people-powered mobility, logistics, and technology ecosystem, connecting more than ",
+        "highlight": false
       },
       {
-        "title": "Fairness through choice",
-        "body": "Pricing should be a conversation, not a decision made by an algorithm alone. Riders and drivers can negotiate the fare before the journey starts, reaching an agreement that works for both sides."
+        "text": "500 million users",
+        "highlight": true
       },
       {
-        "title": "Safety within reach",
-        "body": "Safety isn't an afterthought. One-tap SOS support, verified identities, document checks, and a responsive support team — every ride built on a safer foundation."
+        "text": " while empowering over ",
+        "highlight": false
       },
       {
-        "title": "Mutual respect by design",
-        "body": "Rides is built for the people who make every journey possible — riders and drivers alike. Trust, respect, and fairness are part of every interaction."
+        "text": "5 million people",
+        "highlight": true
       },
       {
-        "title": "Trust through action",
-        "body": "Anyone can claim to care about transparency and fairness. We demonstrate it through the choices we make, the features we build, and the way we serve our community every day."
+        "text": " to generate sustainable income across Africa and beyond.",
+        "highlight": false
       }
     ],
-    "faqs": [
+    "missionTitle": "Our Mission",
+    "missionBody": "Our mission is to transform the way people move, work, and connect by delivering flexible transportation, logistics, and digital solutions that place decision-making power in the hands of service providers while offering customers exceptional value, safety, convenience, and choice.",
+    "commitHeading": "We Are Committed To",
+    "commitments": [
+      "Creating over 5 million jobs and income opportunities.",
+      "Serving more than 500 million users globally.",
+      "Building technology that enables economic inclusion.",
+      "Supporting local entrepreneurs and businesses.",
+      "Making transportation and logistics accessible, affordable, and reliable for everyone."
+    ],
+    "valuesHeading": "Our Core Values",
+    "values": [
       {
-        "q": "What is Rides?",
-        "a": "Rides is an app designed to make transportation more transparent, fair, and safe for both riders and drivers."
+        "title": "Customer First",
+        "body": "Every decision begins with understanding and serving our customers."
       },
       {
-        "q": "Is Rides available now?",
-        "a": "Yes. Rides is officially live and available for users."
+        "title": "Freedom & Flexibility",
+        "body": "We believe work and mobility should adapt to people's lives, not the other way around."
       },
       {
-        "q": "How is Rides different from other apps?",
-        "a": "Rides focuses on transparency and fairness. Riders see clear trip details before confirming a ride, and drivers understand their earnings upfront. We also allow fare negotiation between riders and drivers."
+        "title": "Empowerment Through Choice",
+        "body": "We put decision-making power into the hands of customers and service providers."
       },
       {
-        "q": "How does price negotiation work?",
-        "a": "Before a trip starts, riders and drivers agree on a fare. Once both sides accept, the ride is confirmed. This ensures both parties agree on the price before the journey begins."
+        "title": "Economic Inclusion",
+        "body": "We create pathways for individuals and businesses to earn, grow, and succeed regardless of their background or location."
       },
       {
-        "q": "How does safety work on Rides?",
-        "a": "Verified IDs, document checks on every driver, a one-tap emergency button, and a 24/7 support team you can reach during or after a trip."
+        "title": "Innovation Without Limits",
+        "body": "We continuously innovate to provide smarter, faster, and more efficient solutions."
       },
       {
-        "q": "Do I need a wallet to use Rides?",
-        "a": "No wallet is required. Payments are handled directly between riders and drivers based on the agreed fare."
+        "title": "Trust & Transparency",
+        "body": "We build trust through honesty, accountability, fairness, and open communication."
       },
       {
-        "q": "Where is Rides available?",
-        "a": "Rides is currently available in selected cities, with more locations being added as we grow."
+        "title": "Community Impact",
+        "body": "Our success is measured not only by profits but by the positive impact we create in communities."
       },
       {
-        "q": "How can I start using Rides?",
-        "a": "You can download the app, create an account, and start booking rides immediately where the service is available."
+        "title": "Excellence in Execution",
+        "body": "We strive for excellence in every ride, delivery, partnership, and customer interaction."
       }
-    ]
+    ],
+    "impactHeading": "Our Long-Term Impact",
+    "impactBody": "We are building one of Africa's largest technology ecosystems. It empowers millions of entrepreneurs, drivers, businesses, and communities through innovative digital platforms.",
+    "impactStats": [
+      {
+        "value": "500M+",
+        "label": "Users Connected"
+      },
+      {
+        "value": "5M+",
+        "label": "Income Opportunities"
+      },
+      {
+        "value": "",
+        "label": "Across Africa and Beyond"
+      },
+      {
+        "value": "",
+        "label": "Stronger Communities"
+      }
+    ],
+    "promiseHeading": "Our Promise",
+    "promiseBody": "We promise to build technology that is accessible, affordable, reliable, secure, inclusive, and community-driven. Because when people have access to opportunity, communities prosper.",
+    "communityMottoLabel": "Our Community Motto",
+    "communityMotto": "Your Journey. Your Choice. Your Opportunity.",
+    "orgMottoLabel": "Our Organization Motto",
+    "orgMotto": "Driven by People, Powered by Choice."
   },
   "drivers": {
     "heroHeadline": "Drive on your terms, earn on your terms.",

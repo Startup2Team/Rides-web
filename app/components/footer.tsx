@@ -30,9 +30,10 @@ export default function Footer() {
         <div className="grid gap-10 lg:grid-cols-12">
           <div className="lg:col-span-5">
             <Link href="/" className="inline-flex items-center">
-              <img src="/ridelogo.png" alt="Rides" className="h-9 w-9 shrink-0 object-contain" />
-              <span className="text-xl font-black tracking-[-0.04em] text-foreground">
-                id<span className="text-emerald-500">es</span>
+              <span className="text-xl font-black tracking-[-0.04em]">
+                <span className="text-primary">R</span>
+                <span className="text-[#e55189]">id</span>
+                <span className="text-emerald-600">es</span>
               </span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">

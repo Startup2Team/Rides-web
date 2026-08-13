@@ -46,7 +46,7 @@ export default function DriversPage() {
   return (
     <main className="flex-1">
       {/* ── 1. HERO ─────────────────────────────────────────────────────── */}
-      <section className="relative flex min-h-[calc(100svh-4rem)] items-center overflow-hidden py-16 sm:min-h-[calc(100svh-5rem)] lg:py-20">
+      <section className="relative flex min-h-[calc(100svh-4.25rem)] items-center overflow-hidden py-16 sm:min-h-[calc(100svh-5rem)] lg:py-20">
         {/* Soft tinted background glow */}
         <div
           aria-hidden

@@ -5,36 +5,36 @@ type Item = {
 
 const items: Item[] = [
   {
-    q: "What is Taravelis?",
-    a: "Taravelis is a ride-hailing platform for Kigali. We connect you with motos, cabs, hilux pickups, and fuso trucks for whatever you need — daily commutes, errands, parcel runs, or moving day.",
+    q: "What is Rides?",
+    a: "Rides is one app for every way you move. A moto when you're late. A cab when it matters. A hilux for the rough road. A fuso for moving day. You choose the vehicle, you see the fare before you book, and you follow the driver the whole way.",
   },
   {
     q: "How do I book a ride?",
-    a: "Download the app, sign in with your phone number, choose your vehicle type, set your pickup and destination, and confirm. A nearby driver accepts in seconds and you'll see them on the map heading to you.",
+    a: "Sign in with your phone number, pick your vehicle, set your pickup and destination, and confirm. A nearby driver accepts in seconds — then you watch them come to you on the map.",
   },
   {
     q: "What vehicle types are available?",
-    a: "Four: motos for quick solo trips, cabs for comfort, hilux pickups for bulky or rough-road jobs, and fuso trucks for full hauls. Pick what fits the trip and the price scales accordingly.",
+    a: "Four. Motos for a quick solo run. Cabs when you want comfort. Hilux pickups for bulky loads and rough roads. Fuso trucks for a full haul. The price scales with what you pick, so you never pay for more vehicle than the trip needs.",
   },
   {
     q: "How are fares calculated?",
-    a: "You see the fare before you book — distance, vehicle type, and time of day. For drivers and customers, fares can also be negotiated up-front through the app. No surge pricing, no hidden fees.",
+    a: "Distance, vehicle type, and time of day — and you see the number before you book. Fares can also be negotiated up front in the app, by riders and drivers alike. No surge pricing. No hidden fees.",
   },
   {
     q: "How do I pay?",
-    a: "Pay in-app with MTN Mobile Money or Airtel Money. Cash is also accepted directly to the driver if you prefer.",
+    a: "MTN Mobile Money or Airtel Money, straight from the app. Prefer cash? Pay the driver directly — the same fare either way.",
   },
   {
     q: "Are drivers verified?",
-    a: "Every driver submits ID, vehicle insurance, and a vehicle authorization document. Our admin team reviews and approves each application before a driver can take any rides.",
+    a: "Every driver submits their ID, vehicle insurance, and a vehicle authorization document before they can take a single trip. Our team reviews and approves each application by hand — nobody signs up automatically.",
   },
   {
     q: "What if I need to cancel?",
-    a: "You can cancel any time before the driver arrives. Repeated cancellations after a driver is en route trigger a short cooldown — we do this to keep things fair for drivers.",
+    a: "Cancel any time before your driver arrives. Cancel repeatedly once a driver is already on the way and you will hit a short cooldown — that one is for the drivers, who turn down other trips to reach you.",
   },
   {
     q: "How do I become a driver?",
-    a: 'Tap "Drivers" in the nav and start the application. You\'ll need a valid licence, vehicle insurance, and an inspection certificate. Approval usually takes 24–48 hours.',
+    a: "Tap Drivers in the menu and start your application. You will need a valid licence, vehicle insurance, and an inspection certificate. Approval usually takes 24–48 hours.",
   },
 ];
 
@@ -54,7 +54,7 @@ export default function FAQ() {
             </h2>
             <p className="mt-5 text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
               Everything you need to know about riding, driving, paying, and
-              staying safe with Taravelis. Still not finding it?{" "}
+              staying safe with Rides. Still not finding it?{" "}
               <a
                 href="/contact"
                 className="font-medium text-primary underline-offset-4 hover:underline"

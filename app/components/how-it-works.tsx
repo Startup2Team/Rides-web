@@ -21,10 +21,10 @@ function Step01() {
       <div className="relative">
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 sm:h-96 sm:w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
         />
 
-        <div className="relative w-52 sm:w-60">
+        <div className="relative w-60">
           <span
             aria-hidden
             className="absolute left-[-3px] top-16 h-6 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-900 to-zinc-700"
@@ -261,11 +261,11 @@ function Step01() {
           Step 01
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
-          Book in seconds.
+          Book in Seconds
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Open the app, pick a moto, cab, hilux, or fuso, tap a destination.
-          Nearby drivers see your request instantly.
+          Open the app, choose your preferred vehicle, and complete your booking
+          in just a few taps.
         </p>
 
       </div>
@@ -283,10 +283,10 @@ function Step02() {
       <div className="relative">
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 sm:h-96 sm:w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
         />
 
-        <div className="relative w-52 sm:w-60">
+        <div className="relative w-60">
           {/* Side buttons */}
           <span aria-hidden className="absolute left-[-3px] top-16 h-6 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-900 to-zinc-700" />
           <span aria-hidden className="absolute left-[-3px] top-28 h-10 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-900 to-zinc-700" />
@@ -395,12 +395,11 @@ function Step02() {
           Step 02
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
-          First to accept, yours.
+          Driver Confirmed
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Your request goes out to every nearby driver at once. The first one
-          to accept gets the trip — and you watch them head your way on the
-          map.
+          Your request is securely matched with available drivers. Once
+          accepted, you can track your driver in real time.
         </p>
       </div>
     </div>
@@ -414,14 +413,17 @@ function Step03() {
       data-step="2"
       className="flex scroll-mt-[8rem] flex-col items-center gap-10 lg:flex-row lg:justify-center lg:gap-16 xl:gap-24"
     >
-      <div className="relative">
+      <div className="relative w-full max-w-80 sm:w-auto sm:max-w-none">
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-64 sm:h-80 sm:w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
         />
 
-        <div className="relative w-80 sm:w-96">
-          <div className="relative flex aspect-[4/5] flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-primary/10">
+        <div className="relative w-full sm:w-96">
+          {/* No locked aspect on mobile — this card's rows are content-sized, and
+              a fixed ratio clipped the counter-offer and final-offer bubbles at
+              narrow widths. It regains the ratio from sm up. */}
+          <div className="relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-primary/10 sm:aspect-[4/5]">
             <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3">
               <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 ring-2 ring-primary/30">
                 <svg
@@ -566,11 +568,11 @@ function Step03() {
           Step 03
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
-          Agree on the fare.
+          Confirm Your Fare
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          See the suggested price up front. Send a counter-offer if it doesn&apos;t
-          feel right. Lock it in before the ride starts — no surge surprises.
+          Review the fare before your trip begins and confirm your booking
+          with confidence.
         </p>
       </div>
     </div>
@@ -607,13 +609,15 @@ function Step04() {
       data-step="3"
       className="flex scroll-mt-[8rem] flex-col items-center gap-10 lg:flex-row-reverse lg:justify-center lg:gap-16 xl:gap-24"
     >
-      <div className="relative">
+      <div className="relative w-full max-w-80 sm:w-auto sm:max-w-none">
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-64 sm:h-80 sm:w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
         />
 
-        <div className="relative w-80 sm:w-96">
+        <div className="relative w-full sm:w-96">
+          {/* Keeps its ratio at every width — the contents are an SVG map that
+              scales cleanly, so there's no text to clip. */}
           <div className="relative aspect-[5/6] overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-primary/10">
             <svg
               viewBox="0 0 200 240"
@@ -779,11 +783,11 @@ function Step04() {
           Step 04
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
-          Track the whole trip.
+          Track Every Mile
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Watch your driver approach in real time. Share the live trip with
-          anyone you trust so they can see you arrive safely.
+          Follow your driver in real time and share your trip with trusted
+          contacts for added peace of mind.
         </p>
       </div>
     </div>
@@ -800,10 +804,10 @@ function Step05() {
       <div className="relative">
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-64 sm:h-80 sm:w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-3xl"
         />
 
-        <div className="relative w-52 sm:w-60">
+        <div className="relative w-60">
           <span
             aria-hidden
             className="absolute left-[-3px] top-16 h-6 w-[3px] rounded-l-sm bg-gradient-to-r from-zinc-900 to-zinc-700"
@@ -853,31 +857,9 @@ function Step05() {
                     </h4>
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/5 p-3 text-center">
-                    <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Total Fare
-                    </div>
-                    <div className="mt-0.5 text-xl font-bold tracking-tight text-foreground">
-                      3,800 RWF
-                    </div>
-                    <div className="mt-1 inline-flex items-center gap-1 text-[9px] text-muted-foreground">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="h-2.5 w-2.5 text-primary"
-                        aria-hidden
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      Paid via Mobile Money
-                    </div>
-                  </div>
-
-                  <div className="mt-2.5 flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+                  {/* Fare and payment removed — this step is about the rating
+                      alone, so the screen shouldn't re-tell the payment story. */}
+                  <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
                     <span>5.2 km</span>
                     <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
                     <span>14 min</span>
@@ -885,20 +867,26 @@ function Step05() {
                     <span>Aiden</span>
                   </div>
 
-                  <div className="mt-4">
-                    <div className="text-center text-xs font-semibold text-foreground">
+                  {/* Takes the space the fare card left, and centres itself in
+                      it so the screen doesn't read as top-heavy with a void
+                      above the button. */}
+                  <div className="flex flex-1 flex-col justify-center">
+                    <div className="text-center text-sm font-semibold text-foreground">
                       Rate your trip
                     </div>
-                    <div className="mt-2 flex justify-center gap-1.5 text-primary">
-                      <StarIcon filled className="h-6 w-6" />
-                      <StarIcon filled className="h-6 w-6" />
-                      <StarIcon filled className="h-6 w-6" />
-                      <StarIcon filled className="h-6 w-6" />
-                      <StarIcon className="h-6 w-6 text-muted-foreground/30" />
+                    <div className="mt-3.5 flex justify-center gap-2 text-primary">
+                      <StarIcon filled className="h-8 w-8" />
+                      <StarIcon filled className="h-8 w-8" />
+                      <StarIcon filled className="h-8 w-8" />
+                      <StarIcon filled className="h-8 w-8" />
+                      <StarIcon className="h-8 w-8 text-muted-foreground/30" />
                     </div>
+                    <p className="mt-3 text-center text-[10px] leading-relaxed text-muted-foreground">
+                      Your rating helps keep the community trusted.
+                    </p>
                   </div>
 
-                  <div className="mt-auto pt-3">
+                  <div className="pt-3">
                     <div className="flex h-11 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30">
                       Submit
                     </div>
@@ -918,11 +906,11 @@ function Step05() {
           Step 05
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
-          Pay and rate.
+          Rate Your Experience
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Wrap up with MoMo, Airtel, or cash to your driver. Rate the trip to
-          help keep quality high for everyone.
+          Share your feedback by rating your trip to help maintain a trusted
+          community.
         </p>
       </div>
     </div>
@@ -955,11 +943,12 @@ export default function HowItWorks() {
     <section id="how-it-works" className="relative py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-6">
         {/* Intro */}
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="max-w-2xl">
+          {/* Leading rule only — the trailing one reads as a stray dash once the
+              eyebrow is left-aligned. Matches the FAQ intro. */}
           <div className="inline-flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             <span className="h-px w-8 bg-foreground/30" />
             How it works
-            <span className="h-px w-8 bg-foreground/30" />
           </div>
           <h2 className="mt-5 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[3.25rem]">
             From request to rating, in 5 steps.
