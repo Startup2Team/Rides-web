@@ -30,7 +30,8 @@ export type RideDetail = {
     phone: string;
     vehicleType: string;
     plate: string;
-    rating: number;
+    /** null when the API doesn't return a rating (it currently never does). */
+    rating: number | null;
   } | null;
   pickup: string;
   /** Optional until the backend admin API starts returning ride coordinates (currently only mobile does). */
@@ -47,7 +48,8 @@ export type RideDetail = {
   startedAt: string;
   eta: string | null;
   fare: number;
-  paymentMethod: string;
+  /** null when the API doesn't return a payment method. */
+  paymentMethod: string | null;
   district: string;
   timeline: TimelineEvent[];
   negotiation: NegotiationOffer[];
@@ -383,7 +385,7 @@ export function RideDetailModal({
               role="Driver"
               name={ride.driver?.name ?? null}
               phone={ride.driver?.phone}
-              rating={ride.driver?.rating}
+              rating={ride.driver?.rating ?? undefined}
               meta={
                 ride.driver
                   ? `${ride.driver.vehicleType} · ${ride.driver.plate}`

@@ -17,8 +17,10 @@ export type Permission =
   | "/admin/safety-center"
   | "/admin/support"
   | "/admin/inbox"
+  | "/admin/notifications"
   | "/admin/packages"
   | "/admin/campaigns"
+  | "/admin/partners"
   | "/admin/purchases"
   | "/admin/package-payments"
   | "/admin/entitlements"
@@ -64,8 +66,10 @@ export const SIDEBAR_ITEMS: {
   { href: "/admin/safety-center", label: "Safety Center", group: "Trust" },
   { href: "/admin/support", label: "Support", group: "Trust" },
   { href: "/admin/inbox", label: "Inbox", group: "Trust" },
+  { href: "/admin/notifications", label: "Notifications", group: "Trust" },
   { href: "/admin/packages", label: "Packages", group: "Monetization" },
   { href: "/admin/campaigns", label: "Campaigns", group: "Monetization" },
+  { href: "/admin/partners", label: "Partners", group: "Monetization" },
   { href: "/admin/purchases", label: "Purchases", group: "Monetization" },
   { href: "/admin/package-payments", label: "Package Payments", group: "Monetization" },
   { href: "/admin/entitlements", label: "Entitlements", group: "Monetization" },
@@ -106,6 +110,7 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       "/admin/reports",
       "/admin/packages",
       "/admin/campaigns",
+      "/admin/partners",
       "/admin/purchases",
       "/admin/package-payments",
       "/admin/audit-logs",
@@ -126,8 +131,10 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       "/admin/safety-center",
       "/admin/support",
       "/admin/inbox",
+      "/admin/notifications",
       "/admin/packages",
       "/admin/campaigns",
+      "/admin/partners",
       "/admin/purchases",
       "/admin/entitlements",
       "/admin/audit-logs",
@@ -142,6 +149,7 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       "/admin",
       "/admin/support",
       "/admin/inbox",
+      "/admin/notifications",
       "/admin/entitlements",
       "/admin/audit-logs",
     ],
@@ -165,8 +173,10 @@ export function normalizePermissions(raw: unknown): Permission[] {
     "/admin/safety-center",
     "/admin/support",
     "/admin/inbox",
+    "/admin/notifications",
     "/admin/packages",
     "/admin/campaigns",
+    "/admin/partners",
     "/admin/purchases",
     "/admin/package-payments",
     "/admin/entitlements",

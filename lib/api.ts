@@ -1,38 +1,106 @@
 import { clearToken, getToken } from "./auth";
+import { markSessionActivity } from "./session-activity";
 import {
   clusterWaitingRides,
   clustersToHeatZones,
   type LiveDemandHeatZone,
 } from "./live-demand-heatmap";
-import {
-  MOCK_SATISFACTION,
-  mockFunnel,
-  mockRidesDaily,
-  mockVehicleMix,
-  mockActivityHeatmap,
-  mockDriverPerformance,
-} from "./mock-analytics";
-import { MOCK_LIVE_RIDES, MOCK_LIVE_RIDE_DETAILS, MOCK_LIVE_RIDES_STATS } from "./mock-live-rides";
-import {
-  MOCK_NEGOTIATIONS,
-  MOCK_NEGOTIATION_DETAILS,
-  MOCK_NEGOTIATIONS_STATS,
-} from "./mock-negotiations";
-import { MOCK_REPORTS, MOCK_REPORTS_STATS } from "./mock-reports";
-import type {
-  Campaign as AdminCampaignView,
-  CampaignAudience,
-  CampaignStatus,
-  Entitlement,
-  EntitlementTransactionKind,
-  PurchaseSnapshot,
-  PurchaseStatus,
-  VehicleType as MonetizationVehicleType,
-} from "./packages-mock";
 
-export const NO_BACKEND = !process.env.NEXT_PUBLIC_API_BASE_URL && !process.env.NEXT_PUBLIC_API_URL;
+// "rifani" (a.k.a. lifani) is the local name for the tuk-tuk; TUK_TUK is the
+// canonical backend code.
+export type MonetizationVehicleType = "moto" | "cab" | "hilux" | "fuso" | "rifani";
+export type CampaignAudience = "all" | "first-purchase" | "vehicle-type" | "new_drivers" | "high_performers" | "inactive_drivers";
+export type CampaignStatus = "active" | "scheduled" | "ended" | "draft" | "expired" | "archived";
+export type EntitlementTransactionKind = "PURCHASE" | "CONSUMPTION" | "EXPIRATION" | "ADJUSTMENT" | "admin-grant";
+export type PurchaseStatus = "COMPLETED" | "PENDING" | "FAILED" | "EXPIRED" | "paid" | "completed";
+
+export type Entitlement = {
+  id: string;
+  driverId: string;
+  driverName: string;
+  driverPhone?: string;
+  vehicleId?: string;
+  vehicleType: string;
+  vehiclePlate?: string;
+  ridesRemaining: number;
+  bonusRidesRemaining: number;
+  totalGranted: number;
+  totalConsumed: number;
+  transactions: {
+    id: string;
+    entitlementId: string;
+    kind: EntitlementTransactionKind;
+    ridesDelta: number;
+    bonusRidesDelta: number;
+    ridesAfter: number;
+    bonusRidesAfter: number;
+    sourceRef: string;
+    reason?: string;
+    performedBy?: string;
+    createdAt: string;
+  }[];
+};
+
+export type PurchaseSnapshot = {
+  id: string;
+  driverId: string;
+  driverName: string;
+  driverPhone?: string;
+  vehicleId?: string;
+  vehicleType?: string;
+  vehiclePlate?: string;
+  packageId: string;
+  packageName: string;
+  packageVersion?: number;
+  campaignId?: string | null;
+  campaignName?: string | null;
+  pricePaid?: number;
+  ridesGranted?: number;
+  bonusRidesGranted?: number;
+  amountRwf?: number;
+  paymentMethod?: string;
+  paymentProvider?: string | null;
+  paymentReference?: string;
+  status: PurchaseStatus;
+  createdAt: string;
+  paidAt?: string | null;
+};
+
+export type Campaign = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  status: CampaignStatus;
+  audience: CampaignAudience;
+  vehicleTypes?: MonetizationVehicleType[] | null;
+  packageIds?: string[] | null;
+  priceOverride?: number | null;
+  ridesOverride?: number | null;
+  bonusRidesOverride?: number | null;
+  startsAt: string;
+  endsAt: string;
+  createdAt: string;
+  createdBy?: string;
+};
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
+
+export function resolveBackendUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) {
+    return path;
+  }
+  let origin = "http://localhost:8080";
+  try {
+    const url = new URL(BASE_URL);
+    origin = url.origin;
+  } catch {
+    // fallback
+  }
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${origin}${cleanPath}`;
+}
 
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
@@ -56,6 +124,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     headers,
     body: body !== undefined ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
   });
+
+  // A backend call that the server accepted means the admin is still working,
+  // even if they have not touched the mouse — reviewing documents or watching
+  // the live map fires no input events. Reported before the 401 branch is
+  // irrelevant: an unauthorized call proves nothing about presence.
+  if (res.status !== 401) {
+    markSessionActivity();
+  }
 
   if (res.status === 401) {
     clearToken();
@@ -231,14 +307,16 @@ export type DashboardWindow =
   | { days?: number; from?: undefined; to?: undefined }
   | { from: string; to: string; days?: undefined };
 
-export const getDashboard = (window?: DashboardWindow) => {
+export const getDashboard = async (window?: DashboardWindow): Promise<DashboardSnapshot> => {
   let path = "/admin/dashboard";
+
   if (window?.from && window.to) {
     const qs = new URLSearchParams({ from: window.from, to: window.to }).toString();
     path = `/admin/dashboard?${qs}`;
   } else if (window?.days && window.days > 0) {
     path = `/admin/dashboard?days=${window.days}`;
   }
+
   return request<DashboardSnapshot>(path);
 };
 
@@ -436,7 +514,6 @@ export type SatisfactionData = {
 
 export const getAnalyticsOverview = () => request<AnalyticsOverviewFull>("/admin/analytics/overview");
 export const getRidesDaily = async (days = 30, vehicle?: string, periodOffsetDays = 0) => {
-  if (NO_BACKEND) return mockRidesDaily(days, vehicle, periodOffsetDays);
   const qs = new URLSearchParams({ days: String(days) });
   if (vehicle) qs.set("vehicle", vehicle);
   if (periodOffsetDays > 0) qs.set("offset", String(periodOffsetDays));
@@ -446,7 +523,6 @@ export const getRidesWeekly = () => request<DailyRidePoint[]>("/admin/analytics/
 export const getRevenueBreakdown = () =>
   request<Record<string, unknown>>("/admin/analytics/revenue/breakdown");
 export const getDriverPerformance = async (vehicle?: string) => {
-  if (NO_BACKEND) return mockDriverPerformance(vehicle);
   const qs = vehicle ? `?vehicle=${encodeURIComponent(vehicle)}` : "";
   return request<DriverPerf[]>(`/admin/analytics/drivers/performance${qs}`);
 };
@@ -460,7 +536,6 @@ export type ActivityCell = { day: number; hour: number; count: number };
 export const getHeatmap = () => request<HeatPoint[]>("/admin/analytics/heatmap");
 export const getHeatmapZones = () => request<HeatZone[]>("/admin/analytics/heatmap/zones");
 export const getActivityHeatmap = async (vehicle?: string) => {
-  if (NO_BACKEND) return mockActivityHeatmap(vehicle);
   const qs = vehicle ? `?vehicle=${encodeURIComponent(vehicle)}` : "";
   return request<ActivityCell[]>(`/admin/analytics/activity-heatmap${qs}`);
 };
@@ -469,10 +544,6 @@ export type { LiveDemandCluster, LiveDemandHeatZone } from "./live-demand-heatma
 
 /** Live demand from riders waiting for pickup — powers the heatmap "Now" view. */
 export const getLiveDemandHeatmap = async (): Promise<LiveDemandHeatZone[]> => {
-  if (NO_BACKEND) {
-    return clustersToHeatZones(clusterWaitingRides(MOCK_LIVE_RIDES));
-  }
-
   try {
     const map = await getLiveMap();
     const points = map.heatPoints ?? [];
@@ -498,19 +569,16 @@ export const getLiveDemandHeatmap = async (): Promise<LiveDemandHeatZone[]> => {
 export const getCancellations = () =>
   request<Record<string, unknown>>("/admin/analytics/cancellations");
 export const getFunnel = async (days = 30, vehicle?: string) => {
-  if (NO_BACKEND) return mockFunnel(days, vehicle);
   const qs = new URLSearchParams({ days: String(days) });
   if (vehicle) qs.set("vehicle", vehicle);
   return request<FunnelData>(`/admin/analytics/funnel?${qs}`);
 };
 export const getVehicleMix = async (days = 30, vehicle?: string) => {
-  if (NO_BACKEND) return mockVehicleMix(days, vehicle);
   const qs = new URLSearchParams({ days: String(days) });
   if (vehicle) qs.set("vehicle", vehicle);
   return request<VehicleMixItem[]>(`/admin/analytics/vehicle-mix?${qs}`);
 };
 export const getSatisfaction = async () => {
-  if (NO_BACKEND) return MOCK_SATISFACTION;
   return request<SatisfactionData>("/admin/analytics/satisfaction");
 };
 
@@ -635,10 +703,6 @@ export type ReferredDriver = {
 };
 
 export async function getDriverReferrals(driverId: string): Promise<ReferredDriver[]> {
-  if (NO_BACKEND) {
-    const { getLocalReferredDrivers } = await import("./referrals");
-    return getLocalReferredDrivers(driverId);
-  }
   return request<ReferredDriver[]>(`/admin/drivers/${driverId}/referrals`);
 }
 
@@ -707,10 +771,10 @@ export const requestDriverMoreInfo = (
     body: { reason, documents },
   });
 
-export const suspendDriver = (id: string, durationHours: number) =>
+export const suspendDriver = (id: string, durationHours: number = 24, reason?: string) =>
   request<void>(`/admin/drivers/${id}/suspend`, {
     method: "POST",
-    body: { duration_hours: durationHours },
+    body: { duration_hours: durationHours, reason },
   });
 
 export const reinstateDriver = (id: string) =>
@@ -780,10 +844,10 @@ export const getCustomer = (id: string) => request<CustomerDetail>(`/admin/custo
 export const banCustomer = (id: string, reason: string) =>
   request<void>(`/admin/customers/${id}/ban`, { method: "PATCH", body: { reason } });
 
-export const suspendCustomer = (id: string, durationHours: number) =>
-  request<void>(`/admin/customers/${id}/suspend`, {
+export const suspendCustomer = (id: string, durationHours: number = 24, reason?: string) =>
+  request<void>(`/admin/users/${id}/suspend`, {
     method: "POST",
-    body: { duration_hours: durationHours },
+    body: { duration_hours: durationHours, reason },
   });
 
 export const reinstateCustomer = (id: string) =>
@@ -858,39 +922,21 @@ export const getRides = (params: Record<string, string> = {}) => {
 };
 
 export const getLiveRides = async (params: Record<string, string> = {}): Promise<RidesResponse> => {
-  if (NO_BACKEND) {
-    return {
-      rides: MOCK_LIVE_RIDES,
-      total: MOCK_LIVE_RIDES.length,
-    };
-  }
   const qs = new URLSearchParams(params).toString();
   return request<RidesResponse>(`/admin/rides/live${qs ? `?${qs}` : ""}`);
 };
 
 export const getLiveRidesStats = async (): Promise<LiveRidesStats> => {
-  if (NO_BACKEND) {
-    return MOCK_LIVE_RIDES_STATS;
-  }
   return request<LiveRidesStats>("/admin/rides/live/stats");
 };
 
 export const getRide = (id: string) => request<RideDetail>(`/admin/rides/${id}`);
 
 export const getLiveRide = async (id: string): Promise<RideDetail> => {
-  if (NO_BACKEND) {
-    const detail = MOCK_LIVE_RIDE_DETAILS[id];
-    if (detail) return detail;
-    throw new Error("Mock live ride not found");
-  }
   return request<RideDetail>(`/admin/rides/live/${id}`);
 };
 
 export const interveneRide = async (id: string, action: string, reason: string): Promise<void> => {
-  if (NO_BACKEND) {
-    console.log(`[Mock API] Intervened ride ${id} with action=${action}, reason=${reason}`);
-    return;
-  }
   return request<void>(`/admin/rides/live/${id}/intervene`, {
     method: "POST",
     body: { action, reason },
@@ -928,26 +974,15 @@ export type NegotiationsStats = {
 };
 
 export const getNegotiations = async (params: Record<string, string> = {}): Promise<NegotiationsResponse> => {
-  if (NO_BACKEND) {
-    return { negotiations: MOCK_NEGOTIATIONS, total: MOCK_NEGOTIATIONS.length };
-  }
   const qs = new URLSearchParams(params).toString();
   return request<NegotiationsResponse>(`/admin/negotiations${qs ? `?${qs}` : ""}`);
 };
 
 export const getNegotiationsStats = async (): Promise<NegotiationsStats> => {
-  if (NO_BACKEND) {
-    return MOCK_NEGOTIATIONS_STATS;
-  }
   return request<NegotiationsStats>("/admin/negotiations/stats");
 };
 
 export const getNegotiation = async (id: string): Promise<RideDetail> => {
-  if (NO_BACKEND) {
-    const detail = MOCK_NEGOTIATION_DETAILS[id];
-    if (detail) return detail;
-    throw new Error("Mock negotiation not found");
-  }
   return request<RideDetail>(`/admin/negotiations/${id}`);
 };
 
@@ -982,11 +1017,15 @@ export type TransactionsResponse = {
   offset: number;
 };
 
-export const getRevenue = (period = "today") =>
-  request<RevenueOverview>(`/admin/revenue?period=${period}`);
+export const getRevenue = async (period = "today", from?: string, to?: string): Promise<RevenueOverview> => {
+  const qs = from && to ? `&from=${from}&to=${to}` : "";
+  return request<RevenueOverview>(`/admin/revenue?period=${period}${qs}`);
+};
 
-export const getRevenueKPIs = (period = "today") =>
-  request<Record<string, unknown>>(`/admin/revenue/kpis?period=${period}`);
+export const getRevenueKPIs = async (period = "today", from?: string, to?: string) => {
+  const qs = from && to ? `&from=${from}&to=${to}` : "";
+  return request<Record<string, unknown>>(`/admin/revenue/kpis?period=${period}${qs}`);
+};
 
 export const getTransactions = (params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
@@ -1147,6 +1186,69 @@ export const resolveIncident = (id: string) =>
 export const addIncidentMessage = (id: string, message: string) =>
   request<void>(`/admin/incidents/${id}/message`, { method: "POST", body: { message } });
 
+// ── Push Notification Campaigns ──────────────────────────────────────────
+
+export type NotificationCampaignAudience =
+  | "ALL"
+  | "DRIVERS"
+  | "CUSTOMERS"
+  | "DRIVER_MOTO"
+  | "DRIVER_CAB"
+  | "DRIVER_HILUX"
+  | "DRIVER_FUSO"
+  | "DRIVER_RIFANI"
+  | "SINGLE_DRIVER";
+
+export type BackendNotificationCampaign = {
+  id: string;
+  title: string;
+  body: string;
+  audience: NotificationCampaignAudience;
+  status: "SENT" | "SCHEDULED" | "DRAFT";
+  /** null until the campaign actually goes out (drafts, pending schedules). */
+  sent_at: string | null;
+  scheduled_at?: string | null;
+  /** users.id of the recipient, for SINGLE_DRIVER campaigns. */
+  target_driver_id?: string;
+  created_by: string;
+  created_at: string;
+};
+
+export type CampaignsResponse = {
+  notifications: BackendNotificationCampaign[];
+  total: number;
+};
+
+export const getNotificationCampaigns = (params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request<CampaignsResponse>(`/admin/notifications${qs ? `?${qs}` : ""}`);
+};
+
+export const createNotificationCampaign = (data: {
+  title: string;
+  body: string;
+  audience: string;
+  /** Omit to send immediately. DRAFT and SCHEDULED are recorded, not delivered. */
+  status?: "SENT" | "DRAFT" | "SCHEDULED";
+  /** ISO timestamp; required with SCHEDULED. */
+  scheduled_at?: string | null;
+  /** Driver profile ID or user ID; required with audience SINGLE_DRIVER. */
+  target_driver_id?: string;
+}) => request<BackendNotificationCampaign>("/admin/notifications", { method: "POST", body: data });
+
+/** Deliver an existing draft/scheduled campaign now (no duplicate history row). */
+export const sendNotificationCampaign = (id: string) =>
+  request<BackendNotificationCampaign>(`/admin/notifications/${id}/send`, { method: "POST" });
+
+export const notifyDriver = (driverId: string, data: { title: string; body: string; reason?: string }) =>
+  request<{ id: string; status: string; message?: string }>(`/admin/drivers/${driverId}/notify`, {
+    method: "POST",
+    body: data,
+  });
+
+export const deleteNotificationCampaign = (id: string) =>
+  request<void>(`/admin/notifications/${id}`, { method: "DELETE" });
+
 // ── Support Tickets ───────────────────────────────────────────────────────
 
 export type TicketMessage = {
@@ -1241,7 +1343,9 @@ export const getInbox = (params: Record<string, string> = {}) => {
 export const getMessage = (id: string) => request<InboxMessage>(`/admin/inbox/${id}`);
 
 export const replyToMessage = (id: string, message: string) =>
-  request<void>(`/admin/inbox/${id}/reply`, { method: "POST", body: { reply_body: message } });
+  // The API field is `body` (the DB column happens to be reply_body) — sending
+  // reply_body made every reply 400.
+  request<void>(`/admin/inbox/${id}/reply`, { method: "POST", body: { body: message } });
 
 export const archiveMessage = (id: string) =>
   request<void>(`/admin/inbox/${id}/archive`, { method: "POST" });
@@ -1251,6 +1355,9 @@ export const markSpam = (id: string) =>
 
 export const deleteMessage = (id: string) =>
   request<void>(`/admin/inbox/${id}`, { method: "DELETE" });
+
+export const updateMessageStatus = (id: string, status: string) =>
+  request<void>(`/admin/inbox/${id}`, { method: "PATCH", body: { status } });
 
 // ── Reports ───────────────────────────────────────────────────────────────
 
@@ -1286,14 +1393,10 @@ export type ReportsStats = {
 };
 
 export const getReportsStats = async () => {
-  if (NO_BACKEND) return MOCK_REPORTS_STATS;
   return request<ReportsStats>("/admin/reports/stats");
 };
 
 export const getReports = async (params: Record<string, string> = {}) => {
-  if (NO_BACKEND) {
-    return { reports: MOCK_REPORTS, total: MOCK_REPORTS.length };
-  }
   const qs = new URLSearchParams(params).toString();
   return request<{ reports: BackendReport[]; total: number }>(`/admin/reports${qs ? `?${qs}` : ""}`);
 };
@@ -1327,7 +1430,6 @@ export const getDriverRegistrationReport = async (
   const { buildDriverRegistrationReport, buildDriverRegistrationReportFromDrivers } = await import(
     "./driver-registration-report"
   );
-  if (NO_BACKEND) return buildDriverRegistrationReport(filters);
   try {
     const res = await getDrivers({ limit: "1000" });
     return buildDriverRegistrationReportFromDrivers(res.drivers, filters);
@@ -1357,6 +1459,14 @@ export const updateNegotiationSettings = (data: Record<string, unknown>) =>
 
 export const updateFareSettings = (data: Record<string, unknown>) =>
   request<void>("/admin/settings/fares", { method: "PUT", body: data });
+
+// These two routes have always existed; the console edited the toggles and then
+// dropped them on Save because no wrapper called them.
+export const updateIntegrationSettings = (data: Record<string, unknown>) =>
+  request<void>("/admin/settings/integrations", { method: "PUT", body: data });
+
+export const updateNotificationSettings = (data: Record<string, unknown>) =>
+  request<void>("/admin/settings/notifications", { method: "PUT", body: data });
 
 // ── Pricing ───────────────────────────────────────────────────────────────
 
@@ -1397,11 +1507,19 @@ export const inviteAdmin = (name: string, email: string, roleId: string, passwor
     body: { name, email, role_id: roleId, ...(password ? { password } : {}) },
   });
 
+
+
 /** Sets initial password for an invited admin (required before they can sign in). */
 export const setMemberPassword = (memberId: string, password: string) =>
   request<void>(`/admin/team/members/${memberId}/set-password`, {
     method: "POST",
     body: { password },
+  });
+
+export const sendWelcomeEmail = (memberId: string, tempPassword: string, loginUrl: string) =>
+  request<void>(`/admin/team/members/${memberId}/welcome-email`, {
+    method: "POST",
+    body: { temp_password: tempPassword, login_url: loginUrl },
   });
 
 export const updateMemberRole = (id: string, roleId: string) =>
@@ -1455,10 +1573,13 @@ export type Package = {
   created_at: string;
 };
 
-export const getAdminPackages = () =>
-  request<Package[]>("/admin/packages");
 
-export const createPackage = (data: {
+
+export const getAdminPackages = async (): Promise<Package[]> => {
+  return request<Package[]>("/admin/packages");
+};
+
+export const createPackage = async (data: {
   name: string;
   vehicle_type_code: string;
   ride_count: number;
@@ -1466,10 +1587,11 @@ export const createPackage = (data: {
   validity_days: number;
   price_rwf: number;
   is_promotional: boolean;
-}) =>
-  request<Package>("/admin/packages", { method: "POST", body: data });
+}): Promise<Package> => {
+  return request<Package>("/admin/packages", { method: "POST", body: data });
+};
 
-export const updatePackage = (
+export const updatePackage = async (
   id: string,
   data: {
     name?: string;
@@ -1478,17 +1600,67 @@ export const updatePackage = (
     validity_days?: number;
     price_rwf?: number;
   }
-) =>
-  request<Package>(`/admin/packages/${id}`, { method: "PATCH", body: data });
+): Promise<Package> => {
+  return request<Package>(`/admin/packages/${id}`, { method: "PATCH", body: data });
+};
 
-export const togglePackage = (id: string, isActive: boolean) =>
-  request<{ status: string }>(`/admin/packages/${id}/toggle`, {
+export const togglePackage = async (id: string, isActive: boolean) => {
+  return request<{ status: string }>(`/admin/packages/${id}/toggle`, {
     method: "POST",
     body: { is_active: isActive },
   });
+};
 
-export const deletePackage = (id: string) =>
-  request<{ status: string }>(`/admin/packages/${id}`, { method: "DELETE" });
+export const deletePackage = async (id: string) => {
+  return request<{ status: string }>(`/admin/packages/${id}`, { method: "DELETE" });
+};
+
+// ── Manual Package Payment Claims (Admin Review) ──────────────────────────────────
+export type ManualClaim = {
+  id: string;
+  driver_id: string;
+  vehicle_id?: string | null;
+  vehicle_type: string;
+  package_name: string;
+  expected_amount_rwf: number;
+  provider: string;
+  payer_phone_number?: string | null;
+  transaction_reference?: string | null;
+  proof_image_id?: string | null;
+  status: "draft" | "submitted" | "approved" | "rejected" | "expired" | "cancelled";
+  submitted_at?: string | null;
+  created_at: string;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  rejection_reason?: string | null;
+  clarification_message?: string | null;
+};
+
+export const getAdminManualClaims = async (status = "submitted", limit = 100): Promise<{ items: ManualClaim[] }> => {
+  return request<{ items: ManualClaim[] }>(`/admin/package-payments/manual-claims?status=${status}&limit=${limit}`);
+};
+
+export const approveManualClaim = async (claimId: string): Promise<{ claim: ManualClaim }> => {
+  return request<{ claim: ManualClaim }>(`/admin/package-payments/manual-claims/${claimId}/approve`, {
+    method: "POST",
+  });
+};
+
+export const rejectManualClaim = async (
+  claimId: string,
+  reason: string,
+  reasonCode = "invalid_receipt",
+  clarificationMessage = ""
+): Promise<{ claim: ManualClaim }> => {
+  return request<{ claim: ManualClaim }>(`/admin/package-payments/manual-claims/${claimId}/reject`, {
+    method: "POST",
+    body: {
+      reason_code: reasonCode,
+      reason,
+      clarification_message: clarificationMessage,
+    },
+  });
+};
 
 // ── Campaigns ─────────────────────────────────────────────────────────────
 // The backend returns AdminCampaign (snake_case, type/target model). The
@@ -1517,9 +1689,12 @@ const VEHICLE_CODE_TO_VIEW: Record<string, MonetizationVehicleType> = {
   CAB_TAXI: "cab",
   LIGHT_HILUX: "hilux",
   HEAVY_FUSO: "fuso",
+  // Without this, every tuk-tuk purchase/entitlement fell through `?? "moto"`
+  // and was displayed and counted as a moto.
+  TUK_TUK: "rifani",
 };
 
-function mapCampaign(c: BackendCampaign): AdminCampaignView {
+function mapCampaign(c: BackendCampaign): Campaign {
   const audience: CampaignAudience =
     c.type === "VEHICLE_TYPE" ? "vehicle-type" : c.type === "FIRST_PURCHASE" ? "first-purchase" : "all";
   const vt = c.target_vehicle_type_code ? VEHICLE_CODE_TO_VIEW[c.target_vehicle_type_code] : undefined;
@@ -1542,9 +1717,35 @@ function mapCampaign(c: BackendCampaign): AdminCampaignView {
   };
 }
 
-export const getAdminCampaigns = async (): Promise<AdminCampaignView[]> => {
+export const getAdminCampaigns = async (): Promise<Campaign[]> => {
   const list = await request<BackendCampaign[]>("/admin/campaigns");
   return (list ?? []).map(mapCampaign);
+};
+
+export const createCampaign = async (data: {
+  name: string;
+  description: string;
+  audience: CampaignAudience;
+  vehicleTypes: MonetizationVehicleType[] | null;
+  packageIds: string[] | null;
+  priceOverride: number | null;
+  ridesOverride: number | null;
+  bonusRidesOverride: number | null;
+  startsAt: string;
+  endsAt: string;
+}): Promise<Campaign> => {
+  return request<Campaign>("/admin/campaigns", {
+    method: "POST",
+    body: data,
+  });
+};
+
+export const updateCampaignStatus = async (campaignId: string, status: CampaignStatus): Promise<Campaign> => {
+  return request<Campaign>(`/admin/campaigns/${campaignId}/status`, {
+    method: "POST",
+    // ride_campaigns.status is matched as 'ACTIVE' by the mobile catalog query.
+    body: { status: status.toUpperCase() },
+  });
 };
 
 // ── Purchases ─────────────────────────────────────────────────────────────
@@ -1589,8 +1790,6 @@ function mapPurchase(p: BackendPurchase): PurchaseSnapshot {
     driverName: p.driver_name ?? "Unknown driver",
     driverPhone: p.driver_phone,
     vehicleId: p.vehicle_id ?? "",
-    // The console's VehicleType enum has no tuk-tuk; unknown codes fall back to
-    // "moto" so labels/filters still render (rare edge case).
     vehicleType: VEHICLE_CODE_TO_VIEW[p.vehicle_type_code] ?? "moto",
     vehiclePlate: p.vehicle_plate ?? "—",
     packageId: p.package_id,
@@ -1614,6 +1813,12 @@ export const getAdminPurchases = async (): Promise<PurchaseSnapshot[]> => {
   return (list ?? []).map(mapPurchase);
 };
 
+export const reconcilePurchase = async (purchaseId: string): Promise<PurchaseSnapshot> => {
+  return request<PurchaseSnapshot>(`/admin/packages-purchases/${purchaseId}/reconcile`, {
+    method: "POST",
+  });
+};
+
 // ── Entitlements ──────────────────────────────────────────────────────────
 // GET /admin/entitlements → { entitlements: AdminEntitlement[] }. Mapped to the
 // console's Entitlement view. The id is "driver_id:vehicle_type_id".
@@ -1634,7 +1839,8 @@ type BackendEntitlement = {
   driver_id: string;
   driver_name: string;
   driver_phone: string;
-  vehicle_type_code: string;
+  /** Handler's json tag is `vehicle_type` (not _code) — see AdminEntitlementRow. */
+  vehicle_type: string;
   vehicle_plate: string;
   rides_remaining: number;
   bonus_rides_remaining: number;
@@ -1650,7 +1856,7 @@ function mapEntitlement(e: BackendEntitlement): Entitlement {
     driverName: e.driver_name,
     driverPhone: e.driver_phone,
     vehicleId: "",
-    vehicleType: VEHICLE_CODE_TO_VIEW[e.vehicle_type_code] ?? "moto",
+    vehicleType: VEHICLE_CODE_TO_VIEW[e.vehicle_type] ?? "moto",
     vehiclePlate: e.vehicle_plate,
     ridesRemaining: e.rides_remaining,
     bonusRidesRemaining: e.bonus_rides_remaining,
@@ -1673,23 +1879,31 @@ function mapEntitlement(e: BackendEntitlement): Entitlement {
 }
 
 export const getAdminEntitlements = async (): Promise<Entitlement[]> => {
-  const res = await request<{ entitlements: BackendEntitlement[] }>("/admin/entitlements");
-  return (res?.entitlements ?? []).map(mapEntitlement);
+  // The handler responds with a bare array (request() already unwraps `data`),
+  // so reading `.entitlements` off it yielded undefined and an empty console.
+  // include_transactions is required before the ledger rows are populated.
+  const res = await request<BackendEntitlement[]>("/admin/entitlements?include_transactions=true");
+  return (Array.isArray(res) ? res : []).map(mapEntitlement);
 };
 
-// Grant credits to a driver's vehicle-type entitlement. driverId + vehicleTypeId
-// come from splitting the entitlement id ("driver_id:vehicle_type_id").
-export const grantEntitlement = (
-  driverId: string,
-  vehicleTypeId: string,
+/** Grant rides to one driver entitlement. The API resolves the driver and
+ *  vehicle type from the entitlement id itself. */
+export const grantEntitlement = async (
+  entitlementId: string,
   rides: number,
   bonusRides: number,
   reason: string,
-) =>
-  request<void>("/admin/entitlements/grant", {
+) => {
+  return request<{ status: string }>("/admin/entitlements/grant", {
     method: "POST",
-    body: { driver_id: driverId, vehicle_type_id: vehicleTypeId, rides, bonus_rides: bonusRides, reason },
+    body: {
+      entitlement_id: entitlementId,
+      rides_delta: rides,
+      bonus_rides_delta: bonusRides,
+      reason,
+    },
   });
+};
 
 // ── Audit Logs ────────────────────────────────────────────────────────────
 
@@ -1833,3 +2047,69 @@ export const clearDeviceCollision = (userID: string, deviceID: string) =>
 
 export const getAccountTimeline = (userID: string, limit?: number) =>
   request<any>(`/admin/users/${userID}/timeline${limit !== undefined ? `?limit=${limit}` : ""}`);
+
+// ── Partners & Adverts ───────────────────────────────────────────────────
+
+export type ApiPartner = {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  status: "active" | "inactive";
+  createdAt: string;
+};
+
+export type ApiAdvert = {
+  id: string;
+  partnerId: string;
+  imageUrl: string | null;
+  headline: string;
+  ctaLabel: string;
+  ctaLink: string;
+  active: boolean;
+  startDate: string | null;
+  endDate: string | null;
+  priority: number;
+  createdAt: string;
+};
+
+export const getPartners = () => request<ApiPartner[]>("/admin/partners");
+
+export const savePartner = (partner: Partial<ApiPartner>, id?: string) => {
+  if (id) {
+    return request<ApiPartner>(`/admin/partners/${id}`, {
+      method: "PATCH",
+      body: partner,
+    });
+  } else {
+    return request<ApiPartner>("/admin/partners", {
+      method: "POST",
+      body: partner,
+    });
+  }
+};
+
+export const removePartner = (id: string) =>
+  request<void>(`/admin/partners/${id}`, { method: "DELETE" });
+
+export const getAdverts = () => request<ApiAdvert[]>("/admin/adverts");
+
+export const saveAdvert = (advert: Partial<ApiAdvert>, id?: string) => {
+  if (id) {
+    return request<ApiAdvert>(`/admin/adverts/${id}`, {
+      method: "PATCH",
+      body: advert,
+    });
+  } else {
+    return request<ApiAdvert>("/admin/adverts", {
+      method: "POST",
+      body: advert,
+    });
+  }
+};
+
+export const removeAdvert = (id: string) =>
+  request<void>(`/admin/adverts/${id}`, { method: "DELETE" });
+

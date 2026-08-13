@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Avatar, Card } from "../_components";
+import { AdminPageHeader, Avatar, Card } from "../_components";
+import { NegotiationsStatsCards } from "./negotiations-stats";
 import {
   PeriodFilter,
   periodLabel,
@@ -21,14 +22,14 @@ import {
   getNegotiation,
   type Negotiation as ApiNegotiation,
   type RideDetail as ApiRideDetail,
-  NO_BACKEND,
 } from "@/lib/api";
-import { MOCK_NEGOTIATIONS, MOCK_NEGOTIATION_DETAILS } from "@/lib/mock-negotiations";
 import {
   type CommFilter,
   communicationMode,
   matchesCommFilter,
 } from "@/lib/negotiation-rules";
+import { GenerateReportButton } from "../reports/generate-report-button";
+import type { ReportMeta } from "../reports/report-content";
 
 const TRANSPORT_DISPLAY: Record<string, string> = {
   MOTO_BIKE: "Moto Bike", CAB_TAXI: "Cab Taxi",
@@ -357,10 +358,9 @@ export function NegotiationsConsole() {
   useEffect(() => {
     getNegotiations({ limit: "100", offset: "0" })
       .then((res) => {
-        const rows = res.negotiations?.length ? res.negotiations : (NO_BACKEND ? MOCK_NEGOTIATIONS : []);
-        setNegotiations(rows.map(mapApiNegotiation));
+        setNegotiations((res.negotiations ?? []).map(mapApiNegotiation));
       })
-      .catch(() => setNegotiations(NO_BACKEND ? MOCK_NEGOTIATIONS.map(mapApiNegotiation) : []));
+      .catch(() => setNegotiations([]));
   }, []);
 
   const openNegotiation = (id: string) => {
@@ -371,14 +371,7 @@ export function NegotiationsConsole() {
           prev.map((n) => (n.id === id ? mergeDetail(n, detail) : n))
         );
       })
-      .catch(() => {
-        if (!NO_BACKEND) return;
-        const detail = MOCK_NEGOTIATION_DETAILS[id];
-        if (!detail) return;
-        setNegotiations((prev) =>
-          prev.map((n) => (n.id === id ? mergeDetail(n, detail) : n))
-        );
-      });
+      .catch(() => null);
   };
 
   const filtered = useMemo(() => {
@@ -411,8 +404,27 @@ export function NegotiationsConsole() {
 
   const viewing = viewingId ? negotiations.find((n) => n.id === viewingId) ?? null : null;
 
+  const reportMeta: ReportMeta = useMemo(
+    () => ({
+      scopeLabel: periodText,
+      period,
+      customRange,
+      filters: { vehicle: vehicleFilter, status: "all" },
+    }),
+    [periodText, period, customRange, vehicleFilter],
+  );
+
   return (
-    <>
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Operations"
+        title="Fare negotiations"
+        subtitle="Clean agreed prices between riders and drivers — rider offer, final fare, and who was involved."
+        action={<GenerateReportButton templateId="negotiation-stats" meta={reportMeta} />}
+      />
+
+      <NegotiationsStatsCards />
+
       <Card
       title={listTitle}
       action={
@@ -482,16 +494,18 @@ export function NegotiationsConsole() {
               })}
             </div>
           </div>
-          <input
-            type="search"
-            placeholder="Search ID, rider, driver, route…"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(1);
-            }}
-            className="h-8 w-full shrink-0 rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary lg:w-64"
-          />
+          <div className="flex shrink-0 items-center gap-2">
+            <input
+              type="search"
+              placeholder="Search ID, rider, driver, route…"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 w-full rounded-lg border border-border bg-surface px-3 text-xs text-foreground outline-none focus:border-primary lg:w-64"
+            />
+          </div>
         </div>
 
         {viewMode === "grid" ? (
@@ -678,6 +692,6 @@ export function NegotiationsConsole() {
       </Card>
 
       <NegotiationModal negotiation={viewing} onClose={() => setViewingId(null)} />
-    </>
+    </div>
   );
 }

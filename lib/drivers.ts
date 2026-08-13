@@ -5,13 +5,13 @@ import {
   validateRwandaNationalId,
   validateLicenseNumber,
 } from "./driver-registration";
-import { MOCK_DRIVERS } from "./mock-drivers";
-import { getLocalDriverDetail } from "./local-drivers";
 
 /** URL slug ?vehicle=moto → backend transport_type */
 export const VEHICLE_SLUG_TO_TYPE: Record<string, string> = {
   moto: "MOTO_BIKE",
-  rifani: "RIFANI",
+  // "Rifani" (lifani) is the local name for the tuk-tuk — TUK_TUK is the code
+  // driver_profiles.transport_type actually stores.
+  rifani: "TUK_TUK",
   cab: "CAB_TAXI",
   hilux: "LIGHT_HILUX",
   fuso: "HEAVY_FUSO",
@@ -40,6 +40,7 @@ export function formatTransportType(code: string): string {
   const map: Record<string, string> = {
     MOTO_BIKE: "Moto Bike",
     RIFANI: "Rifani",
+    TUK_TUK: "Rifani",
     CAB_TAXI: "Cab Taxi",
     LIGHT_HILUX: "Light Hilux",
     HEAVY_FUSO: "Heavy Fuso",
@@ -100,7 +101,8 @@ export function isDriverEligible(driver: {
   if (driver.vehicle_plate && driver.vehicle_plate !== "—") {
     const cleanedPlate = driver.vehicle_plate.trim().toUpperCase();
     const type = (driver.transport_type ?? "").toLowerCase();
-    const isMotoLike = type.includes("moto") || type.includes("rifani");
+    // TUK_TUK is the stored code for the rifani; both use the short moto plate.
+    const isMotoLike = type.includes("moto") || type.includes("rifani") || type.includes("tuk");
     const isMotoValid = /^R[A-Z] \d{3} [A-Z]$/.test(cleanedPlate);
     const isStdValid = /^R[A-Z]{2} \d{3} [A-Z]$/.test(cleanedPlate);
     if (isMotoLike ? !isMotoValid : !isStdValid) return false;
@@ -139,23 +141,15 @@ export function mapApiDriver(d: ApiDriver): DriverRow {
   const name =
     d.full_name?.trim() ||
     (d.phone ? d.phone : "Unknown driver");
-  const onTrip = Boolean(d.on_trip);
-
-  let fullDetail: any = null;
-  if (d.id.startsWith("local-driver-")) {
-    fullDetail = getLocalDriverDetail(d.id);
-  } else if (d.id in MOCK_DRIVERS) {
-    fullDetail = MOCK_DRIVERS[d.id as keyof typeof MOCK_DRIVERS];
-  }
   const isNonCompliant = d.approval_status?.toUpperCase() === "APPROVED_NON_COMPLIANT";
-  const eligible = isNonCompliant ? false : (fullDetail ? isDriverEligible(fullDetail) : true);
+  const eligible = !isNonCompliant;
 
   return {
     id: d.id,
     name,
     vehicle: formatTransportType(d.transport_type),
     plate: d.vehicle_plate ?? "—",
-    status: mapApprovalStatus(d.approval_status, Boolean(d.is_online), onTrip),
+    status: mapApprovalStatus(d.approval_status, Boolean(d.is_online), Boolean(d.on_trip)),
     acceptance: pct,
     rating: (d as { rating?: number }).rating ?? null,
     lastActive: d.created_at

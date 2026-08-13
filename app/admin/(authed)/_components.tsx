@@ -77,10 +77,10 @@ export function Card({
   bodyClass?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card">
+    <div className="rounded-2xl border border-border bg-card shadow-sm shadow-black/[0.01] transition-all duration-300 hover:shadow-md hover:shadow-primary/[0.02] hover:border-border/80">
       {title ? (
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 px-5 py-4">
+          <h2 className="text-sm font-bold tracking-tight text-foreground">
             {title}
           </h2>
           {action ? <div className="w-full sm:w-auto">{action}</div> : null}

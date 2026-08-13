@@ -78,7 +78,7 @@ export default function FinalCTA() {
               {/* CTAs */}
               <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
                 <Link
-                  href="/download"
+                  href="#download"
                   className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-zinc-950 px-5 py-3.5 text-white shadow-xl shadow-black/30 ring-1 ring-inset ring-white/10 transition-transform hover:-translate-y-0.5 active:translate-y-0 sm:w-auto"
                 >
                   <span aria-hidden className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
@@ -96,7 +96,7 @@ export default function FinalCTA() {
                 </Link>
 
                 <Link
-                  href="/download"
+                  href="#download"
                   className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-zinc-950 px-5 py-3.5 text-white shadow-xl shadow-black/30 ring-1 ring-inset ring-white/10 transition-transform hover:-translate-y-0.5 active:translate-y-0 sm:w-auto"
                 >
                   <span aria-hidden className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />

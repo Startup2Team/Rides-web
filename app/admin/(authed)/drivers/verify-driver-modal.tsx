@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Avatar } from "../_components";
 import { ReferredDriversSection } from "./referred-drivers-section";
+import { resolveBackendUrl } from "@/lib/api";
 
 export type DriverDocument = {
   document_type: string;
@@ -197,7 +198,7 @@ function docUrlFor(driver: VerifyDriver, kind: DocKey): string | null {
   const doc = driver.documents?.find((d) =>
     keys.some((k) => d.document_type.toLowerCase().includes(k.toLowerCase())),
   );
-  return doc?.file_url?.trim() || null;
+  return resolveBackendUrl(doc?.file_url?.trim()) || null;
 }
 
 function DocumentPreview({

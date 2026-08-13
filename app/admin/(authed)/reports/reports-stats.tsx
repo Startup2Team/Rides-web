@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { getReportsStats, type ReportsStats } from "@/lib/api";
-import { MOCK_REPORTS_STATS } from "@/lib/mock-reports";
 
 export function ReportsStatsCards({ readyCount }: { readyCount: number }) {
   const [data, setData] = useState<ReportsStats | null>(null);
@@ -10,7 +9,7 @@ export function ReportsStatsCards({ readyCount }: { readyCount: number }) {
   useEffect(() => {
     getReportsStats()
       .then(setData)
-      .catch(() => setData(MOCK_REPORTS_STATS));
+      .catch(() => setData(null));
   }, []);
 
   const stats = [

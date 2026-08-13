@@ -8,32 +8,38 @@ type Feature = { title: string; description: string; icon: ReactNode };
 
 const platformFeatures: Feature[] = [
   {
-    title: "Live tracking",
+    title: "Live Tracking",
     description:
-      "Driver GPS streams to the platform in real time. You watch the trip approach and complete on a live map.",
+      "Track your driver in real time and know exactly when they'll arrive.",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
         <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
         <circle cx="12" cy="10" r="3" />
       </svg>
     ),
   },
   {
-    title: "Demand heatmaps",
+    title: "Smarter Matching",
     description:
-      "Pickup density updates by area so drivers route toward the next rider. Fewer empty cabs, shorter waits for you.",
+      "Intelligent matching connects you with available drivers nearby for a faster, more reliable experience.",
+    // Was a flame, which read as "heatmap". Now a node graph — one request
+    // reaching several nearby drivers.
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
-        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
+        <circle cx="6" cy="12" r="2.5" />
+        <circle cx="18" cy="5.5" r="2.5" />
+        <circle cx="18" cy="18.5" r="2.5" />
+        <path d="M8.2 10.8 15.8 6.7" />
+        <path d="M8.2 13.2 15.8 17.3" />
       </svg>
     ),
   },
   {
-    title: "15-second matching",
+    title: "Quick Confirmations",
     description:
-      "Your request fans out to every nearby driver at once. The first to accept gets the trip — usually in under 15 seconds.",
+      "Most ride requests are confirmed within moments, getting you on the road sooner.",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
         <circle cx="12" cy="13" r="8" />
         <path d="M12 9v4l2 2" />
         <path d="M9 2h6" />
@@ -42,11 +48,11 @@ const platformFeatures: Feature[] = [
     ),
   },
   {
-    title: "Fair-fare engine",
+    title: "Clear Pricing",
     description:
-      "Suggested fare up front, in-app negotiation, then pay with MoMo, Airtel, or cash. No surge pricing.",
+      "See your fare before your trip starts for a simple and transparent booking experience.",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
         <line x1="12" y1="2" x2="12" y2="22" />
         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
       </svg>
@@ -345,18 +351,17 @@ export default function SmartMobility() {
       />
 
       <div className="relative mx-auto max-w-7xl px-6">
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             <span className="h-px w-8 bg-foreground/30" />
             The platform
-            <span className="h-px w-8 bg-foreground/30" />
           </div>
           <h2 className="mt-5 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[3.25rem]">
             Built for real-time movement.
           </h2>
           <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-[1.0625rem]">
-            Live tracking, demand heatmaps, 15-second matching, and a
-            negotiation-friendly fare engine. All running underneath your ride.
+            Live tracking, smarter matching, quick confirmations, and clear
+            pricing. All running underneath your ride.
           </p>
         </div>
 
@@ -372,7 +377,9 @@ export default function SmartMobility() {
                   key={f.title}
                   className="group flex items-start gap-4 rounded-2xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary ring-1 ring-inset ring-primary/20 transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  {/* Bare glyph — no tile. mt-0.5 optically aligns it with the
+                      title's cap height rather than its line box. */}
+                  <span className="mt-0.5 shrink-0 text-primary">
                     {f.icon}
                   </span>
                   <div className="min-w-0">

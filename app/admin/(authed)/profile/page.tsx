@@ -1,5 +1,5 @@
 import { AdminPageHeader } from "../_components";
-import { ProfileConsole } from "./profile-console";
+import { AccountConsole } from "../account/account-console";
 
 export const metadata = {
   title: "Admin · Profile",
@@ -10,12 +10,11 @@ export default function AdminProfilePage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="System"
-        title="Profile"
-        subtitle="Manage platform settings and review administrative audit activity from one place."
+        eyebrow="Account"
+        title="My Profile"
+        subtitle="Manage your personal info, password, two-factor authentication and active sessions."
       />
-
-      <ProfileConsole />
+      <AccountConsole />
     </div>
   );
 }

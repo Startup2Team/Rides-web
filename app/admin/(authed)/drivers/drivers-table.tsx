@@ -12,7 +12,6 @@ import {
   suspendDriver,
   reinstateDriver,
   forceDriverOffline,
-  NO_BACKEND,
 } from "@/lib/api";
 import {
   mapApiDriver,
@@ -22,9 +21,9 @@ import {
   type DriverRow,
   type DriverStatus,
 } from "@/lib/drivers";
-import { MOCK_API_DRIVERS } from "@/lib/mock-drivers";
-import { getLocalApiDrivers } from "@/lib/local-drivers";
 import { ReferralCountLink, ReferralStatTile } from "./referred-drivers-section";
+import { NotifyDriverModal } from "./notify-driver-modal";
+import { SuspendModal } from "./suspend-modal";
 
 type Driver = DriverRow;
 
@@ -367,9 +366,14 @@ export function DriversTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [notifyDriverTarget, setNotifyDriverTarget] = useState<{ id: string; name: string } | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const firstLoad = useRef(true);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -378,10 +382,13 @@ export function DriversTable() {
 
   useEffect(() => {
     setPage(1);
-  }, [vehicleSlug, debouncedQuery, statusFilter, dateFilter]);
+  }, [vehicleSlug, debouncedQuery, statusFilter, dateFilter, customFrom, customTo]);
 
   const loadDrivers = useCallback(async () => {
-    setLoading(true);
+    if (firstLoad.current) {
+      setLoading(true);
+      firstLoad.current = false;
+    }
     setError(null);
     try {
       const params: Record<string, string> = {
@@ -393,33 +400,8 @@ export function DriversTable() {
 
       const res = await getDrivers(params);
       const apiRows = (res.drivers ?? []).map(mapApiDriver);
-      if (NO_BACKEND) {
-        const queryLower = debouncedQuery.toLowerCase();
-        const matchSearch = (d: any) => {
-          if (!debouncedQuery) return true;
-          const name = d.full_name?.toLowerCase() ?? "";
-          const plate = d.vehicle_plate?.toLowerCase() ?? "";
-          const phone = d.phone?.toLowerCase() ?? "";
-          return name.includes(queryLower) || plate.includes(queryLower) || phone.includes(queryLower);
-        };
-        const mockRows = MOCK_API_DRIVERS
-          .filter((d) => !vehicleType || d.transport_type === vehicleType)
-          .filter(matchSearch)
-          .map(mapApiDriver);
-        const localRows = getLocalApiDrivers()
-          .filter((d) => !vehicleType || d.transport_type === vehicleType)
-          .filter(matchSearch)
-          .map(mapApiDriver);
-        // Deduplicate — real API takes precedence over mock/local if IDs ever collide.
-        const seenIds = new Set(apiRows.map((d) => d.id));
-        const extras = [...mockRows, ...localRows].filter((d) => !seenIds.has(d.id));
-        const merged = [...apiRows, ...extras];
-        setDrivers(merged);
-        setTotalFromApi((res.total ?? apiRows.length) + extras.length);
-      } else {
-        setDrivers(apiRows);
-        setTotalFromApi(res.total ?? apiRows.length);
-      }
+      setDrivers(apiRows);
+      setTotalFromApi(res.total ?? apiRows.length);
     } catch (err) {
       setDrivers([]);
       setTotalFromApi(0);
@@ -431,6 +413,10 @@ export function DriversTable() {
 
   useEffect(() => {
     void loadDrivers();
+    const id = setInterval(loadDrivers, 15_000);
+    return () => {
+      clearInterval(id);
+    };
   }, [loadDrivers]);
 
   useEffect(() => {
@@ -486,6 +472,21 @@ export function DriversTable() {
       } else if (dateFilter === "month") {
         const oneMonth = 30 * 24 * 60 * 60 * 1000;
         if (now - createdTime > oneMonth) return false;
+      } else if (dateFilter === "custom") {
+        let cutoffFrom: number | null = null;
+        let cutoffTo: number | null = null;
+        if (customFrom) {
+          const fromDate = new Date(customFrom);
+          fromDate.setHours(0, 0, 0, 0);
+          cutoffFrom = fromDate.getTime();
+        }
+        if (customTo) {
+          const toDate = new Date(customTo);
+          toDate.setHours(23, 59, 59, 999);
+          cutoffTo = toDate.getTime();
+        }
+        if (cutoffFrom && createdTime < cutoffFrom) return false;
+        if (cutoffTo && createdTime > cutoffTo) return false;
       }
     }
 
@@ -588,7 +589,7 @@ export function DriversTable() {
         d.status === "Pending" ? () => router.push(`/admin/drivers/${d.id}`) : undefined
       }
       onView={() => router.push(`/admin/drivers/${d.id}`)}
-      onMessage={() => setToast(`Message sent to ${d.name}`)}
+      onMessage={() => setNotifyDriverTarget({ id: d.id, name: d.name })}
       onForceOffline={async () => {
         try {
           await forceDriverOffline(d.id);
@@ -600,11 +601,7 @@ export function DriversTable() {
           );
         }
       }}
-      onSuspend={async () => {
-        try { await suspendDriver(d.id, 24); } catch { /* ignore */ }
-        updateStatus(d.id, "Suspended");
-        setToast(`${d.name} suspended`);
-      }}
+      onSuspend={() => setSuspendTarget({ id: d.id, name: d.name })}
       onReinstate={async () => {
         try { await reinstateDriver(d.id); } catch { /* ignore */ }
         updateStatus(d.id, "Offline");
@@ -657,6 +654,7 @@ export function DriversTable() {
               <option value="today">Joined: Today</option>
               <option value="week">Joined: Last 7 days</option>
               <option value="month">Joined: Last 30 days</option>
+              <option value="custom">Joined: Custom Range</option>
             </select>
           </div>
 
@@ -686,7 +684,50 @@ export function DriversTable() {
         </div>
       ) : null}
 
-
+      {dateFilter === "custom" ? (
+        <div className="border-b border-border bg-muted/10 p-3 text-xs text-muted-foreground flex flex-wrap items-center gap-3">
+          <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+            Registration range:
+          </span>
+          <label className="flex items-center gap-1.5">
+            <span>From</span>
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => {
+                setCustomFrom(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          <label className="flex items-center gap-1.5">
+            <span>To</span>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => {
+                setCustomTo(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          {(customFrom || customTo) && (
+            <button
+              type="button"
+              onClick={() => {
+                setCustomFrom("");
+                setCustomTo("");
+                setPage(1);
+              }}
+              className="font-semibold text-primary hover:underline ml-auto"
+            >
+              Clear dates
+            </button>
+          )}
+        </div>
+      ) : null}
 
       {viewMode === "table" ? (
       <div className="overflow-x-auto">
@@ -911,6 +952,31 @@ export function DriversTable() {
           </span>
           <span className="text-sm font-medium text-foreground">{toast}</span>
         </div>
+      ) : null}
+
+      {notifyDriverTarget ? (
+        <NotifyDriverModal
+          open={!!notifyDriverTarget}
+          driverId={notifyDriverTarget.id}
+          driverName={notifyDriverTarget.name}
+          onClose={() => setNotifyDriverTarget(null)}
+          onSuccess={() => setToast(`Notification sent to ${notifyDriverTarget.name}`)}
+        />
+      ) : null}
+
+      {suspendTarget ? (
+        <SuspendModal
+          open={!!suspendTarget}
+          targetId={suspendTarget.id}
+          targetName={suspendTarget.name}
+          userType="driver"
+          onClose={() => setSuspendTarget(null)}
+          onConfirm={async (id, reason, durationHours) => {
+            await suspendDriver(id, durationHours, reason);
+            updateStatus(id, "Suspended");
+            setToast(`${suspendTarget.name} suspended. Live push notification sent.`);
+          }}
+        />
       ) : null}
     </Card>
   );
