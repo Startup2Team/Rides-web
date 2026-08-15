@@ -64,8 +64,13 @@ export function RiderScreen() {
       />
       {/* Static branding text at the bottom */}
       <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center pointer-events-none">
-        <span className="text-[15px] font-black tracking-[-0.04em] text-zinc-900">
-          <span className="text-[#007aff]">R</span>id<span className="text-emerald-500">es</span>
+        {/* Brand lockup, matching the navbar exactly. Note this instance is
+            15px — below the large-text threshold — so the pink sits under
+            4.5:1 here; kept for brand consistency in a decorative mockup. */}
+        <span className="text-[15px] font-black tracking-[-0.04em]">
+          <span className="text-[#007aff]">R</span>
+          <span className="text-[#e55189]">id</span>
+          <span className="text-emerald-600">es</span>
         </span>
       </div>
     </div>

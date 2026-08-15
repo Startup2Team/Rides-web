@@ -154,7 +154,7 @@ export default function Features() {
     <section id="features" className="relative py-12 lg:py-16">
       <div className="mx-auto max-w-7xl px-6">
         {/* Intro */}
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             Built for the trip
           </p>

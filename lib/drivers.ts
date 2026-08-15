@@ -206,6 +206,7 @@ export function mapDriverDetailToVerify(
     vehicle: row?.vehicle ?? formatTransportType(detail.transport_type),
     plate: detail.vehicle_plate ?? row?.plate ?? "—",
     approvalStatus: detail.approval_status ?? "pending",
+    profileImageUrl: detail.profile_image_url ?? undefined,
     kyc: {
       phone: detail.phone ?? "",
       dob: detail.date_of_birth
