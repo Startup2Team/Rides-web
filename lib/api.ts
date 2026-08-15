@@ -641,6 +641,13 @@ export type DriverDetail = {
   phone?: string;
   transport_type: string;
   vehicle_plate?: string;
+  /**
+   * The driver's current display avatar (users.profile_image_url) — the photo
+   * they set/change in the app. Distinct from the onboarding SELFIE document,
+   * which is an immutable KYC artifact reviewed under `documents`. The backend
+   * already returns this on GET /admin/drivers/{id}; it was previously dropped.
+   */
+  profile_image_url?: string | null;
   national_id_number?: string | null;
   license_number?: string;
   date_of_birth?: string | null;

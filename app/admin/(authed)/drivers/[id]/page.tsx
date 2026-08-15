@@ -860,11 +860,24 @@ export default function DriverReviewPage() {
     );
   }
 
-  const profilePicDoc = driver.documents?.find((d) => {
+  // Identity avatar for the header and sidebar = the driver's CURRENT display
+  // photo (users.profile_image_url), which they can change in the app. This is
+  // what the reported bug was about: an updated app photo never showed here.
+  // Fallback chain: live profile photo → onboarding selfie → initial letter.
+  //
+  // IMPORTANT: the onboarding selfie is a separate KYC artifact. It is reviewed
+  // in the "Submitted Documents → Profile photo (selfie)" card below, which is
+  // sourced independently from `documents` (see DocumentPreview / docFacesFor).
+  // Do NOT point that review card at profile_image_url — the reviewer must see
+  // the immutable selfie captured at application, not a swappable avatar.
+  const onboardingSelfieDoc = driver.documents?.find((d) => {
     const t = d.document_type.toUpperCase();
     return t === "PROFILE_SELFIE" || t.includes("SELFIE") || t.includes("PROFILE");
   });
-  const profilePicUrl = resolveBackendUrl(profilePicDoc?.file_url) || null;
+  const profilePicUrl =
+    resolveBackendUrl(driver.profileImageUrl) ||
+    resolveBackendUrl(onboardingSelfieDoc?.file_url) ||
+    null;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
