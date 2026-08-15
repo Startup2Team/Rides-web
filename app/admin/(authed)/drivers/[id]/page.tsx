@@ -177,14 +177,6 @@ function buildInitialDecisions(
   return result;
 }
 
-function licenseCategory(vehicle: string) {
-  if (vehicle.includes("Moto")) return "A — Motorcycle";
-  if (vehicle.includes("Cab")) return "B — Light vehicle";
-  if (vehicle.includes("Hilux")) return "C1 — Light commercial";
-  if (vehicle.includes("Fuso")) return "C — Heavy goods";
-  return "B — Light vehicle";
-}
-
 /* ───────────────────────────────────────────────────────────────────────── */
 /* Review history — past admin decisions for this driver                       */
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -411,19 +403,6 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
   );
 }
 
-function PreviewField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-        {label}
-      </p>
-      <p className={`mt-0.5 text-xs font-semibold tracking-tight text-foreground ${mono ? "font-mono" : ""}`}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
 function DocFaceCard({ label, url }: { label: string; url: string }) {
   const isImage = /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url) || url.startsWith("data:image/");
   return (
@@ -514,82 +493,18 @@ function DocumentPreview({ kind, driver }: { kind: DocKey; driver: VerifyDriver 
     );
   }
 
-  if (kind === "license") {
-    return (
-      <div className="overflow-hidden rounded-lg border border-border bg-gradient-to-br from-surface to-card">
-        <div className="flex items-center justify-between border-b border-border bg-primary/[0.05] px-3 py-2">
-          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary">
-            Republic of Rwanda · Driver Licence
-          </span>
-          <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-primary">
-            Valid
-          </span>
-        </div>
-        <div className="flex gap-3 p-3">
-          <div className="flex h-20 w-16 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-inset ring-border">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7" aria-hidden>
-              <circle cx="12" cy="8" r="4" />
-              <path d="M5 20a7 7 0 0 1 14 0" />
-            </svg>
-          </div>
-          <div className="grid flex-1 grid-cols-2 gap-x-3 gap-y-2">
-            <PreviewField label="Name" value={driver.name} />
-            <PreviewField label="Licence no." value={driver.kyc.licenseNumber} mono />
-            <PreviewField label="Date of birth" value={driver.kyc.dob} />
-            <PreviewField label="Category" value={licenseCategory(driver.vehicle)} />
-            <PreviewField label="Issued" value="05 Jan 2022" />
-            <PreviewField label="Expires" value="05 Jan 2027" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (kind === "insurance") {
-    return (
-      <div className="overflow-hidden rounded-lg border border-border bg-gradient-to-br from-surface to-card">
-        <div className="flex items-center justify-between border-b border-border bg-primary/[0.05] px-3 py-2">
-          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary">
-            Insurance Certificate
-          </span>
-          <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-primary">
-            Active
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2 p-3">
-          <PreviewField label="Provider" value="SONARWA Insurance Ltd." />
-          <PreviewField label="Policy no." value="POL-2026-04821" mono />
-          <PreviewField label="Insured" value={driver.name} />
-          <PreviewField label="Vehicle plate" value={driver.plate} mono />
-          <PreviewField label="Coverage" value="Third-party + Comprehensive" />
-          <PreviewField label="Valid from" value="01 Mar 2026" />
-          <PreviewField label="Valid until" value="28 Feb 2027" />
-          <PreviewField label="Premium" value="148,000 RWF" />
-        </div>
-      </div>
-    );
-  }
-
+  // No document uploaded. Previously this branch rendered a fully fabricated
+  // certificate (invented insurer, policy number, "Passed — no defects",
+  // inspector ID, green Active/Valid badge) for license/insurance/authorization
+  // — so an admin reviewing a driver who submitted NOTHING saw green-badged
+  // "evidence" and could approve it. That is a compliance hazard. Show the
+  // honest not-submitted state instead, matching the dashed empty states above.
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-gradient-to-br from-surface to-card">
-      <div className="flex items-center justify-between border-b border-border bg-primary/[0.05] px-3 py-2">
-        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary">
-          Vehicle Authorization · Rwanda Police
-        </span>
-        <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-primary">
-          Passed
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-2 p-3">
-        <PreviewField label="Certificate no." value="VA-2026-09127" mono />
-        <PreviewField label="Vehicle plate" value={driver.plate} mono />
-        <PreviewField label="Vehicle type" value={driver.vehicle} />
-        <PreviewField label="Owner" value={driver.name} />
-        <PreviewField label="Inspection date" value="14 Mar 2026" />
-        <PreviewField label="Valid until" value="14 Mar 2027" />
-        <PreviewField label="Inspection result" value="Passed — no defects" />
-        <PreviewField label="Inspector ID" value="INS-RNP-0421" mono />
-      </div>
+    <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center">
+      <p className="text-xs font-semibold text-foreground">{DOC_LABELS[kind].label} not submitted</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        The driver has not uploaded this document. Nothing to review yet.
+      </p>
     </div>
   );
 }
