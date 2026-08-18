@@ -7,6 +7,8 @@ type BackendLoginData = {
   access_token?: string;
   pre_auth_token?: string;
   two_factor_required?: boolean;
+  two_factor_setup_required?: boolean;
+  setup_token?: string;
 };
 
 export async function POST(request: Request) {
