@@ -234,7 +234,7 @@ export default function CustomerProfilePage() {
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           {/* Profile picture (Avatar) at top-left */}
           <div className="relative shrink-0 rounded-full bg-card overflow-hidden">
-            <Avatar name={name} url={detail.photo_url} size="lg" tone="neutral" />
+            <Avatar name={name} url={detail.photo_url || detail.profile_image_url} size="lg" tone="neutral" />
           </div>
           
           {/* Profile Metadata */}
