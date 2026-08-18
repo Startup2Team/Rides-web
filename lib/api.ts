@@ -100,7 +100,9 @@ export function resolveBackendUrl(path: string | null | undefined): string | nul
   if (path.includes(":9000/") || path.includes(":9001/") || path.includes("//minio/")) {
     const parts = path.split("/rides-docs/");
     if (parts.length > 1) {
-      return `${origin}/api/v1/uploads/objects/${parts[1]}`;
+      const rewritten = `${origin}/api/v1/uploads/objects/${parts[1]}`;
+      console.log('[WEB:URL_REWRITE] 🔄 Rewrote internal MinIO URL:', { original: path, rewritten });
+      return rewritten;
     }
   }
 
@@ -128,11 +130,16 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
+  const method = rest.method ?? "GET";
+  console.log(`[WEB:API] 🌐 ${method} ${BASE_URL}${path}`);
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...rest,
     headers,
     body: body !== undefined ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
   });
+
+  console.log(`[WEB:API] 📥 ${method} ${BASE_URL}${path} -> Status ${res.status}`);
 
   // A backend call that the server accepted means the admin is still working,
   // even if they have not touched the mouse — reviewing documents or watching
