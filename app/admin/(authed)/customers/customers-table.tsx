@@ -559,7 +559,7 @@ export function CustomersTable() {
   if (!mounted) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading customer directory…</p>
+        <p className="text-sm text-muted-foreground" suppressHydrationWarning>Loading customer directory…</p>
       </div>
     );
   }
