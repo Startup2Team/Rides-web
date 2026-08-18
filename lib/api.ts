@@ -812,6 +812,8 @@ export type Customer = {
   email?: string | null;
   photo_url?: string | null;
   profile_image_url?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
   location?: string | null;
   role_state: string;
   is_suspended: boolean;

@@ -369,6 +369,12 @@ export default function CustomerProfilePage() {
                   ) : "—"
                 }
               />
+              {detail.emergency_contact_name || detail.emergency_contact_phone ? (
+                <InfoRow
+                  label="Emergency Contact"
+                  value={`${detail.emergency_contact_name ?? "—"} (${detail.emergency_contact_phone ?? "—"})`}
+                />
+              ) : null}
               {detail.is_suspended && detail.suspension_until ? (
                 <InfoRow label="Suspended until" value={fmt(detail.suspension_until)} />
               ) : null}
