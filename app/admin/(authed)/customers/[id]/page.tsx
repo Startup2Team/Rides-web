@@ -191,8 +191,8 @@ export default function CustomerProfilePage() {
 
   if (!mounted || loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-border border-t-primary" />
+      <div className="flex h-64 items-center justify-center" suppressHydrationWarning>
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-border border-t-primary" suppressHydrationWarning />
       </div>
     );
   }
@@ -259,7 +259,15 @@ export default function CustomerProfilePage() {
                 </svg>
                 {detail.phone}
               </span>
-
+              {detail.email ? (
+                <span className="flex items-center gap-1">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-3.5 w-3.5">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                  {detail.email}
+                </span>
+              ) : null}
               <span className="flex items-center gap-1">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-3.5 w-3.5">
                   <rect width="18" height="18" x="3" y="4" rx="2" />
@@ -359,6 +367,7 @@ export default function CustomerProfilePage() {
             </p>
             <div className="space-y-0 divide-y divide-border/60">
               <InfoRow label="Account State" value={detail.role_state} />
+              <InfoRow label="Email Address" value={detail.email ?? "—"} />
               <InfoRow
                 label="Last active"
                 value={
