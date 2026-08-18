@@ -145,6 +145,11 @@ export default function CustomerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -184,7 +189,7 @@ export default function CustomerProfilePage() {
     }
   };
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="h-7 w-7 animate-spin rounded-full border-2 border-border border-t-primary" />

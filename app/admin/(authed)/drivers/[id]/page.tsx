@@ -557,6 +557,11 @@ export default function DriverReviewPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [decisions, setDecisions] = useState<Record<DocKey, DocDecision>>(() => {
     const s: FaceDecision["status"] = "none";
@@ -751,7 +756,7 @@ export default function DriverReviewPage() {
         confirmCls: "bg-amber-500 hover:bg-amber-600",
       };
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
