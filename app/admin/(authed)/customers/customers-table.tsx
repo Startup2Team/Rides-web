@@ -393,6 +393,11 @@ export function CustomersTable() {
   const [toast, setToast] = useState<string | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     getCustomers({ limit: "100", offset: "0" })
@@ -550,6 +555,14 @@ export function CustomersTable() {
       filters: { status: tab === "all" ? "all" : tab.toLowerCase() },
     };
   }, [dateFilter, customFrom, customTo, tab]);
+
+  if (!mounted) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading customer directory…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
