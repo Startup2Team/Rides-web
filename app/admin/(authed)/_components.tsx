@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { resolveBackendUrl } from "@/lib/api";
 
 export function AdminPageHeader({
   eyebrow,
@@ -131,10 +132,11 @@ export function Avatar({
       : size === "lg"
       ? "h-20 w-20 text-2xl"
       : "h-9 w-9 text-xs";
-  if (url) {
+  const resolvedUrl = url ? resolveBackendUrl(url) : null;
+  if (resolvedUrl) {
     return (
       <img
-        src={url}
+        src={resolvedUrl}
         alt={name}
         className={`shrink-0 rounded-full object-cover ${sizeClass}`}
       />
