@@ -436,7 +436,7 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
             className="flex h-10 items-center gap-2.5 rounded-full border border-border bg-card pl-1 pr-3 transition-colors hover:bg-surface"
           >
             <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-[#0056B3] text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/20">
-              {ready ? (
+              {mounted && ready ? (
                 user?.photo_url || user?.photoUrl ? (
                   <img
                     src={resolveBackendUrl(user.photo_url || user.photoUrl) ?? undefined}
