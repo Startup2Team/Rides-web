@@ -88,15 +88,24 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v
 
 export function resolveBackendUrl(path: string | null | undefined): string | null {
   if (!path) return null;
-  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) {
-    return path;
-  }
   let origin = "http://localhost:8080";
   try {
     const url = new URL(BASE_URL);
     origin = url.origin;
   } catch {
     // fallback
+  }
+
+  // Handle internal MinIO URLs (e.g., http://minio:9000/rides-docs/...) or console URLs (:9001)
+  if (path.includes(":9000/") || path.includes(":9001/") || path.includes("//minio/")) {
+    const parts = path.split("/rides-docs/");
+    if (parts.length > 1) {
+      return `${origin}/api/v1/uploads/objects/${parts[1]}`;
+    }
+  }
+
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) {
+    return path;
   }
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   return `${origin}${cleanPath}`;
