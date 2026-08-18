@@ -450,7 +450,7 @@ export function AdminTopbar({ onOpenMobile }: { onOpenMobile?: () => void } = {}
                 <span className="block h-3 w-3 animate-pulse rounded-full bg-white/40" aria-hidden />
               )}
             </span>
-            <span className="hidden max-w-[160px] truncate text-sm font-semibold tracking-tight text-foreground sm:inline">
+            <span className="hidden max-w-[160px] truncate text-sm font-semibold tracking-tight text-foreground sm:inline" suppressHydrationWarning>
               {ready ? displayName : "Loading…"}
             </span>
             <Icon>
