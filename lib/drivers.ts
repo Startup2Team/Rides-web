@@ -215,6 +215,8 @@ export function mapDriverDetailToVerify(
       age: ageFromDob(detail.date_of_birth),
       location: formatLocation(detail),
       nationalIdNumber: detail.national_id_number ?? undefined,
+      nationalIdCountry: detail.national_id_country ?? undefined,
+      gender: detail.gender ?? undefined,
       licenseNumber: detail.license_number ?? "—",
       submittedAt: detail.created_at
         ? new Date(detail.created_at).toLocaleString()

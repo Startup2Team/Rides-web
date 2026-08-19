@@ -49,6 +49,10 @@ export type VerifyDriver = {
     age: number;
     location: string;
     nationalIdNumber?: string;
+    /** ISO 3166-1 alpha-2 country the national ID was issued in (e.g. "RW"). */
+    nationalIdCountry?: string;
+    /** "male" | "female" | "other" — optional; not collected for legacy drivers. */
+    gender?: string;
     licenseNumber: string;
     submittedAt: string;
     momoProvider: "MTN MoMo" | "Airtel Money";
@@ -317,7 +321,14 @@ function DocumentPreview({
             <PreviewField label="Name" value={driver.name} />
             <PreviewField label="National ID" value="1199580012345678" mono />
             <PreviewField label="Date of birth" value={driver.kyc.dob} />
-            <PreviewField label="Gender" value="Male" />
+            <PreviewField
+              label="Gender"
+              value={
+                driver.kyc.gender
+                  ? driver.kyc.gender.charAt(0).toUpperCase() + driver.kyc.gender.slice(1)
+                  : "—"
+              }
+            />
             <PreviewField label="Place of Issue" value={driver.kyc.location} />
             <PreviewField label="Expires" value="05 Jan 2030" />
           </div>

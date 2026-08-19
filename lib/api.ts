@@ -665,6 +665,10 @@ export type DriverDetail = {
    */
   profile_image_url?: string | null;
   national_id_number?: string | null;
+  /** ISO 3166-1 alpha-2 country the national ID was issued in (e.g. "RW"). */
+  national_id_country?: string | null;
+  /** "male" | "female" | "other" — optional; not collected for legacy drivers. */
+  gender?: string | null;
   license_number?: string;
   date_of_birth?: string | null;
   city?: string;
