@@ -1017,6 +1017,14 @@ export default function DriverReviewPage() {
             <div className="space-y-3">
               <InfoRow label="Phone number" value={driver.kyc.phone} />
               <InfoRow label="Date of birth / Age" value={`${driver.kyc.dob} (Age ${driver.kyc.age})`} />
+              <InfoRow
+                label="Gender"
+                value={
+                  driver.kyc.gender
+                    ? driver.kyc.gender.charAt(0).toUpperCase() + driver.kyc.gender.slice(1)
+                    : "—"
+                }
+              />
               <InfoRow label="Residential location" value={driver.kyc.location} />
               <InfoRow label="Vehicle" value={`${driver.vehicle} · ${driver.plate}`} />
               <InfoRow label="MoMo payout" value={`${driver.kyc.momoProvider} · ${driver.kyc.momoCode}`} mono />
@@ -1028,6 +1036,7 @@ export default function DriverReviewPage() {
             <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-wider text-primary">National ID</p>
               <InfoRow label="ID number" value={driver.kyc.nationalIdNumber || "—"} mono />
+              <InfoRow label="ID country" value={driver.kyc.nationalIdCountry || "—"} />
             </div>
 
             <div className="border-t border-border" />

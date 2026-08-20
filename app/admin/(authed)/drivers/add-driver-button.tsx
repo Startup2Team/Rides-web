@@ -56,6 +56,7 @@ const STEPS = ["Personal Info", "Vehicle Info", "Documents", "Payment"] as const
 type FormState = {
   fullName: string;
   nationalIdNumber: string;
+  gender: "" | "male" | "female" | "other";
   phone: string;
   dob: string;
   province: string;
@@ -76,6 +77,7 @@ type FormState = {
 const INITIAL_FORM: FormState = {
   fullName: "",
   nationalIdNumber: "",
+  gender: "",
   phone: "",
   dob: "",
   province: "",
@@ -479,6 +481,11 @@ export function AddDriverButton({
       const created = await createDriver({
         full_name: form.fullName.trim(),
         national_id_number: form.nationalIdNumber.trim().toUpperCase(),
+        // The registration form only validates the Rwandan NID format today, so this
+        // is hardcoded rather than exposed as a picker — revisit once other countries
+        // are supported. Sending it now unblocks the 400 once the backend makes it mandatory.
+        national_id_country: "RW",
+        gender: form.gender || undefined,
         phone: normalizeRwandaMobilePhone(form.phone),
         transport_type: transportType,
         vehicle_plate: form.plate.trim().toUpperCase(),
@@ -711,6 +718,20 @@ export function AddDriverButton({
                           placeholder="1 XXXXX XXXXXXX X XX"
                           maxLength={20}
                           inputMode="numeric"
+                        />
+                      </Field>
+                      <Field label="Gender" hint="Optional">
+                        <Select
+                          value={
+                            form.gender
+                              ? form.gender.charAt(0).toUpperCase() + form.gender.slice(1)
+                              : ""
+                          }
+                          options={["Male", "Female", "Other"]}
+                          placeholder="Select gender"
+                          onChange={(v) =>
+                            update("gender", v.toLowerCase() as FormState["gender"])
+                          }
                         />
                       </Field>
                     </div>
