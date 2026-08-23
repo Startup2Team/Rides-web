@@ -180,7 +180,9 @@ const ALL_RWANDA_MOBILE_PREFIXES = [MTN_PREFIX, ...AIRTEL_PREFIXES];
 export function normalizeRwandaMobilePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   if (digits.startsWith("250") && digits.length === 12) {
-    return digits.slice(3);
+    // E.164 without the leading 0 (e.g. "250781234567" → "781234567") —
+    // restore the local "0" prefix so it lines up with RWANDA_MOBILE_LENGTH.
+    return `0${digits.slice(3)}`;
   }
   return digits;
 }

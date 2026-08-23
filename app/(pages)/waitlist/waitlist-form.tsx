@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   submitWaitlist,
@@ -18,7 +18,7 @@ import {
 } from "@/lib/driver-registration";
 import { RWANDA_PROVINCES, getDistricts, getSectors } from "@/lib/rwanda-locations";
 import { useTranslations } from "../../i18n/context";
-import { TurnstileWidget } from "./turnstile-widget";
+import { TurnstileWidget, type TurnstileWidgetHandle } from "./turnstile-widget";
 
 type FormState = "idle" | "sending" | "success" | "error";
 
@@ -149,6 +149,11 @@ export function WaitlistForm() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileUnavailable, setTurnstileUnavailable] = useState(false);
   const [showTurnstileError, setShowTurnstileError] = useState(false);
+  // Bumping this remounts <TurnstileWidget> from scratch, so "retry" re-runs
+  // the script-load/render sequence instead of being stuck on a widget that
+  // already gave up.
+  const [turnstileRetryKey, setTurnstileRetryKey] = useState(0);
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [state, setState] = useState<FormState>("idle");
@@ -189,8 +194,8 @@ export function WaitlistForm() {
           return t("err400");
         case 403:
           return t("err403");
-        case 409:
-          return t("err409");
+        // 409 (duplicate) intentionally not mapped — the backend treats
+        // repeat signups as an idempotent 200, so this status never occurs.
         case 429:
           return t("err429");
         default:
@@ -200,11 +205,22 @@ export function WaitlistForm() {
     return t("genericErrorFallback");
   }
 
+  function retryTurnstile() {
+    setTurnstileUnavailable(false);
+    setTurnstileToken("");
+    setShowTurnstileError(false);
+    setTurnstileRetryKey((k) => k + 1);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setTouched({ name: true, phone: true, sector: true, vehicleType: true, consentLaunch: true });
     if (hasErrors) return;
-    if (!turnstileUnavailable && !turnstileToken) {
+    // Turnstile being unavailable is a dead end, not a pass — the backend
+    // fails closed on a missing/invalid token, so don't submit with an
+    // empty one. Surface the retry state instead of eating a guaranteed 403.
+    if (turnstileUnavailable) return;
+    if (!turnstileToken) {
       setShowTurnstileError(true);
       return;
     }
@@ -232,6 +248,11 @@ export function WaitlistForm() {
     } catch (err) {
       setServerError(mapServerError(err));
       setState("error");
+    } finally {
+      // The token (success or failure) is single-use — reset the widget so
+      // a resubmit (e.g. after a transient 429/500) gets a fresh one instead
+      // of reusing a dead token and hitting a guaranteed 403.
+      turnstileRef.current?.reset();
     }
   }
 
@@ -247,6 +268,8 @@ export function WaitlistForm() {
     setConsentLaunch(false);
     setConsentMarketing(false);
     setTurnstileToken("");
+    setTurnstileUnavailable(false);
+    setTurnstileRetryKey((k) => k + 1);
     setShowTurnstileError(false);
     setTouched({});
     setServerError(null);
@@ -523,6 +546,8 @@ export function WaitlistForm() {
 
         <div>
           <TurnstileWidget
+            key={turnstileRetryKey}
+            ref={turnstileRef}
             onToken={(token) => {
               setTurnstileToken(token);
               if (token) setShowTurnstileError(false);
@@ -530,7 +555,16 @@ export function WaitlistForm() {
             onUnavailable={() => setTurnstileUnavailable(true)}
           />
           {turnstileUnavailable ? (
-            <p className="mt-2 text-[11px] text-muted-foreground">{t("turnstileUnavailable")}</p>
+            <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+              <p className="text-[11px] font-medium text-red-700">{t("turnstileUnavailable")}</p>
+              <button
+                type="button"
+                onClick={retryTurnstile}
+                className="mt-1 text-[11px] font-semibold text-red-700 underline underline-offset-2 hover:text-red-800"
+              >
+                {t("turnstileRetry")}
+              </button>
+            </div>
           ) : null}
           {showTurnstileError ? (
             <p className="mt-2 text-[11px] font-medium text-red-600">{t("errTurnstileRequired")}</p>
@@ -540,7 +574,7 @@ export function WaitlistForm() {
         <div className="pt-2">
           <button
             type="submit"
-            disabled={state === "sending" || !consentLaunch}
+            disabled={state === "sending" || !consentLaunch || turnstileUnavailable}
             className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-10 text-[11px] font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-primary sm:w-auto"
           >
             {state === "sending" ? (
