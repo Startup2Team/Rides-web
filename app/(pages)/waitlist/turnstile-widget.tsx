@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect, useId, useRef, useState } from "react";
+import { type Ref, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
 
 // Cloudflare's published always-passing TEST site key — safe to ship as a
 // placeholder default. Pacifique swaps in the real site key via this env var
@@ -24,6 +24,7 @@ declare global {
         },
       ) => string;
       remove: (widgetId: string) => void;
+      reset: (widgetId: string) => void;
     };
   }
 }
@@ -33,6 +34,17 @@ type Props = {
   onToken: (token: string) => void;
   /** Called once if the widget can't load/render — caller should degrade gracefully. */
   onUnavailable: () => void;
+  /** React 19 supports `ref` as a plain prop on function components — no forwardRef needed. */
+  ref?: Ref<TurnstileWidgetHandle>;
+};
+
+export type TurnstileWidgetHandle = {
+  /**
+   * Turnstile tokens are single-use — Cloudflare rejects a second submit
+   * that reuses one. Call this after every submit attempt (success or
+   * failure) so the widget issues a fresh challenge/token.
+   */
+  reset: () => void;
 };
 
 /**
@@ -41,7 +53,7 @@ type Props = {
  * onUnavailable so the form can proceed without a token instead of blocking
  * submission entirely.
  */
-export function TurnstileWidget({ onToken, onUnavailable }: Props) {
+export function TurnstileWidget({ onToken, onUnavailable, ref }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
@@ -73,6 +85,22 @@ export function TurnstileWidget({ onToken, onUnavailable }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scriptReady, unavailable]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      reset: () => {
+        if (widgetIdRef.current && window.turnstile) {
+          window.turnstile.reset(widgetIdRef.current);
+        }
+        // The consumed token is dead either way — clear it out of the
+        // caller's state immediately so a resubmit can't reuse it while the
+        // widget re-solves.
+        onToken("");
+      },
+    }),
+    [onToken],
+  );
 
   if (unavailable) return null;
 
