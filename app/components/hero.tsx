@@ -5,6 +5,14 @@ import { IphoneMockup } from "./iphone-mockup";
 import { RiderScreen, DriverScreen } from "./phone-screens";
 import { useTranslations } from "../i18n/context";
 
+function ArrowRightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 export default function Hero() {
   const t = useTranslations("hero");
   return (
@@ -185,6 +193,20 @@ export default function Hero() {
                 <span className="text-[9.5px] tracking-[0.04em] opacity-90">{t("googlePlayEyebrow")}</span>
                 <span className="mt-0.5 text-[15px] font-semibold tracking-[-0.01em]">{t("googlePlayLabel")}</span>
               </span>
+            </Link>
+          </div>
+
+          {/* Waitlist CTA — not live in every area yet; the shareable pre-launch signup link. */}
+          <div
+            className="hero-rise mt-4"
+            style={{ animationDelay: "280ms" }}
+          >
+            <Link
+              href="/waitlist"
+              className="inline-flex h-12 items-center gap-2 rounded-2xl border-2 border-foreground/15 px-5 text-sm font-semibold text-foreground transition-all hover:border-primary hover:text-primary active:scale-[0.98]"
+            >
+              {t("waitlistCta")}
+              <ArrowRightIcon />
             </Link>
           </div>
 

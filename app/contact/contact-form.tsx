@@ -1,25 +1,14 @@
 "use client";
 
-import { Fragment, useState, type ReactNode } from "react";
+import { useState } from "react";
 import { submitContact } from "@/lib/api";
+import { renderTemplate } from "@/lib/i18n-template";
 import { useTranslations } from "../i18n/context";
 
 type State = "idle" | "sending" | "success" | "error";
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-// Fills a "{token}" template with arbitrary React nodes, independent of token order —
-// translated templates may reorder tokens to fit the target language's grammar.
-function renderTemplate(template: string, values: Record<string, ReactNode>) {
-  return template.split(/(\{[a-zA-Z]+\})/g).map((part, i) => {
-    const match = part.match(/^\{([a-zA-Z]+)\}$/);
-    if (match && match[1] in values) {
-      return <Fragment key={i}>{values[match[1]]}</Fragment>;
-    }
-    return part;
-  });
 }
 
 // Derive a subject from the first sentence (or first 60 chars) of the message.
