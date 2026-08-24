@@ -976,6 +976,37 @@ export const interveneRide = async (id: string, action: string, reason: string):
   });
 };
 
+// ── Waitlist ──────────────────────────────────────────────────────────────
+
+export type WaitlistRole = "CUSTOMER" | "DRIVER";
+
+export type WaitlistSignup = {
+  id: string;
+  role: WaitlistRole;
+  name: string;
+  // Phone and email were made optional at signup — either can be empty/null.
+  phone: string;
+  email: string | null;
+  area: string | null;
+  vehicle_type: string | null;
+  referral_code: string;
+  referred_by: string | null;
+  consent_launch: boolean;
+  consent_marketing: boolean;
+  source: string;
+  created_at: string;
+};
+
+export type WaitlistResponse = {
+  signups: WaitlistSignup[];
+  total: number;
+};
+
+export const getWaitlist = (params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request<WaitlistResponse>(`/admin/waitlist${qs ? `?${qs}` : ""}`);
+};
+
 // ── Negotiations ──────────────────────────────────────────────────────────
 
 export type Negotiation = {

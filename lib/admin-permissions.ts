@@ -12,6 +12,7 @@ export type Permission =
   | "/admin/live-rides"
   | "/admin/negotiations"
   | "/admin/heatmaps"
+  | "/admin/waitlist"
   | "/admin/revenue"
   | "/admin/analytics"
   | "/admin/reports"
@@ -62,6 +63,7 @@ export const SIDEBAR_ITEMS: {
   { href: "/admin/live-rides", label: "Live Rides", group: "Operations" },
   { href: "/admin/negotiations", label: "Negotiations", group: "Operations" },
   { href: "/admin/heatmaps", label: "Heatmaps", group: "Operations" },
+  { href: "/admin/waitlist", label: "Waitlist", group: "Operations" },
   { href: "/admin/revenue", label: "Revenue", group: "Insights" },
   { href: "/admin/analytics", label: "Analytics", group: "Insights" },
   { href: "/admin/reports", label: "Reports", group: "Insights" },
@@ -131,6 +133,7 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       "/admin/live-rides",
       "/admin/negotiations",
       "/admin/heatmaps",
+      "/admin/waitlist",
       "/admin/safety-center",
       "/admin/support",
       "/admin/inbox",
@@ -154,6 +157,7 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       "/admin/inbox",
       "/admin/notifications",
       "/admin/entitlements",
+      "/admin/waitlist",
       "/admin/audit-logs",
     ],
     homePath: "/admin",
@@ -171,6 +175,7 @@ export function normalizePermissions(raw: unknown): Permission[] {
     "/admin/live-rides",
     "/admin/negotiations",
     "/admin/heatmaps",
+    "/admin/waitlist",
     "/admin/revenue",
     "/admin/analytics",
     "/admin/reports",
