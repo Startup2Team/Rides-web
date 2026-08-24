@@ -153,6 +153,14 @@ const icons = {
       <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
     </Icon>
   ),
+  waitlist: (
+    <Icon>
+      <path d="M16 3.5a2.5 2.5 0 0 1 0 5" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M1 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2" />
+      <path d="M19 8h4M21 6v4" />
+    </Icon>
+  ),
   revenue: (
     <Icon>
       <line x1="12" y1="2" x2="12" y2="22" />
@@ -316,6 +324,7 @@ export const groups: {
       { label: "Live Rides", href: "/admin/live-rides", icon: icons.liveRides },
       { label: "Fare Negotiations", href: "/admin/negotiations", icon: icons.negotiations },
       { label: "Demand Heatmap", href: "/admin/heatmaps", icon: icons.heatmaps },
+      { label: "Waitlist", href: "/admin/waitlist", icon: icons.waitlist },
     ],
   },
   {
