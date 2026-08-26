@@ -542,6 +542,22 @@ export function DriversTable() {
     if (sortKey === "applied") {
       const statusDiff = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
       if (statusDiff !== 0) return statusDiff;
+
+      // Within the needs-review bucket, surface reopened/resubmitted drivers
+      // by how recently their record was touched rather than when they
+      // first applied — a resubmission bumps updated_at but leaves
+      // created_at, so ordering by created_at alone buries a reopened
+      // application under old fresh applications. Backend now returns this
+      // queue updated_at DESC too; mirror that here since this list fetches
+      // unfiltered and sorts client-side.
+      const needsReviewA = a.status === "Pending" || a.status === "NeedsInfo";
+      const needsReviewB = b.status === "Pending" || b.status === "NeedsInfo";
+      if (needsReviewA && needsReviewB) {
+        const ua = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const ub = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        if (ua !== ub) return ub - ua;
+      }
+
       const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return sortDir === "asc" ? ta - tb : tb - ta;

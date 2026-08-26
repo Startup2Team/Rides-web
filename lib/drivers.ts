@@ -76,6 +76,7 @@ export type DriverRow = {
   rating: number | null;
   lastActive: string;
   createdAt: string; // ISO — used for "applied" sort
+  updatedAt: string; // ISO — used to float reopened/resubmitted drivers up the needs-review queue
   phone?: string;
   eligible?: boolean;
   referrals: number;
@@ -162,11 +163,18 @@ export function mapApprovalStatus(
  * after it was created (e.g. they resubmitted documents once asked, which
  * bumps `updated_at` but leaves `created_at` — and, per the canonical
  * contract, flips approval_status back to PENDING_REVIEW). Only meaningful
- * for drivers currently sitting in a needs-review status; a one-minute
- * buffer avoids flagging normal create-time timestamp jitter.
+ * for drivers currently in "Pending" — a one-minute buffer avoids flagging
+ * normal create-time timestamp jitter.
+ *
+ * Deliberately NOT checked for "NeedsInfo": the admin action that sends a
+ * driver back for more info sets `updated_at = NOW()` on the backend itself,
+ * so every freshly-flagged NeedsInfo driver would have updated_at far past
+ * created_at even though the driver hasn't touched anything yet. A real
+ * resubmission flips the status back to Pending, which is the only state
+ * this signal means anything for.
  */
 function wasResubmitted(status: DriverStatus, createdAt?: string, updatedAt?: string): boolean {
-  if (status !== "Pending" && status !== "NeedsInfo") return false;
+  if (status !== "Pending") return false;
   if (!createdAt || !updatedAt) return false;
   const created = new Date(createdAt).getTime();
   const updated = new Date(updatedAt).getTime();
@@ -206,6 +214,7 @@ export function mapApiDriver(d: ApiDriver): DriverRow {
       ? new Date(d.created_at).toLocaleDateString()
       : "—",
     createdAt: d.created_at ?? "",
+    updatedAt: d.updated_at ?? d.created_at ?? "",
     phone: d.phone,
     eligible,
     referrals: d.referral_count ?? 0,
