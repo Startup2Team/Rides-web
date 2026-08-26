@@ -11,7 +11,7 @@ import {
   requestDriverMoreInfo,
   resolveBackendUrl,
 } from "@/lib/api";
-import { mapDriverDetailToVerify } from "@/lib/drivers";
+import { mapDriverDetailToVerify, pickLatestDocs } from "@/lib/drivers";
 import type { VerifyDriver, ReviewHistoryEntry } from "../verify-driver-modal";
 import { ReferredDriversSection } from "../referred-drivers-section";
 import { NotifyDriverModal } from "../notify-driver-modal";
@@ -108,7 +108,13 @@ const DOC_TYPES: Record<DocKey, { front: string[]; back: string[] }> = {
 };
 
 function findDocUrl(driver: VerifyDriver, types: string[]): string | null {
-  const doc = driver.documents?.find((d) =>
+  // Stale-document fix: after a resubmission the driver's `documents` array
+  // can contain both the old (rejected/superseded) file and the new one for
+  // the same document_type. Filter down to the latest current document per
+  // type BEFORE matching, so a reviewer always sees what the driver most
+  // recently uploaded — not whatever `.find()` happened to hit first.
+  const latestDocs = pickLatestDocs(driver.documents);
+  const doc = latestDocs.find((d) =>
     types.some((t) => d.document_type.toUpperCase() === t.toUpperCase()),
   );
   return resolveBackendUrl(doc?.file_url?.trim()) || null;

@@ -53,8 +53,16 @@ export type DriverStatus =
   | "On trip"
   | "Offline"
   | "Pending"
+  // Admin sent this driver back asking for specific documents to be
+  // re-uploaded. Distinct from "Pending" so it renders its own label, but it
+  // belongs in the same needs-review queue.
+  | "NeedsInfo"
   | "Suspended"
-  | "Rejected";
+  | "Rejected"
+  // Any approval_status the frontend doesn't recognize. Must NEVER be treated
+  // as an alias for Approved (see mapApprovalStatus) — an unrecognized status
+  // masquerading as "Approved" is exactly how the NEEDS_MORE_INFO bug shipped.
+  | "Unknown";
 
 export type DriverRow = {
   id: string;
@@ -62,13 +70,24 @@ export type DriverRow = {
   vehicle: string;
   plate: string;
   status: DriverStatus;
+  /** Raw backend approval_status, used to label the "Unknown" fallback badge. */
+  rawStatus: string;
   acceptance: number | null;
   rating: number | null;
   lastActive: string;
   createdAt: string; // ISO — used for "applied" sort
+  updatedAt: string; // ISO — used to float reopened/resubmitted drivers up the needs-review queue
   phone?: string;
   eligible?: boolean;
   referrals: number;
+  /**
+   * True when this driver's record changed meaningfully after it was created
+   * (e.g. they resubmitted documents after a NEEDS_MORE_INFO request) — lets
+   * the table flag them so admins don't miss a resubmission that otherwise
+   * looks like a brand-new Pending application. Off if the backend doesn't
+   * send `updated_at` yet.
+   */
+  resubmitted: boolean;
 };
 
 export function isDriverEligible(driver: {
@@ -120,20 +139,57 @@ export function mapApprovalStatus(
 ): DriverStatus {
   const s = approvalStatus.toUpperCase();
   if (s === "PENDING_REVIEW" || s === "PENDING") return "Pending";
+  // Admin asked for specific documents to be re-uploaded. This is a
+  // needs-review state, not Approved — it must stay in the actionable queue
+  // and never fall through to the Offline/Approved bucket below.
+  if (s === "NEEDS_MORE_INFO") return "NeedsInfo";
   if (s === "REJECTED") return "Rejected";
   if (s === "SUSPENDED") return "Suspended";
-  if (onTrip) return "On trip";
-  if (isOnline) return "Online";
-  if (s === "APPROVED" || s === "ACTIVE" || s === "APPROVED_NON_COMPLIANT") return "Offline";
-  return "Offline";
+  if (s === "APPROVED" || s === "ACTIVE" || s === "APPROVED_NON_COMPLIANT") {
+    if (onTrip) return "On trip";
+    if (isOnline) return "Online";
+    return "Offline";
+  }
+  // Closed-enum bug fix: any status this function doesn't recognize used to
+  // fall through to "Offline", which the table renders as a green "Approved"
+  // badge — so an unmapped status (e.g. a future backend addition) silently
+  // masqueraded as an approved driver and vanished from the Pending queue.
+  // Default to an explicit, clearly-not-Approved state instead.
+  return "Unknown";
+}
+
+/**
+ * A driver "came back" after a prior review if the record was updated well
+ * after it was created (e.g. they resubmitted documents once asked, which
+ * bumps `updated_at` but leaves `created_at` — and, per the canonical
+ * contract, flips approval_status back to PENDING_REVIEW). Only meaningful
+ * for drivers currently in "Pending" — a one-minute buffer avoids flagging
+ * normal create-time timestamp jitter.
+ *
+ * Deliberately NOT checked for "NeedsInfo": the admin action that sends a
+ * driver back for more info sets `updated_at = NOW()` on the backend itself,
+ * so every freshly-flagged NeedsInfo driver would have updated_at far past
+ * created_at even though the driver hasn't touched anything yet. A real
+ * resubmission flips the status back to Pending, which is the only state
+ * this signal means anything for.
+ */
+function wasResubmitted(status: DriverStatus, createdAt?: string, updatedAt?: string): boolean {
+  if (status !== "Pending") return false;
+  if (!createdAt || !updatedAt) return false;
+  const created = new Date(createdAt).getTime();
+  const updated = new Date(updatedAt).getTime();
+  if (Number.isNaN(created) || Number.isNaN(updated)) return false;
+  return updated - created > 60_000;
 }
 
 export function mapApiDriver(d: ApiDriver): DriverRow {
   // acceptance_rate is stored as 0–100 in the DB (not 0–1), so just round it.
   // Pending drivers have no rides yet — the DB default of 100 is meaningless.
+  const statusUpper = d.approval_status?.toUpperCase();
   const isPending =
-    d.approval_status?.toUpperCase() === "PENDING_REVIEW" ||
-    d.approval_status?.toUpperCase() === "PENDING";
+    statusUpper === "PENDING_REVIEW" ||
+    statusUpper === "PENDING" ||
+    statusUpper === "NEEDS_MORE_INFO";
   const pct =
     !isPending && d.acceptance_rate != null
       ? Math.round(d.acceptance_rate)
@@ -141,25 +197,68 @@ export function mapApiDriver(d: ApiDriver): DriverRow {
   const name =
     d.full_name?.trim() ||
     (d.phone ? d.phone : "Unknown driver");
-  const isNonCompliant = d.approval_status?.toUpperCase() === "APPROVED_NON_COMPLIANT";
+  const isNonCompliant = statusUpper === "APPROVED_NON_COMPLIANT";
   const eligible = !isNonCompliant;
+  const status = mapApprovalStatus(d.approval_status, Boolean(d.is_online), Boolean(d.on_trip));
 
   return {
     id: d.id,
     name,
     vehicle: formatTransportType(d.transport_type),
     plate: d.vehicle_plate ?? "—",
-    status: mapApprovalStatus(d.approval_status, Boolean(d.is_online), Boolean(d.on_trip)),
+    status,
+    rawStatus: d.approval_status ?? "",
     acceptance: pct,
     rating: (d as { rating?: number }).rating ?? null,
     lastActive: d.created_at
       ? new Date(d.created_at).toLocaleDateString()
       : "—",
     createdAt: d.created_at ?? "",
+    updatedAt: d.updated_at ?? d.created_at ?? "",
     phone: d.phone,
     eligible,
     referrals: d.referral_count ?? 0,
+    resubmitted: wasResubmitted(status, d.created_at, d.updated_at),
   };
+}
+
+/**
+ * Resubmission fix (stale documents): the backend keeps every historical
+ * document for a driver (so review history stays intact) and marks all but
+ * the newest upload per `document_type` with `superseded_at`. The admin
+ * review page used to `.find()` the FIRST match per type, which after a
+ * resubmit showed the OLD, already-rejected file instead of the new one.
+ *
+ * This picks, per document_type, the most recent non-superseded document
+ * (falling back to the most recent overall if every copy of a type is
+ * unexpectedly marked superseded, so a review is never left with nothing to
+ * show). Safe against backends that don't send `superseded_at` yet — every
+ * document is then treated as current and the newest `uploaded_at` wins,
+ * same as the old first-match behaviour for drivers with a single upload.
+ */
+export function pickLatestDocs<
+  T extends { document_type: string; uploaded_at?: string; superseded_at?: string | null },
+>(documents: T[] | undefined): T[] {
+  if (!documents || documents.length === 0) return [];
+  const byType = new Map<string, T[]>();
+  for (const doc of documents) {
+    const key = doc.document_type.toUpperCase();
+    const list = byType.get(key);
+    if (list) list.push(doc);
+    else byType.set(key, [doc]);
+  }
+  const uploadedTime = (doc: T) => {
+    const t = doc.uploaded_at ? new Date(doc.uploaded_at).getTime() : NaN;
+    return Number.isNaN(t) ? 0 : t;
+  };
+  const latest: T[] = [];
+  for (const list of byType.values()) {
+    const current = list.filter((d) => !d.superseded_at);
+    const pool = current.length > 0 ? current : list;
+    pool.sort((a, b) => uploadedTime(b) - uploadedTime(a));
+    latest.push(pool[0]);
+  }
+  return latest;
 }
 
 function ageFromDob(dob: string | null | undefined): number {
@@ -277,7 +376,10 @@ export function computeOverviewFromDrivers(
     total: total ?? drivers.length,
     online: rows.filter((d) => d.status === "Online").length,
     onTrip: rows.filter((d) => d.status === "On trip").length,
-    pending: rows.filter((d) => d.status === "Pending").length,
+    // "Pending" bucket = anything still awaiting an admin decision, which
+    // includes drivers sent back for NEEDS_MORE_INFO — they're actionable
+    // too, not settled.
+    pending: rows.filter((d) => d.status === "Pending" || d.status === "NeedsInfo").length,
     suspended: rows.filter((d) => d.status === "Suspended").length,
     totalReferrals: rows.reduce((sum, d) => sum + d.referrals, 0),
   };

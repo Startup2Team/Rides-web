@@ -34,9 +34,26 @@ const statusStyles: Record<string, string> = {
   "On trip": "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-100",
   Offline: "bg-muted text-muted-foreground",
   Pending: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100",
+  NeedsInfo: "bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-300",
   Suspended: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-100",
   Rejected: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-100",
+  // Deliberately NOT green/Approved-looking — this is the fallback for a
+  // status the frontend doesn't recognize (see mapApprovalStatus).
+  Unknown: "bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200",
 };
+
+const isApprovedBucket = (status: DriverStatus) =>
+  status === "Online" || status === "On trip" || status === "Offline";
+
+/** Badge key (into statusStyles) + display label for a driver's current status. */
+function statusBadge(d: Driver): { key: string; label: string } {
+  if (isApprovedBucket(d.status)) return { key: "Approved", label: "Approved" };
+  if (d.status === "NeedsInfo") return { key: "NeedsInfo", label: "Needs Info" };
+  if (d.status === "Unknown") {
+    return { key: "Unknown", label: d.rawStatus || "Unknown" };
+  }
+  return { key: d.status, label: d.status };
+}
 
 
 
@@ -98,6 +115,25 @@ function ViewToggle({
   );
 }
 
+/**
+ * Flags a driver whose record changed well after creation while still
+ * needing review (see `wasResubmitted` in lib/drivers.ts) — i.e. they came
+ * back with new documents after an admin sent them back. Without this, a
+ * resubmission is indistinguishable from a brand-new application once the
+ * backend flips the status back to PENDING_REVIEW.
+ */
+function ResubmittedChip() {
+  return (
+    <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-50 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-sky-700 ring-1 ring-inset ring-sky-100">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-2 w-2" aria-hidden>
+        <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+        <polyline points="21 3 21 9 15 9" />
+      </svg>
+      Resubmitted
+    </span>
+  );
+}
+
 function DriverCard({
   driver,
   primaryAction,
@@ -128,12 +164,13 @@ function DriverCard({
         <div className="flex flex-col gap-1 items-start">
           <span
             className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-              statusStyles[driver.status === "Online" || driver.status === "On trip" || driver.status === "Offline" ? "Approved" : driver.status]
+              statusStyles[statusBadge(driver).key]
             }`}
           >
-            {driver.status === "Online" || driver.status === "On trip" || driver.status === "Offline" ? "Approved" : driver.status}
+            {statusBadge(driver).label}
           </span>
-          {(driver.status === "Online" || driver.status === "On trip" || driver.status === "Offline") && (
+          {driver.resubmitted ? <ResubmittedChip /> : null}
+          {isApprovedBucket(driver.status) && (
             driver.eligible !== false ? (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-emerald-700 ring-1 ring-inset ring-emerald-100">
                 Eligible
@@ -293,7 +330,7 @@ function RowMenu({
   type Action = { label: string; tone?: "danger"; onClick?: () => void };
   const actions: Action[] = [
     { label: "View profile", onClick: onView },
-    ...(status === "Pending"
+    ...(status === "Pending" || status === "NeedsInfo"
       ? [{ label: "Verify documents", onClick: onVerify }]
       : []),
     { label: "Message driver", onClick: onMessage },
@@ -445,13 +482,16 @@ export function DriversTable() {
   const filtered = drivers.filter((d) => {
     // Status Filter
     if (statusFilter !== "all") {
-      const isApproved = d.status === "Online" || d.status === "On trip" || d.status === "Offline";
+      const isApproved = isApprovedBucket(d.status);
       if (statusFilter === "ApprovedEligible") {
         if (!isApproved || d.eligible === false) return false;
       } else if (statusFilter === "ApprovedNonCompliant") {
         if (!isApproved || d.eligible !== false) return false;
       } else if (statusFilter === "Pending") {
-        if (d.status !== "Pending") return false;
+        // "Pending Review" is the actionable queue — drivers sent back for
+        // NEEDS_MORE_INFO still need an admin decision, so they belong here
+        // too, not just fresh PENDING_REVIEW applications.
+        if (d.status !== "Pending" && d.status !== "NeedsInfo") return false;
       } else if (statusFilter === "Rejected") {
         if (d.status !== "Rejected") return false;
       } else if (statusFilter === "Suspended") {
@@ -494,7 +534,7 @@ export function DriversTable() {
   });
 
   const statusOrder: Record<string, number> = {
-    Pending: 0, Online: 1, "On trip": 2, Offline: 3, Suspended: 4,
+    Pending: 0, NeedsInfo: 0, Unknown: 0, Online: 1, "On trip": 2, Offline: 3, Suspended: 4,
   };
 
   const sorted = [...filtered].sort((a, b) => {
@@ -502,6 +542,22 @@ export function DriversTable() {
     if (sortKey === "applied") {
       const statusDiff = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
       if (statusDiff !== 0) return statusDiff;
+
+      // Within the needs-review bucket, surface reopened/resubmitted drivers
+      // by how recently their record was touched rather than when they
+      // first applied — a resubmission bumps updated_at but leaves
+      // created_at, so ordering by created_at alone buries a reopened
+      // application under old fresh applications. Backend now returns this
+      // queue updated_at DESC too; mirror that here since this list fetches
+      // unfiltered and sorts client-side.
+      const needsReviewA = a.status === "Pending" || a.status === "NeedsInfo";
+      const needsReviewB = b.status === "Pending" || b.status === "NeedsInfo";
+      if (needsReviewA && needsReviewB) {
+        const ua = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const ub = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        if (ua !== ub) return ub - ua;
+      }
+
       const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return sortDir === "asc" ? ta - tb : tb - ta;
@@ -586,7 +642,9 @@ export function DriversTable() {
       onToggle={() => setOpenMenuId(openMenuId === d.id ? null : d.id)}
       onClose={() => setOpenMenuId(null)}
       onVerify={
-        d.status === "Pending" ? () => router.push(`/admin/drivers/${d.id}`) : undefined
+        d.status === "Pending" || d.status === "NeedsInfo"
+          ? () => router.push(`/admin/drivers/${d.id}`)
+          : undefined
       }
       onView={() => router.push(`/admin/drivers/${d.id}`)}
       onMessage={() => setNotifyDriverTarget({ id: d.id, name: d.name })}
@@ -635,7 +693,7 @@ export function DriversTable() {
               className="h-8 rounded-lg border border-border bg-surface px-2.5 text-xs text-foreground outline-none focus:border-primary cursor-pointer w-[48%] sm:w-auto flex-1"
             >
               <option value="all">All statuses</option>
-              <option value="Pending">Pending Review</option>
+              <option value="Pending">Pending Review (incl. Needs Info)</option>
               <option value="ApprovedEligible">Approved (Eligible)</option>
               <option value="ApprovedNonCompliant">Approved (Non-compliant)</option>
               <option value="Rejected">Rejected</option>
@@ -822,12 +880,13 @@ export function DriversTable() {
                     <div className="flex flex-col gap-1 items-start">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                          statusStyles[d.status === "Online" || d.status === "On trip" || d.status === "Offline" ? "Approved" : d.status]
+                          statusStyles[statusBadge(d).key]
                         }`}
                       >
-                        {d.status === "Online" || d.status === "On trip" || d.status === "Offline" ? "Approved" : d.status}
+                        {statusBadge(d).label}
                       </span>
-                      {(d.status === "Online" || d.status === "On trip" || d.status === "Offline") && (
+                      {d.resubmitted ? <ResubmittedChip /> : null}
+                      {isApprovedBucket(d.status) && (
                         d.eligible !== false ? (
                           <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-emerald-700 ring-1 ring-inset ring-emerald-100">
                             Eligible

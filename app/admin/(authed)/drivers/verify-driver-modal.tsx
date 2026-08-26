@@ -9,6 +9,8 @@ export type DriverDocument = {
   document_type: string;
   file_url: string;
   uploaded_at?: string;
+  /** Set once a newer document of the same type superseded this one (resubmission). */
+  superseded_at?: string | null;
 };
 
 export type ReviewDecision = "approved" | "rejected" | "more_info_requested";
