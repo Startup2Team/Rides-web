@@ -588,6 +588,12 @@ export type Driver = {
   total_rides?: number;
   city?: string;
   created_at: string;
+  /**
+   * Last time the driver record changed (e.g. resubmitted documents after a
+   * NEEDS_MORE_INFO / rejection review). Optional — older backend responses
+   * may omit it, in which case the "resubmitted" indicator simply stays off.
+   */
+  updated_at?: string;
   referral_count?: number;
   referred_by_driver_id?: string | null;
 };
@@ -657,6 +663,8 @@ export type DriverDetail = {
   momo_pay_code?: string;
   approval_status: string;
   created_at: string;
+  /** Last time the driver record changed — see `Driver.updated_at`. */
+  updated_at?: string;
   is_online?: boolean;
   referral_count?: number;
   /** Present when this driver was referred by another driver on the platform. */
@@ -671,6 +679,12 @@ export type DriverDetail = {
     document_type: string;
     file_url: string;
     uploaded_at: string;
+    /**
+     * Set once a newer document of the same type has been uploaded (e.g. after
+     * a resubmission). When present and truthy this document is stale and must
+     * not be shown to the reviewer — see `pickLatestDocs` in lib/drivers.ts.
+     */
+    superseded_at?: string | null;
   }>;
   /**
    * Append-only audit trail of every prior admin review decision for this
