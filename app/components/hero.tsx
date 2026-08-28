@@ -157,7 +157,7 @@ export default function Hero() {
           >
             <Link
               href="#download"
-              aria-label="Download on the App Store"
+              aria-label={`${t("appStoreEyebrow")} ${t("appStoreLabel")}`}
               className="inline-flex h-[3.25rem] items-center gap-2.5 rounded-2xl bg-primary px-5 text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] hover:bg-foreground hover:text-background active:scale-[0.98]"
             >
               <svg viewBox="0 0 24 24" aria-hidden className="h-6 w-6 fill-current">
@@ -170,7 +170,7 @@ export default function Hero() {
             </Link>
             <Link
               href="#download"
-              aria-label="Get it on Google Play"
+              aria-label={`${t("googlePlayEyebrow")} ${t("googlePlayLabel")}`}
               className="inline-flex h-[3.25rem] items-center gap-2.5 rounded-2xl bg-primary px-5 text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] hover:bg-foreground hover:text-background active:scale-[0.98]"
             >
               <svg viewBox="0 0 24 24" aria-hidden className="h-6 w-6">

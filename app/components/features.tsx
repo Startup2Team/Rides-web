@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useTranslations } from "../i18n/context";
 import { CarIcon, FusoIcon, HiluxIcon, MotoIcon } from "./vehicle-icons";
 
 // ── Shared claymorphism filter / gradient defs ────────────────────────────────
@@ -150,20 +153,21 @@ function Badge({ children }: { children: ReactNode }) {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function Features() {
+  const t = useTranslations("features");
+
   return (
     <section id="features" className="relative py-12 lg:py-16">
       <div className="mx-auto max-w-7xl px-6">
         {/* Intro */}
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-            Built for the trip
+            {t("eyebrow")}
           </p>
           <h2 className="mt-3 text-balance text-3xl font-bold tracking-[-0.02em] text-muted-foreground sm:text-4xl lg:text-5xl">
-            Everything you need, on your terms
+            {t("heading")}
           </h2>
           <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-            Built around how Rwanda actually moves. Fair prices, the right
-            vehicle, and full visibility from book to drop-off.
+            {t("body")}
           </p>
         </div>
 
@@ -185,13 +189,12 @@ export default function Features() {
             <div className="flex-1" />
             {/* Copy anchored BOTTOM */}
             <div>
-              <Badge>Multi-modal</Badge>
+              <Badge>{t("multiModalBadge")}</Badge>
               <h3 className="mt-3 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.02em] text-foreground sm:text-4xl lg:text-[2.5rem]">
-                Pick your ride.
+                {t("multiModalTitle")}
               </h3>
               <p className="mt-3 max-w-md text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-                A moto for a quick run. A cab for comfort. A hilux for rough
-                roads. A fuso for a full haul. One app, four ways to move.
+                {t("multiModalBody")}
               </p>
             </div>
           </article>
@@ -203,13 +206,12 @@ export default function Features() {
           >
             <div className="grid h-full gap-6 sm:grid-cols-[1.1fr_1fr] sm:items-center">
               <div className="flex flex-col">
-                <Badge>Real-time</Badge>
+                <Badge>{t("realtimeBadge")}</Badge>
                 <h3 className="mt-3 text-balance text-2xl font-bold leading-[1.1] tracking-[-0.02em] text-foreground sm:text-3xl lg:text-[2rem]">
-                  Eyes on every trip.
+                  {t("realtimeTitle")}
                 </h3>
                 <p className="mt-3 max-w-md text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  Follow your driver on the map as they approach. Share the
-                  live trip with anyone you trust.
+                  {t("realtimeBody")}
                 </p>
               </div>
               {/* Illustration — sized to the wide-card row height */}
@@ -226,12 +228,12 @@ export default function Features() {
           >
             <div className="grid h-full grid-cols-[1fr_auto] items-center gap-3">
               <div className="flex flex-col">
-                <Badge>Fair pricing</Badge>
+                <Badge>{t("pricingBadge")}</Badge>
                 <h3 className="mt-3 text-balance text-xl font-bold leading-[1.1] tracking-[-0.02em] text-foreground sm:text-2xl">
-                  Name your price.
+                  {t("pricingTitle")}
                 </h3>
                 <p className="mt-2 text-pretty text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                  See the suggested fare, send a counter-offer. No surge surprises.
+                  {t("pricingBody")}
                 </p>
               </div>
               <div className="relative h-28 w-28 shrink-0 sm:h-32 sm:w-32">
@@ -247,12 +249,12 @@ export default function Features() {
           >
             <div className="grid h-full grid-cols-[1fr_auto] items-center gap-3">
               <div className="flex flex-col">
-                <Badge>Mobile money</Badge>
+                <Badge>{t("payBadge")}</Badge>
                 <h3 className="mt-3 text-balance text-xl font-bold leading-[1.1] tracking-[-0.02em] text-foreground sm:text-2xl">
-                  Pay your way.
+                  {t("payTitle")}
                 </h3>
                 <p className="mt-2 text-pretty text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                  MoMo, Airtel, or cash to your driver. Same flow either way.
+                  {t("payBody")}
                 </p>
               </div>
               <div className="relative h-28 w-28 shrink-0 sm:h-32 sm:w-32">

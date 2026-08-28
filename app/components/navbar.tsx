@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LanguageSwitcher } from "./language-switcher";
-import { useTranslations } from "../i18n/context";
+import { useLocale, useTranslations } from "../i18n/context";
 
 function isLinkActive(
   href: string,
@@ -41,7 +41,9 @@ function smoothScrollToId(id: string) {
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { locale } = useLocale();
   const t = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navRef = useRef<HTMLElement>(null);
@@ -120,13 +122,48 @@ export default function Navbar() {
     });
   };
 
-  useLayoutEffect(repositionIndicator, [pathname, activeHash]);
+  // Sliding between links on navigation is the point of the pill; sliding
+  // because the *labels* changed is not. On a language switch every word
+  // changes at once, so the pill snaps straight to the new word instead of
+  // gliding across from where the old one used to be.
+  const [animated, setAnimated] = useState(true);
+  const localeRef = useRef(locale);
+
+  useLayoutEffect(() => {
+    if (localeRef.current !== locale) {
+      localeRef.current = locale;
+      setAnimated(false);
+    }
+    repositionIndicator();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, activeHash, locale]);
+
+  useEffect(() => {
+    if (animated) return;
+    const frame = requestAnimationFrame(() => setAnimated(true));
+    return () => cancelAnimationFrame(frame);
+  }, [animated]);
+
+  // The pill is positioned from measured pixels, so anything that reflows the
+  // links has to re-measure: switching language (labels change width), the web
+  // font swapping in, or the browser zooming. A ResizeObserver on the nav and
+  // its links catches all three; the window listener stays for viewport resizes
+  // that reflow the row without changing any single element's box.
+  useEffect(() => {
+    const navEl = navRef.current;
+    if (!navEl || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(repositionIndicator);
+    observer.observe(navEl);
+    linkRefs.current.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, activeHash, locale]);
 
   useEffect(() => {
     window.addEventListener("resize", repositionIndicator);
     return () => window.removeEventListener("resize", repositionIndicator);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, activeHash]);
+  }, [pathname, activeHash, locale]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -254,7 +291,11 @@ export default function Navbar() {
               a pill that slides between links. */}
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 rounded-full bg-primary/10 ring-1 ring-inset ring-primary/20 transition-[left,width,opacity] duration-300 ease-out motion-reduce:transition-none"
+            className={`pointer-events-none absolute inset-y-0 rounded-full bg-primary/10 ring-1 ring-inset ring-primary/20 motion-reduce:transition-none ${
+              animated
+                ? "transition-[left,width,opacity] duration-300 ease-out"
+                : "transition-none"
+            }`}
             style={{
               left: indicator.left,
               width: indicator.width,
@@ -276,7 +317,7 @@ export default function Navbar() {
 
           <button
             type="button"
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-label={mobileOpen ? tCommon("closeMenu") : tCommon("openMenu")}
             aria-expanded={mobileOpen}
             aria-controls="mobile-nav-panel"
             onClick={() => setMobileOpen((v) => !v)}

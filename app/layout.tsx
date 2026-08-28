@@ -26,6 +26,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // globals.css sets `scroll-behavior: smooth` for in-page anchors. This
+      // attribute opts back in to Next's override, so route transitions still
+      // jump to the top instantly instead of smooth-scrolling there.
+      data-scroll-behavior="smooth"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

@@ -19,7 +19,6 @@
     "waitlistCta": "Rejoindre la liste d'attente"
   },
   "footer": {
-    "tagline": "Une mobilité et une logistique portées par les gens — connectant passagers, chauffeurs et communautés à travers l'Afrique et au-delà.",
     "quote": "« Porté par les gens, propulsé par le choix. »",
     "product": "Produit",
     "company": "Entreprise",
@@ -132,11 +131,12 @@
     "communityMottoLabel": "Notre devise communautaire",
     "communityMotto": "Votre trajet. Votre choix. Votre opportunité.",
     "orgMottoLabel": "Notre devise d'organisation",
-    "orgMotto": "Porté par les gens, propulsé par le choix."
+    "orgMotto": "Porté par les gens, propulsé par le choix.",
+    "fleetImageAlt": "Notre flotte complète : berline, moto avec chauffeur et passager, pick-up et camion de fret"
   },
   "drivers": {
     "heroHeadline": "Conduisez à votre façon, gagnez à votre façon.",
-    "heroSub": "Apportez votre moto, votre taxi, votre hilux ou votre fuso. Téléchargez l'application Rides Chauffeur et commencez à gagner dès aujourd'hui.",
+    "heroSub": "Roulez avec votre moto, votre taxi, votre hilux ou votre fuso. Téléchargez l'application Rides Driver et commencez à gagner de l'argent dès aujourd'hui.",
     "heroNote": "Découvrez ce que nous offrons ci-dessous avant de postuler.",
     "whyEyebrow": "Pourquoi conduire avec Rides",
     "whyHeading": "Pensé pour les personnes qui conduisent.",
@@ -147,33 +147,33 @@
     "talkToTeam": "Parlez à notre équipe",
     "benefits": [
       {
-        "title": "Paiements quotidiens",
-        "detail": "Payé chaque jour travaillé, directement sur votre mobile money. Pas de versements hebdomadaires, pas de seuil minimum."
+        "title": "Des paiements fiables",
+        "detail": "Vos gains arrivent directement sur votre mobile money, rapidement et sans attente inutile."
       },
       {
         "title": "Une économie pensée pour les chauffeurs",
-        "detail": "Des tarifs transparents, sans prélèvements cachés. Vous voyez ce que vous allez gagner avant d'accepter la course."
+        "detail": "Des tarifs transparents, sans prélèvements cachés. Vous savez ce que vaut une course avant de l'accepter."
       },
       {
         "title": "Un vrai support humain",
-        "detail": "Une équipe présente à Kigali, disponible 24h/24 et 7j/7. Quand quelque chose ne va pas, quelqu'un répond vraiment."
+        "detail": "Une équipe joignable quand vous en avez besoin. Quand quelque chose ne va pas, quelqu'un répond."
       },
       {
         "title": "Conçu au Rwanda",
-        "detail": "Équipe locale, itinéraires locaux, moyens de paiement locaux. Nous comprenons la façon dont le Rwanda se déplace."
+        "detail": "Équipe locale, itinéraires locaux, options de paiement locales. Nous comprenons la façon dont le Rwanda se déplace."
       }
     ],
     "steps": [
       {
         "title": "Téléchargez l'application",
-        "detail": "Obtenez l'application Rides Chauffeur sur l'App Store ou Google Play."
+        "detail": "Vous la trouverez sur l'App Store ou Google Play, sous le nom Rides Driver."
       },
       {
         "title": "Soumettez vos informations",
         "detail": "L'application vous guide à chaque étape. Les exigences spécifiques à votre véhicule apparaissent à ce moment-là."
       },
       {
-        "title": "Commencez à gagner",
+        "title": "Commencez à gagner de l'argent",
         "detail": "Nous examinons et validons votre dossier, généralement sous 24 à 48 heures. Ensuite, vous êtes actif."
       }
     ]
@@ -200,7 +200,7 @@
   "waitlist": {
     "eyebrow": "Accès anticipé",
     "heading": "Rejoignez la liste d'attente Rides",
-    "subheading": "Soyez parmi les premiers informés du lancement de Rides dans votre zone — en tant que passager ou chauffeur.",
+    "subheading": "Soyez parmi les premiers informés du lancement de Rides dans votre zone en tant que passager ou chauffeur.",
     "roleCustomerTitle": "Je veux un trajet",
     "roleCustomerHint": "Soyez averti dès que Rides est disponible près de chez vous.",
     "roleDriverTitle": "Je veux conduire",
@@ -252,5 +252,908 @@
     "copyLink": "Copier le lien",
     "copied": "Copié !",
     "joinAnother": "S'inscrire avec un autre numéro"
+  },
+  "features": {
+    "eyebrow": "Pensé pour le trajet",
+    "heading": "Tout ce qu'il vous faut, à votre façon",
+    "body": "Conçu pour la façon dont le Rwanda se déplace vraiment. Des prix justes, le bon véhicule et une visibilité totale, de la réservation à l'arrivée.",
+    "multiModalBadge": "Multimodal",
+    "multiModalTitle": "Choisissez votre véhicule.",
+    "multiModalBody": "Une moto quand ça presse. Une voiture pour le confort. Un hilux pour les routes difficiles. Un fuso pour les gros chargements. Une seule app, quatre façons de se déplacer.",
+    "realtimeBadge": "Temps réel",
+    "realtimeTitle": "Chaque trajet sous vos yeux.",
+    "realtimeBody": "Suivez votre chauffeur sur la carte pendant qu'il approche. Partagez le trajet en direct avec les personnes de confiance.",
+    "pricingBadge": "Prix équitable",
+    "pricingTitle": "Proposez votre prix.",
+    "pricingBody": "Consultez le tarif suggéré, envoyez une contre-offre. Aucune majoration surprise.",
+    "payBadge": "Mobile money",
+    "payTitle": "Payez comme vous voulez.",
+    "payBody": "MoMo, Airtel ou espèces au chauffeur. Le même parcours dans tous les cas."
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "heading": "Questions fréquentes",
+    "introPrefix": "Tout ce qu'il faut savoir pour voyager, conduire, payer et rester en sécurité avec Rides. Vous ne trouvez pas votre réponse ?",
+    "introLinkLabel": "Écrivez-nous",
+    "items": [
+      {
+        "q": "Qu'est-ce que Rides ?",
+        "a": "Rides, c'est une seule app pour tous vos déplacements. Une moto quand vous êtes en retard. Une voiture quand ça compte. Un hilux pour les routes difficiles. Un fuso pour un déménagement. Vous choisissez le véhicule, vous voyez le tarif avant de réserver, et vous suivez le chauffeur tout au long du trajet."
+      },
+      {
+        "q": "Comment réserver un trajet ?",
+        "a": "Connectez-vous avec votre numéro de téléphone, choisissez votre véhicule, indiquez votre point de départ et votre destination, puis confirmez. Un chauffeur proche accepte en quelques secondes — et vous le voyez venir vers vous sur la carte."
+      },
+      {
+        "q": "Quels types de véhicules sont disponibles ?",
+        "a": "Quatre. Les motos pour un trajet rapide en solo. Les voitures quand vous voulez du confort. Les pick-up hilux pour les charges encombrantes et les routes difficiles. Les camions fuso pour un chargement complet. Le prix s'adapte à votre choix : vous ne payez jamais pour plus de véhicule que nécessaire."
+      },
+      {
+        "q": "Comment les tarifs sont-ils calculés ?",
+        "a": "Distance, type de véhicule et heure de la journée — et vous voyez le montant avant de réserver. Les tarifs peuvent aussi être négociés à l'avance dans l'app, aussi bien par les passagers que par les chauffeurs. Pas de tarification dynamique. Pas de frais cachés."
+      },
+      {
+        "q": "Comment payer ?",
+        "a": "MTN Mobile Money ou Airtel Money, directement depuis l'app. Vous préférez les espèces ? Payez le chauffeur directement — le tarif reste le même."
+      },
+      {
+        "q": "Les chauffeurs sont-ils vérifiés ?",
+        "a": "Chaque chauffeur fournit sa pièce d'identité, l'assurance de son véhicule et une autorisation de transport avant de pouvoir effectuer le moindre trajet. Notre équipe examine et valide chaque dossier à la main — personne n'est inscrit automatiquement."
+      },
+      {
+        "q": "Et si je dois annuler ?",
+        "a": "Annulez à tout moment avant l'arrivée de votre chauffeur. Si vous annulez à répétition alors qu'un chauffeur est déjà en route, un court délai d'attente s'applique — c'est une protection pour les chauffeurs, qui refusent d'autres courses pour venir vous chercher."
+      },
+      {
+        "q": "Comment devenir chauffeur ?",
+        "a": "Appuyez sur Chauffeurs dans le menu et commencez votre candidature. Il vous faudra un permis valide, une assurance véhicule et un certificat de contrôle technique. La validation prend généralement 24 à 48 heures."
+      }
+    ]
+  },
+  "howItWorks": {
+    "eyebrow": "Comment ça marche",
+    "heading": "De la demande à la note, en 5 étapes.",
+    "body": "Réservez, convenez d'un tarif juste, voyagez, payez, notez. Chaque étape à votre façon.",
+    "stepsNavLabel": "Étapes",
+    "jumpToStep": "Aller à l'étape {n}",
+    "stepLabel": "Étape {n}",
+    "steps": [
+      {
+        "title": "Réservez en quelques secondes",
+        "body": "Ouvrez l'app, choisissez le véhicule qui vous convient et finalisez votre réservation en quelques touches."
+      },
+      {
+        "title": "Chauffeur confirmé",
+        "body": "Votre demande est mise en relation en toute sécurité avec les chauffeurs disponibles. Une fois acceptée, vous suivez votre chauffeur en temps réel."
+      },
+      {
+        "title": "Confirmez votre tarif",
+        "body": "Vérifiez le tarif avant le début du trajet et confirmez votre réservation en toute confiance."
+      },
+      {
+        "title": "Suivez chaque kilomètre",
+        "body": "Suivez votre chauffeur en temps réel et partagez votre trajet avec vos contacts de confiance pour plus de tranquillité."
+      },
+      {
+        "title": "Notez votre expérience",
+        "body": "Donnez votre avis en notant votre trajet pour aider à maintenir une communauté de confiance."
+      }
+    ],
+    "ui": {
+      "greeting": "Bonjour",
+      "whereTo": "Où allez-vous aujourd'hui ?",
+      "currentLocation": "Position actuelle",
+      "cityCountry": "Kigali, Rwanda",
+      "selectYourRide": "Choisissez votre véhicule",
+      "continueWith": "Continuer avec {vehicle}",
+      "tabHome": "Accueil",
+      "tabRides": "Trajets",
+      "tabProfile": "Profil",
+      "notifications": "Notifications",
+      "mapLayers": "Calques de la carte",
+      "myLocation": "Ma position",
+      "findingDriver": "Recherche de votre chauffeur",
+      "connectingNearby": "Mise en relation avec les motos à proximité",
+      "cancelSearch": "Annuler la recherche",
+      "negotiatingFare": "Négociation du tarif",
+      "initialOffer": "Offre initiale",
+      "counterOffer": "Contre-offre",
+      "yourOffer": "Votre offre",
+      "finalOffer": "Offre finale",
+      "acceptFare": "Accepter {amount}",
+      "decline": "Refuser",
+      "driverOnTheWay": "{name} est en route",
+      "maskedCall": "Appel masqué · 0:24",
+      "tripCompleted": "Trajet terminé",
+      "rateYourTrip": "Notez votre trajet",
+      "ratingHelps": "Votre note aide à garder la communauté fiable.",
+      "submit": "Envoyer"
+    }
+  },
+  "smartMobility": {
+    "eyebrow": "La plateforme",
+    "heading": "Conçue pour le mouvement en temps réel.",
+    "body": "Suivi en direct, mise en relation intelligente, confirmations rapides et tarifs clairs. Tout cela tourne en arrière-plan de votre trajet.",
+    "features": [
+      {
+        "title": "Suivi en direct",
+        "description": "Suivez votre chauffeur en temps réel et sachez exactement quand il arrivera."
+      },
+      {
+        "title": "Mise en relation intelligente",
+        "description": "Un algorithme intelligent vous met en relation avec les chauffeurs disponibles à proximité, pour une expérience plus rapide et plus fiable."
+      },
+      {
+        "title": "Confirmations rapides",
+        "description": "La plupart des demandes de trajet sont confirmées en quelques instants, pour partir plus vite."
+      },
+      {
+        "title": "Tarifs clairs",
+        "description": "Consultez votre tarif avant le début du trajet, pour une réservation simple et transparente."
+      }
+    ],
+    "dash": {
+      "liveOperations": "Opérations en direct",
+      "today": "Aujourd'hui",
+      "week": "Semaine",
+      "month": "Mois",
+      "now": "Maintenant",
+      "activeRides": "Trajets en cours",
+      "onlineDrivers": "Chauffeurs en ligne",
+      "live": "En direct",
+      "hotZones": "Zones actives",
+      "hotZonesValue": "3 actives"
+    }
+  },
+  "finalCta": {
+    "eyebrow": "Obtenir l'app",
+    "headingPart1": "Votre trajet.",
+    "headingPart2": "Votre prix.",
+    "body": "Au pays des mille collines, chaque trajet commence par une conversation équitable.",
+    "ui": {
+      "currentLocation": "Position actuelle",
+      "cityCountry": "Kigali, Rwanda",
+      "selectYourRide": "Choisissez votre véhicule",
+      "continueWith": "Continuer avec {vehicle}",
+      "tabHome": "Accueil",
+      "tabRides": "Trajets",
+      "tabProfile": "Profil",
+      "greeting": "Bonjour",
+      "whereTo": "Où allez-vous aujourd'hui ?",
+      "notifications": "Notifications",
+      "mapLayers": "Calques de la carte",
+      "myLocation": "Ma position"
+    }
+  },
+  "chatbot": {
+    "bubbleLabel": "Chat",
+    "openLabel": "Ouvrir le chat avec Rides",
+    "closeLabel": "Fermer le chat",
+    "dialogLabel": "Chat avec Rides",
+    "assistantName": "Assistant Rides",
+    "inputPlaceholder": "Posez-moi votre question…",
+    "sendLabel": "Envoyer",
+    "flows": {
+      "welcome": {
+        "reply": [
+          "Bonjour et bienvenue chez Rides !\n\nJe suis votre assistant intelligent — posez-moi vos questions sur la réservation de trajets, comment devenir chauffeur, les paiements, ou le fonctionnement de Rides au Rwanda."
+        ]
+      },
+      "driver": {
+        "reply": [
+          "Parfait — ce sont les chauffeurs qui font grandir Rides. Voici ce qu'il vous faut :",
+          "• Un permis de conduire rwandais valide\n• Un véhicule (moto, voiture, hilux ou fuso)\n• Une assurance SONARWA + une autorisation de la police\n• MTN MoMo ou Airtel Money pour être payé",
+          "Laissez vos coordonnées sur le formulaire de contact — nous répondons généralement sous 48 h."
+        ]
+      },
+      "negotiation": {
+        "reply": [
+          "Rides est la seule plateforme au Rwanda où le passager et le chauffeur s'accordent ensemble sur le tarif.",
+          "1. Le passager voit un tarif suggéré et fait une offre\n2. Le chauffeur accepte, fait une contre-offre ou passe\n3. Jusqu'à 4 tours — puis les deux s'entendent ou en restent là",
+          "La hausse moyenne sur la première offre est d'environ 18 %. Chaque tarif est enregistré."
+        ]
+      },
+      "locations": {
+        "reply": [
+          "Nous sommes actifs dans tout Kigali — Gasabo, Kicukiro et Nyarugenge.",
+          "Musanze est en phase pilote, et Huye ouvrira au 3e trimestre 2026.",
+          "Vous voulez Rides dans votre zone ? Dites-le-nous 👇"
+        ]
+      },
+      "payments": {
+        "reply": [
+          "Nous acceptons MTN MoMo, Airtel Money et les espèces sur chaque trajet.",
+          "Les chauffeurs sont payés deux fois par jour — à 06h00 et 17h00 — directement sur leur portefeuille. Rides prélève une commission de 12 à 18 % selon le véhicule.",
+          "Tous les paiements sont vérifiables dans l'application chauffeur."
+        ]
+      },
+      "ride-issue": {
+        "reply": [
+          "Désolé de l'apprendre. Nous traitons les problèmes de trajet en priorité — réponse moyenne en moins de 12 heures.",
+          "Décrivez les détails sur le formulaire de contact, dans la catégorie « Réclamation »."
+        ]
+      },
+      "complaint": {
+        "reply": [
+          "Nous sommes désolés. Le plus rapide est de passer par le formulaire de contact — réponse moyenne en moins de 12 heures.",
+          "Ou joignez-nous immédiatement sur WhatsApp :"
+        ]
+      },
+      "human": {
+        "reply": [
+          "Vous voulez parler à une vraie personne ? Voici le plus rapide :",
+          "WhatsApp est le plus rapide pendant les heures ouvrables (lun–sam · 08h00–20h00). Le formulaire de contact est préférable pour tout ce qui doit laisser une trace écrite."
+        ]
+      },
+      "no-match": {
+        "reply": [
+          "Je ne suis pas sûr de bien comprendre.\n\nEssayez de me poser une question sur les trajets, les chauffeurs, les paiements, ou le fonctionnement de Rides au Rwanda !"
+        ]
+      }
+    },
+    "labels": {
+      "become-driver": "Devenir chauffeur",
+      "how-payments-work": "Comment fonctionnent les paiements",
+      "negotiations": "Négociations",
+      "where-you-operate": "Où vous opérez",
+      "ride-issue": "Problème de trajet",
+      "talk-to-human": "Parler à un humain",
+      "back-to-start": "Retour au début",
+      "driver-application": "Candidature chauffeur",
+      "driver-page": "Page chauffeurs",
+      "see-how-it-works": "Voir comment ça marche",
+      "file-a-complaint": "Déposer une réclamation",
+      "whatsapp-support": "Support WhatsApp",
+      "contact-form": "Formulaire de contact",
+      "whatsapp": "WhatsApp",
+      "call-support": "Appeler le support"
+    },
+    "keywords": {
+      "driver": [
+        "chauffeur",
+        "conduire",
+        "conduc",
+        "candidat",
+        "postuler",
+        "rejoindre",
+        "inscri"
+      ],
+      "negotiation": [
+        "negoci",
+        "négoci",
+        "tarif",
+        "prix",
+        "marchand",
+        "offre"
+      ],
+      "locations": [
+        "où",
+        "ou est",
+        "zone",
+        "region",
+        "région",
+        "ville",
+        "kigali",
+        "musanze",
+        "quartier"
+      ],
+      "payments": [
+        "pay",
+        "paie",
+        "momo",
+        "airtel",
+        "especes",
+        "espèces",
+        "portefeuille",
+        "versement"
+      ],
+      "complaint": [
+        "plainte",
+        "reclamation",
+        "réclamation",
+        "remboursement",
+        "surfactur",
+        "mauvais",
+        "probleme de paiement"
+      ],
+      "ride-issue": [
+        "trajet",
+        "course",
+        "voyage",
+        "probleme",
+        "problème",
+        "litige",
+        "incident"
+      ],
+      "human": [
+        "humain",
+        "personne",
+        "agent",
+        "support",
+        "assistance",
+        "appeler",
+        "whatsapp",
+        "conseiller"
+      ]
+    }
+  },
+  "common": {
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "changeLanguage": "Changer de langue. Langue actuelle : {language}",
+    "selectLanguage": "Choisir la langue",
+    "savePdf": "Enregistrer en PDF",
+    "savePdfTitle": "Imprimer ou enregistrer cette page en PDF",
+    "home": "Accueil"
+  },
+  "privacy": {
+    "chrome": {
+      "breadcrumb": "Politique de confidentialité",
+      "badge": "Confidentialité et protection des données",
+      "title": "Politique de confidentialité",
+      "effective": "En vigueur depuis le {date}",
+      "description": "Cette politique décrit comment nous collectons, utilisons, partageons et protégeons vos données personnelles lorsque vous utilisez l'application Rides, le site web et les services associés.",
+      "viewRights": "Consulter vos droits",
+      "contactUs": "Nous contacter →",
+      "whatWeCollect": "Ce que nous collectons →",
+      "contents": "Sommaire",
+      "dataController": "Responsable du traitement",
+      "location": "Kigali, Rwanda",
+      "contactCta": "Nous contacter",
+      "footerNote": "© {year} {company} · Kigali, Rwanda · Dernière mise à jour le {date}",
+      "effectiveDate": "11 juin 2026"
+    },
+    "hero": {
+      "encrypted": "Chiffré",
+      "private": "Privé",
+      "yourRights": "Vos droits",
+      "compliant": "Conforme",
+      "dataControl": "Vos données, votre contrôle",
+      "complianceBadge": "RGPD · Loi N°058/2021"
+    },
+    "commitments": [
+      {
+        "title": "Nous ne vendons jamais vos données",
+        "body": "Vos informations personnelles ne sont jamais vendues à des annonceurs ou à des tiers."
+      },
+      {
+        "title": "RGPD et loi rwandaise N°058/2021",
+        "body": "Nous respectons à la fois la loi rwandaise sur les données et les normes du RGPD européen."
+      },
+      {
+        "title": "Vous contrôlez vos données",
+        "body": "Accédez à vos données, corrigez-les, supprimez-les ou exportez-les à tout moment, sur simple demande."
+      }
+    ],
+    "rights": [
+      {
+        "title": "Accès",
+        "desc": "Demander des informations sur nos traitements et accéder à vos informations personnelles"
+      },
+      {
+        "title": "Rectification",
+        "desc": "Mettre à jour ou corriger les inexactitudes dans vos informations personnelles"
+      },
+      {
+        "title": "Suppression",
+        "desc": "Demander la suppression de vos informations personnelles"
+      },
+      {
+        "title": "Portabilité",
+        "desc": "Recevoir une copie de vos informations personnelles dans un format lisible par machine"
+      },
+      {
+        "title": "Limitation",
+        "desc": "Limiter le traitement de vos informations personnelles"
+      },
+      {
+        "title": "Opposition",
+        "desc": "Vous opposer à ce que nous fondions notre traitement sur nos intérêts légitimes"
+      }
+    ],
+    "securitySteps": [
+      {
+        "title": "Chiffrement",
+        "desc": "Données sensibles chiffrées"
+      },
+      {
+        "title": "Serveurs sécurisés",
+        "desc": "Infrastructure cloud"
+      },
+      {
+        "title": "Contrôle d'accès",
+        "desc": "Systèmes d'authentification"
+      },
+      {
+        "title": "Audits de sécurité",
+        "desc": "Évaluations régulières"
+      }
+    ],
+    "sections": [
+      {
+        "id": "introduction",
+        "num": "",
+        "title": "Introduction",
+        "content": [
+          {
+            "kind": "text",
+            "value": "La présente Politique de confidentialité vise à vous aider à comprendre comment TRAVELIS Rwanda Ltd, ses filiales et sociétés affiliées, y compris www.rides.rw (« nous », « notre » ou « nos »), collecte, utilise, partage et protège vos données personnelles lorsque vous utilisez notre application mobile, notre site web et les services associés. Nous accordons de l'importance à votre vie privée et nous ne partagerons pas vos informations personnelles avec des tiers sans votre consentement, sauf dans les cas décrits dans la présente Politique de confidentialité."
+          },
+          {
+            "kind": "text",
+            "value": "En utilisant nos plateformes, vous acceptez les pratiques décrites dans cette politique. Si vous n'êtes pas d'accord, veuillez ne pas utiliser nos sites web ni nos applications mobiles, et ne nous transmettez aucune information."
+          }
+        ]
+      },
+      {
+        "id": "coverage",
+        "num": "",
+        "title": "Ce que couvre cette politique",
+        "content": [
+          {
+            "kind": "text",
+            "value": "La présente Politique de confidentialité s'applique à la collecte, à l'utilisation et au partage de vos informations personnelles :"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Lorsque vous visitez notre site www.rides.rw, les sites associés et nos applications mobiles",
+              "Lorsque vous recevez nos communications ou participez à nos activités ou événements, en ligne ou hors ligne",
+              "Lorsque vous remplissez une demande d'inscription ou d'abonnement à nos applications mobiles",
+              "Les informations que nous obtenons de tiers tels que revendeurs, fournisseurs de bases de données, éditeurs de contenu et fournisseurs"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "La présente Politique de confidentialité s'applique uniquement aux informations recueillies sur le Site ou via l'application mobile et ne s'applique à aucun autre site web qui n'est ni détenu ni exploité par TRAVELIS Rwanda Ltd."
+          }
+        ]
+      },
+      {
+        "id": "who-we-are",
+        "num": "1",
+        "title": "Qui nous sommes",
+        "content": [
+          {
+            "kind": "text",
+            "value": "TRAVELIS Rwanda Ltd est une entreprise technologique qui exploite une plateforme de réservation de trajets et de logistique, ainsi que d'autres solutions et applications technologiques au Rwanda."
+          },
+          {
+            "kind": "text",
+            "value": "Nous agissons en qualité de responsable du traitement des données personnelles collectées via la plateforme."
+          }
+        ]
+      },
+      {
+        "id": "legal-framework",
+        "num": "2",
+        "title": "Cadre juridique",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Nous respectons :"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "La loi rwandaise N° 058/2021 relative à la protection des données à caractère personnel et de la vie privée",
+              "Le Règlement général sur la protection des données (RGPD), lorsqu'il est applicable",
+              "Les autres réglementations applicables en matière de transport et de services numériques"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "information-we-collect",
+        "num": "3",
+        "title": "Informations que nous collectons",
+        "content": [
+          {
+            "kind": "sub",
+            "key": "3.1",
+            "title": "3.1  Informations personnelles",
+            "bullets": [
+              "Nom complet",
+              "Numéro de téléphone et numéro mobile money",
+              "Adresse email",
+              "Photo de profil",
+              "Carte d'identité nationale ou passeport (pour les chauffeurs)",
+              "Coordonnées postales"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.2",
+            "title": "3.2  Données de localisation",
+            "bullets": [
+              "Position GPS en temps réel lors de l'utilisation de l'application mobile",
+              "Lieux de prise en charge et de dépose",
+              "Historique des itinéraires (pour la sécurité et l'amélioration du service)"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.3",
+            "title": "3.3  Informations sur les trajets",
+            "bullets": [
+              "Historique des trajets",
+              "Détails de paiement (traités par des prestataires tiers)",
+              "Notes et commentaires"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.4",
+            "title": "3.4  Données techniques et de l'appareil",
+            "bullets": [
+              "Type d'appareil et système d'exploitation",
+              "Adresse IP",
+              "Données d'utilisation de l'app et journaux d'erreurs"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.5",
+            "title": "3.5  Données propres aux chauffeurs",
+            "bullets": [
+              "Informations et photo du permis de conduire",
+              "Document(s) et photo(s) d'immatriculation du véhicule",
+              "Certificat(s) et photo(s) d'assurance",
+              "Code Momo et numéro de téléphone mobile money",
+              "Données de vérification des antécédents (le cas échéant)",
+              "Informations et photo du permis de transport de personnes (le cas échéant)",
+              "Photo(s) du ou des véhicules"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.6",
+            "title": "3.6  Retours et correspondance",
+            "bullets": [
+              "Les informations que vous fournissez lorsque vous demandez de l'aide, répondez à des enquêtes ou correspondez avec nous"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.7",
+            "title": "3.7  Informations provenant de tiers",
+            "bullets": [
+              "Des informations complémentaires provenant de sources tierces telles que des prestataires, des fournisseurs, des réseaux sociaux et des agences de publicité, afin de vous proposer des informations plus pertinentes sur nos services"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "how-we-use",
+        "num": "4",
+        "title": "Comment nous utilisons vos données",
+        "content": [
+          {
+            "kind": "bullets",
+            "items": [
+              "Mettre en relation passagers et chauffeurs",
+              "Fournir, maintenir et améliorer le Site et les applications mobiles",
+              "Traiter et finaliser les trajets",
+              "Traiter les paiements et les versements",
+              "Améliorer la sécurité et les performances de la plateforme",
+              "Assurer le support client",
+              "Détecter la fraude et prévenir les usages abusifs",
+              "Respecter nos obligations légales",
+              "Envoyer des mises à jour importantes sur le service",
+              "Mieux comprendre vos besoins et vos centres d'intérêt, et personnaliser votre expérience",
+              "Traiter les demandes soumises via le Site et les applications mobiles",
+              "Réaliser des analyses du site web et des services de gestion de bases de données",
+              "Gérer et diffuser de la publicité ciblée sur nos plateformes et sur des sites tiers de confiance",
+              "Enquêter sur les violations de la loi ou de vos accords avec nous, ou les prévenir",
+              "Protéger les droits, la vie privée, la sécurité ou les biens de vous-même, de nous-mêmes ou d'autrui"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Nous ne vendons pas de données personnelles."
+          }
+        ]
+      },
+      {
+        "id": "legal-basis",
+        "num": "5",
+        "title": "Base légale du traitement",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Nous traitons les données sur les bases suivantes :"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Nécessité contractuelle — pour fournir les services de trajet et de paiement",
+              "Obligations légales — conformité fiscale et réglementation des transports",
+              "Intérêt légitime — prévention de la fraude, sécurité et analyses",
+              "Consentement — communications marketing et fonctionnalités optionnelles"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "data-sharing",
+        "num": "6",
+        "title": "Partage des données",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Nous ne partageons pas vos informations personnelles avec des tiers sans votre consentement, sauf dans les cas suivants :"
+          },
+          {
+            "kind": "sub",
+            "key": "providers",
+            "title": "Chauffeurs, passagers et prestataires de services",
+            "bullets": [
+              "Nom et lieux de prise en charge / de dépose",
+              "Statut du trajet et coordonnées (masquées lorsque c'est possible)",
+              "Détails de paiement, y compris le code MomoPay et les numéros mobile money"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "affiliates",
+            "title": "Sociétés affiliées de TRAVELIS Rwanda Ltd",
+            "bullets": [
+              "Nous pouvons partager vos informations avec les sociétés affiliées et les organisations liées à TRAVELIS Rwanda Ltd, pour un usage conforme à la présente Politique de confidentialité"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "partners",
+            "title": "Partenaires commerciaux",
+            "bullets": [
+              "Les partenaires qui vous proposent un service conjointement avec nous — une liste est disponible sur demande"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "legal",
+            "title": "Aspects juridiques, sécurité et conformité",
+            "bullets": [
+              "Les autorités publiques ou les forces de l'ordre, à des fins de prévention de la fraude et de conformité légale",
+              "Lorsque la loi l'autorise, dans le cadre d'une enquête judiciaire",
+              "Pour protéger contre les activités frauduleuses, nuisibles ou illégales, enquêter sur celles-ci et les dissuader"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "transfers",
+            "title": "Transferts d'entreprise",
+            "bullets": [
+              "Dans le cadre d'une fusion, d'une acquisition, d'une réorganisation ou d'une cession d'actifs, ou en cas de faillite"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "data-retention",
+        "num": "7",
+        "title": "Conservation des données",
+        "content": [
+          {
+            "kind": "bullets",
+            "items": [
+              "Données de compte : conservées tant que votre compte est actif",
+              "Historique des trajets : jusqu'à 5 ans (conformité légale et fiscale)",
+              "Données de localisation : conservation limitée, pour la sécurité et le règlement des litiges",
+              "Données marketing : jusqu'au retrait de votre consentement"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "data-security",
+        "num": "8",
+        "title": "Sécurité des données",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Nous mettons en œuvre des mesures de sécurité robustes, notamment :"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Le chiffrement des données sensibles",
+              "Des serveurs sécurisés et une infrastructure cloud",
+              "Des contrôles d'accès et des systèmes d'authentification",
+              "Des audits de sécurité réguliers"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Toutefois, aucun système n'est sûr à 100 %, et nous ne pouvons pas garantir une sécurité absolue."
+          }
+        ]
+      },
+      {
+        "id": "your-rights",
+        "num": "9",
+        "title": "Vos droits (Rwanda + RGPD)",
+        "content": [
+          {
+            "kind": "text",
+            "value": "La loi rwandaise N°058/2021 du 13/10/2021 relative à la protection des données à caractère personnel et de la vie privée vous confère les droits suivants :"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Accès — Demander des informations sur nos traitements et accéder à vos informations personnelles",
+              "Rectification — Mettre à jour ou corriger les inexactitudes dans vos informations personnelles",
+              "Suppression — Demander la suppression de vos informations personnelles",
+              "Portabilité — Recevoir une copie de vos informations personnelles dans un format lisible par machine",
+              "Limitation — Limiter le traitement de vos informations personnelles",
+              "Opposition — Vous opposer à ce que nous fondions notre traitement sur nos intérêts légitimes"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Pour exercer vos droits, contactez-nous à l'adresse : info@rides.rw"
+          }
+        ]
+      },
+      {
+        "id": "location-data",
+        "num": "10",
+        "title": "Données de localisation",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Nous utilisons la localisation GPS pour :"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Mettre en relation les passagers avec les chauffeurs à proximité",
+              "Suivre le déroulement du trajet",
+              "Améliorer la sécurité et la navigation"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Vous pouvez désactiver l'accès à la localisation dans les réglages de votre appareil, mais les services essentiels risquent alors de ne pas fonctionner correctement."
+          }
+        ]
+      },
+      {
+        "id": "childrens-privacy",
+        "num": "11",
+        "title": "Protection des mineurs",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Le Site n'est pas destiné aux personnes de moins de 18 ans, et nous ne collectons ni ne sollicitons sciemment d'informations personnelles auprès de personnes de moins de 18 ans. Si vous avez moins de 18 ans, vous ne devez pas tenter d'utiliser le Site ni nous transmettre d'informations vous concernant."
+          }
+        ]
+      },
+      {
+        "id": "international-transfers",
+        "num": "12",
+        "title": "Transferts internationaux de données",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Vos données peuvent être stockées ou traitées sur des serveurs situés en dehors du Rwanda. Le cas échéant, nous veillons à mettre en place des garanties appropriées, conformes aux normes du RGPD."
+          }
+        ]
+      },
+      {
+        "id": "third-party-services",
+        "num": "13",
+        "title": "Services tiers",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Nous pouvons faire appel à des prestataires tiers pour :"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Les paiements",
+              "Les cartes et la navigation",
+              "Les analyses",
+              "Les services de messagerie",
+              "Les services d'hébergement"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Ces prestataires disposent de leurs propres politiques de confidentialité, que nous vous encourageons à consulter."
+          }
+        ]
+      },
+      {
+        "id": "cookie-policy",
+        "num": "14",
+        "title": "Politique relative aux cookies",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Les cookies sont de petits fichiers de données déposés sur votre appareil lorsque vous visitez un site web. Nous utilisons plusieurs types de cookies :"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Cookies strictement nécessaires — indispensables au fonctionnement du Site, ils ne peuvent pas être désactivés",
+              "Cookies de performance — ils nous permettent de comptabiliser les visites et les sources de trafic afin de mesurer et d'améliorer les performances",
+              "Cookies fonctionnels — ils permettent des fonctionnalités avancées et la personnalisation",
+              "Cookies tiers — provenant de fournisseurs d'analyse (par ex. Google Analytics), pour des informations démographiques et des données d'utilisation"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Nous pouvons également utiliser des balises web (parfois appelées « pixels espions » ou « clear gifs ») — de minuscules fichiers graphiques qui nous permettent de savoir qu'une personne a visité notre Site. Si vous vous inscrivez pour recevoir nos emails, nous pouvons utiliser des cookies en lien avec ces emails."
+          },
+          {
+            "kind": "text",
+            "value": "La plupart des navigateurs vous permettent de supprimer ou de refuser les cookies. Pour cela, suivez les instructions dans les réglages de votre navigateur."
+          }
+        ]
+      },
+      {
+        "id": "other-information",
+        "num": "15",
+        "title": "Autres informations importantes",
+        "content": [
+          {
+            "kind": "sub",
+            "key": "third-party-sites",
+            "title": "Sites et services tiers",
+            "bullets": [
+              "Le Site peut contenir des liens vers d'autres sites web exploités par des tiers",
+              "Nous ne sommes pas responsables de leurs actions ni de leurs pratiques en matière de confidentialité",
+              "Nous vous encourageons à lire leurs politiques de confidentialité pour en savoir plus"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "security",
+            "title": "Sécurité",
+            "bullets": [
+              "Nous prenons des mesures organisationnelles, techniques et physiques pour protéger vos informations personnelles",
+              "Un risque de sécurité est inhérent à toutes les technologies d'internet et de l'information",
+              "Nous ne pouvons pas garantir la sécurité absolue de vos informations personnelles"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "changes",
+        "num": "16",
+        "title": "Modifications de cette politique",
+        "content": [
+          {
+            "kind": "bullets",
+            "items": [
+              "Nous pouvons mettre à jour la présente Politique de confidentialité de temps à autre",
+              "Les utilisateurs seront informés des changements importants via l'application ou par email",
+              "La poursuite de l'utilisation de l'application vaut acceptation des mises à jour"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "contact",
+        "num": "17",
+        "title": "Nous contacter",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Si vous avez des questions ou des demandes concernant vos données :"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Société : TRAVELIS Rwanda Ltd",
+              "Email : info@rides.rw",
+              "Localisation : Kigali, Rwanda"
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

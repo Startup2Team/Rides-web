@@ -1,63 +1,46 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useSection, useTranslations } from "../i18n/context";
 
 // ── Platform feature list ────────────────────────────────────────────────────
 
-type Feature = { title: string; description: string; icon: ReactNode };
+type FeatureIcon = ReactNode;
 
-const platformFeatures: Feature[] = [
-  {
-    title: "Live Tracking",
-    description:
-      "Track your driver in real time and know exactly when they'll arrive.",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
-        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
-        <circle cx="12" cy="10" r="3" />
-      </svg>
-    ),
-  },
-  {
-    title: "Smarter Matching",
-    description:
-      "Intelligent matching connects you with available drivers nearby for a faster, more reliable experience.",
-    // Was a flame, which read as "heatmap". Now a node graph — one request
-    // reaching several nearby drivers.
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
-        <circle cx="6" cy="12" r="2.5" />
-        <circle cx="18" cy="5.5" r="2.5" />
-        <circle cx="18" cy="18.5" r="2.5" />
-        <path d="M8.2 10.8 15.8 6.7" />
-        <path d="M8.2 13.2 15.8 17.3" />
-      </svg>
-    ),
-  },
-  {
-    title: "Quick Confirmations",
-    description:
-      "Most ride requests are confirmed within moments, getting you on the road sooner.",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
-        <circle cx="12" cy="13" r="8" />
-        <path d="M12 9v4l2 2" />
-        <path d="M9 2h6" />
-        <path d="M12 2v2" />
-      </svg>
-    ),
-  },
-  {
-    title: "Clear Pricing",
-    description:
-      "See your fare before your trip starts for a simple and transparent booking experience.",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
-        <line x1="12" y1="2" x2="12" y2="22" />
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-      </svg>
-    ),
-  },
+// Icons only — titles/descriptions live in the locale dictionaries and are
+// zipped with this list by index (see SmartMobility below).
+const platformFeatureIcons: FeatureIcon[] = [
+  (
+    <svg key="live-tracking" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  ),
+  // Was a flame, which read as "heatmap". Now a node graph — one request
+  // reaching several nearby drivers.
+  (
+    <svg key="matching" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="5.5" r="2.5" />
+      <circle cx="18" cy="18.5" r="2.5" />
+      <path d="M8.2 10.8 15.8 6.7" />
+      <path d="M8.2 13.2 15.8 17.3" />
+    </svg>
+  ),
+  (
+    <svg key="confirmations" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 9v4l2 2" />
+      <path d="M9 2h6" />
+      <path d="M12 2v2" />
+    </svg>
+  ),
+  (
+    <svg key="pricing" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
+      <line x1="12" y1="2" x2="12" y2="22" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  ),
 ];
 
 // ── Count-up hook ────────────────────────────────────────────────────────────
@@ -146,6 +129,7 @@ function StylisedMap() {
 // ── Live-ops dashboard mockup ────────────────────────────────────────────────
 
 function LiveOpsDashboard() {
+  const dash = useSection("smartMobility").dash;
   const [activeRidesRef, activeRides] = useCountUp<HTMLSpanElement>(247);
   const [onlineDriversRef, onlineDrivers] = useCountUp<HTMLDivElement>(89);
 
@@ -159,22 +143,22 @@ function LiveOpsDashboard() {
             <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
           </span>
           <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground">
-            Live operations
+            {dash.liveOperations}
           </span>
         </div>
         {/* Period chips — labelled aria-hidden because they're decorative */}
         <div aria-hidden className="hidden items-center gap-1 sm:flex">
           <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-semibold text-primary">
-            Today
+            {dash.today}
           </span>
           <span className="rounded-full px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70">
-            Week
+            {dash.week}
           </span>
           <span className="rounded-full px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70">
-            Month
+            {dash.month}
           </span>
         </div>
-        <span className="text-[10px] font-medium text-muted-foreground">Now</span>
+        <span className="text-[10px] font-medium text-muted-foreground">{dash.now}</span>
       </div>
 
       {/* Stylised map background (no external image dependency) */}
@@ -252,7 +236,7 @@ function LiveOpsDashboard() {
         <div className="flex items-start justify-between">
           <div>
             <div className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Active rides
+              {dash.activeRides}
             </div>
             <div className="mt-1 flex items-baseline gap-1.5">
               <span
@@ -291,7 +275,7 @@ function LiveOpsDashboard() {
         <div className="flex items-start justify-between">
           <div>
             <div className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Online drivers
+              {dash.onlineDrivers}
             </div>
             <div
               ref={onlineDriversRef}
@@ -301,7 +285,7 @@ function LiveOpsDashboard() {
             </div>
           </div>
           <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-primary">
-            Live
+            {dash.live}
           </span>
         </div>
         <svg viewBox="0 0 100 30" className="mt-2 h-7 w-full text-primary" aria-hidden>
@@ -326,9 +310,9 @@ function LiveOpsDashboard() {
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
           <div>
             <div className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Hot zones
+              {dash.hotZones}
             </div>
-            <div className="text-xs font-bold text-foreground">3 active</div>
+            <div className="text-xs font-bold text-foreground">{dash.hotZonesValue}</div>
           </div>
         </div>
       </div>
@@ -339,6 +323,9 @@ function LiveOpsDashboard() {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function SmartMobility() {
+  const t = useTranslations("smartMobility");
+  const features = useSection("smartMobility").features;
+
   return (
     <section className="relative overflow-hidden py-20 lg:py-28">
       <div
@@ -354,14 +341,13 @@ export default function SmartMobility() {
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             <span className="h-px w-8 bg-foreground/30" />
-            The platform
+            {t("eyebrow")}
           </div>
           <h2 className="mt-5 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[3.25rem]">
-            Built for real-time movement.
+            {t("heading")}
           </h2>
           <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-[1.0625rem]">
-            Live tracking, smarter matching, quick confirmations, and clear
-            pricing. All running underneath your ride.
+            {t("body")}
           </p>
         </div>
 
@@ -372,7 +358,7 @@ export default function SmartMobility() {
 
           <div className="lg:col-span-5">
             <ul className="space-y-3">
-              {platformFeatures.map((f) => (
+              {features.map((f, i) => (
                 <li
                   key={f.title}
                   className="group flex items-start gap-4 rounded-2xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
@@ -380,7 +366,7 @@ export default function SmartMobility() {
                   {/* Bare glyph — no tile. mt-0.5 optically aligns it with the
                       title's cap height rather than its line box. */}
                   <span className="mt-0.5 shrink-0 text-primary">
-                    {f.icon}
+                    {platformFeatureIcons[i]}
                   </span>
                   <div className="min-w-0">
                     <h3 className="text-base font-semibold tracking-tight text-foreground">

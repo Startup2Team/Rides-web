@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { CarIcon, FusoIcon, HiluxIcon, MotoIcon, MotoDetailedIcon } from "./vehicle-icons";
+import { useSection } from "../i18n/context";
+import { fillTemplate } from "@/lib/i18n-template";
 
 const STEPS = [
   { id: "step-1", num: "01" },
@@ -12,6 +14,10 @@ const STEPS = [
 ] as const;
 
 function Step01() {
+  const hiw = useSection("howItWorks");
+  const ui = hiw.ui;
+  const step = hiw.steps[0];
+
   return (
     <div
       id="step-1"
@@ -94,14 +100,14 @@ function Step01() {
                       </span>
                       <div className="min-w-0 flex-1 text-center">
                         <div className="text-[6px] font-semibold uppercase tracking-[0.12em] text-muted-foreground leading-none">
-                          Current Location
+                          {ui.currentLocation}
                         </div>
                         <div className="text-[9px] font-bold leading-none text-foreground mt-0.5">
-                          Kigali, Rwanda
+                          {ui.cityCountry}
                         </div>
                       </div>
                     </div>
-                    <button type="button" aria-label="Notifications" className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-border">
+                    <button type="button" aria-label={ui.notifications} className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-border">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-foreground" aria-hidden>
                         <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
                         <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
@@ -153,14 +159,14 @@ function Step01() {
 
                     {/* Right floating controls */}
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5">
-                      <button type="button" aria-label="Map layers" className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-border">
+                      <button type="button" aria-label={ui.mapLayers} className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-border">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-primary" aria-hidden>
                           <polygon points="12 2 2 7 12 12 22 7 12 2" />
                           <polyline points="2 17 12 22 22 17" />
                           <polyline points="2 12 12 17 22 12" />
                         </svg>
                       </button>
-                      <button type="button" aria-label="My location" className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-border">
+                      <button type="button" aria-label={ui.myLocation} className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-border">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-primary" aria-hidden>
                           <circle cx="12" cy="12" r="9" />
                           <circle cx="12" cy="12" r="3" fill="currentColor" />
@@ -181,16 +187,16 @@ function Step01() {
                     {/* Greeting */}
                     <div className="mt-3">
                       <div className="text-[14px] font-bold leading-tight tracking-tight text-foreground">
-                        Hi
+                        {ui.greeting}
                       </div>
                       <div className="mt-0.5 text-[10px] text-muted-foreground">
-                        Where to today?
+                        {ui.whereTo}
                       </div>
                     </div>
 
                     {/* Vehicle section label */}
                     <div className="mt-4 text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">
-                      Select your ride
+                      {ui.selectYourRide}
                     </div>
 
                     {/* Vehicle chips */}
@@ -219,7 +225,7 @@ function Step01() {
 
                     {/* Continue button */}
                     <div className="mt-3 flex h-9 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-md shadow-primary/30">
-                      Continue with Moto
+                      {fillTemplate(ui.continueWith, { vehicle: "Moto" })}
                     </div>
 
                     {/* Tab bar */}
@@ -230,21 +236,21 @@ function Step01() {
                           <line x1="9" y1="3" x2="9" y2="21" />
                           <line x1="15" y1="3" x2="15" y2="21" />
                         </svg>
-                        <span className="text-[6px] font-bold leading-none">Home</span>
+                        <span className="text-[6px] font-bold leading-none">{ui.tabHome}</span>
                       </div>
                       <div className="flex flex-col items-center gap-0.5 px-2 py-1 text-muted-foreground">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden>
                           <circle cx="12" cy="12" r="10" />
                           <polyline points="12 6 12 12 16 14" />
                         </svg>
-                        <span className="text-[6px] font-bold leading-none">Rides</span>
+                        <span className="text-[6px] font-bold leading-none">{ui.tabRides}</span>
                       </div>
                       <div className="flex flex-col items-center gap-0.5 px-2 py-1 text-muted-foreground">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden>
                           <circle cx="12" cy="8" r="4" />
                           <path d="M5 21v-1a7 7 0 0 1 14 0v1" />
                         </svg>
-                        <span className="text-[6px] font-bold leading-none">Profile</span>
+                        <span className="text-[6px] font-bold leading-none">{ui.tabProfile}</span>
                       </div>
                     </div>
                   </div>
@@ -258,14 +264,13 @@ function Step01() {
       <div className="max-w-lg">
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
           <span className="h-px w-8 bg-primary" />
-          Step 01
+          {fillTemplate(hiw.stepLabel, { n: "01" })}
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
-          Book in Seconds
+          {step.title}
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Open the app, choose your preferred vehicle, and complete your booking
-          in just a few taps.
+          {step.body}
         </p>
 
       </div>
@@ -274,6 +279,10 @@ function Step01() {
 }
 
 function Step02() {
+  const hiw = useSection("howItWorks");
+  const ui = hiw.ui;
+  const step = hiw.steps[1];
+
   return (
     <div
       id="step-2"
@@ -351,10 +360,10 @@ function Step02() {
                   {/* Heading */}
                   <div className="text-center">
                     <p className="text-[13px] font-bold tracking-tight text-foreground">
-                      Finding your driver
+                      {ui.findingDriver}
                     </p>
                     <p className="mt-1 text-[9px] text-muted-foreground">
-                      Connecting you with nearby moto riders
+                      {ui.connectingNearby}
                     </p>
                   </div>
 
@@ -377,7 +386,7 @@ function Step02() {
 
                   {/* Cancel button */}
                   <div className="mt-3 flex h-9 items-center justify-center rounded-full bg-surface text-[10px] font-bold text-foreground ring-1 ring-inset ring-border">
-                    Cancel Search
+                    {ui.cancelSearch}
                   </div>
                 </div>
 
@@ -392,14 +401,13 @@ function Step02() {
       <div className="max-w-lg">
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
           <span className="h-px w-8 bg-primary" />
-          Step 02
+          {fillTemplate(hiw.stepLabel, { n: "02" })}
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
-          Driver Confirmed
+          {step.title}
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Your request is securely matched with available drivers. Once
-          accepted, you can track your driver in real time.
+          {step.body}
         </p>
       </div>
     </div>
@@ -407,6 +415,10 @@ function Step02() {
 }
 
 function Step03() {
+  const hiw = useSection("howItWorks");
+  const ui = hiw.ui;
+  const step = hiw.steps[2];
+
   return (
     <div
       id="step-3"
@@ -447,7 +459,7 @@ function Step03() {
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Negotiating fare
+                  {ui.negotiatingFare}
                 </div>
               </div>
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-alt text-foreground">
@@ -496,7 +508,7 @@ function Step03() {
               <div className="flex justify-end">
                 <div className="max-w-[75%] rounded-2xl rounded-br-md bg-primary px-3.5 py-1.5 text-primary-foreground shadow-sm shadow-primary/30">
                   <div className="text-base font-bold leading-none">4,500 RWF</div>
-                  <div className="mt-1 text-[9px] opacity-80">Initial offer</div>
+                  <div className="mt-1 text-[9px] opacity-80">{ui.initialOffer}</div>
                 </div>
               </div>
 
@@ -504,7 +516,7 @@ function Step03() {
                 <div className="max-w-[75%] rounded-2xl rounded-bl-md bg-muted px-3.5 py-1.5 text-foreground">
                   <div className="text-base font-bold leading-none">3,000 RWF</div>
                   <div className="mt-1 text-[9px] text-muted-foreground">
-                    Your offer
+                    {ui.yourOffer}
                   </div>
                 </div>
               </div>
@@ -512,7 +524,7 @@ function Step03() {
               <div className="flex justify-end">
                 <div className="max-w-[75%] rounded-2xl rounded-br-md bg-primary px-3.5 py-1.5 text-primary-foreground shadow-sm shadow-primary/30">
                   <div className="text-base font-bold leading-none">4,000 RWF</div>
-                  <div className="mt-1 text-[9px] opacity-80">Counter offer</div>
+                  <div className="mt-1 text-[9px] opacity-80">{ui.counterOffer}</div>
                 </div>
               </div>
 
@@ -530,7 +542,7 @@ function Step03() {
                   >
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                   </svg>
-                  Masked call · 0:24
+                  {ui.maskedCall}
                 </span>
               </div>
 
@@ -538,7 +550,7 @@ function Step03() {
                 <div className="max-w-[75%] rounded-2xl rounded-br-md bg-primary px-3.5 py-1.5 text-primary-foreground shadow-sm shadow-primary/30 ring-2 ring-primary/40">
                   <div className="text-base font-bold leading-none">3,800 RWF</div>
                   <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                    Final offer
+                    {ui.finalOffer}
                   </div>
                 </div>
               </div>
@@ -549,13 +561,13 @@ function Step03() {
                 type="button"
                 className="flex-1 rounded-xl border border-border bg-card py-2.5 text-xs font-semibold text-foreground"
               >
-                Decline
+                {ui.decline}
               </button>
               <button
                 type="button"
                 className="flex-[1.5] rounded-xl bg-primary py-2.5 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/30"
               >
-                Accept 3,800 RWF
+                {fillTemplate(ui.acceptFare, { amount: "3,800 RWF" })}
               </button>
             </div>
           </div>
@@ -565,14 +577,13 @@ function Step03() {
       <div className="max-w-lg">
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
           <span className="h-px w-8 bg-primary" />
-          Step 03
+          {fillTemplate(hiw.stepLabel, { n: "03" })}
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
-          Confirm Your Fare
+          {step.title}
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Review the fare before your trip begins and confirm your booking
-          with confidence.
+          {step.body}
         </p>
       </div>
     </div>
@@ -603,6 +614,10 @@ function StarIcon({
 }
 
 function Step04() {
+  const hiw = useSection("howItWorks");
+  const ui = hiw.ui;
+  const step = hiw.steps[3];
+
   return (
     <div
       id="step-4"
@@ -693,7 +708,7 @@ function Step04() {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
               </span>
               <div className="flex-1 text-xs font-semibold text-foreground">
-                Aiden is on the way
+                {fillTemplate(ui.driverOnTheWay, { name: "Aiden" })}
               </div>
               <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
                 3 min
@@ -780,14 +795,13 @@ function Step04() {
       <div className="max-w-lg">
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
           <span className="h-px w-8 bg-primary" />
-          Step 04
+          {fillTemplate(hiw.stepLabel, { n: "04" })}
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
-          Track Every Mile
+          {step.title}
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Follow your driver in real time and share your trip with trusted
-          contacts for added peace of mind.
+          {step.body}
         </p>
       </div>
     </div>
@@ -795,6 +809,10 @@ function Step04() {
 }
 
 function Step05() {
+  const hiw = useSection("howItWorks");
+  const ui = hiw.ui;
+  const step = hiw.steps[4];
+
   return (
     <div
       id="step-5"
@@ -853,7 +871,7 @@ function Step05() {
                       </span>
                     </div>
                     <h4 className="mt-3 text-base font-bold tracking-tight text-foreground">
-                      Trip Completed
+                      {ui.tripCompleted}
                     </h4>
                   </div>
 
@@ -872,7 +890,7 @@ function Step05() {
                       above the button. */}
                   <div className="flex flex-1 flex-col justify-center">
                     <div className="text-center text-sm font-semibold text-foreground">
-                      Rate your trip
+                      {ui.rateYourTrip}
                     </div>
                     <div className="mt-3.5 flex justify-center gap-2 text-primary">
                       <StarIcon filled className="h-8 w-8" />
@@ -882,13 +900,13 @@ function Step05() {
                       <StarIcon className="h-8 w-8 text-muted-foreground/30" />
                     </div>
                     <p className="mt-3 text-center text-[10px] leading-relaxed text-muted-foreground">
-                      Your rating helps keep the community trusted.
+                      {ui.ratingHelps}
                     </p>
                   </div>
 
                   <div className="pt-3">
                     <div className="flex h-11 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30">
-                      Submit
+                      {ui.submit}
                     </div>
                   </div>
                 </div>
@@ -903,14 +921,13 @@ function Step05() {
       <div className="max-w-lg">
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
           <span className="h-px w-8 bg-primary" />
-          Step 05
+          {fillTemplate(hiw.stepLabel, { n: "05" })}
         </p>
         <h3 className="mt-4 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[2.75rem]">
-          Rate Your Experience
+          {step.title}
         </h3>
         <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-lg">
-          Share your feedback by rating your trip to help maintain a trusted
-          community.
+          {step.body}
         </p>
       </div>
     </div>
@@ -918,6 +935,7 @@ function Step05() {
 }
 
 export default function HowItWorks() {
+  const hiw = useSection("howItWorks");
   const [activeStep, setActiveStep] = useState(0);
 
   // Track which step is closest to the viewport top while scrolling.
@@ -948,21 +966,20 @@ export default function HowItWorks() {
               eyebrow is left-aligned. Matches the FAQ intro. */}
           <div className="inline-flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             <span className="h-px w-8 bg-foreground/30" />
-            How it works
+            {hiw.eyebrow}
           </div>
           <h2 className="mt-5 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[3.25rem]">
-            From request to rating, in 5 steps.
+            {hiw.heading}
           </h2>
           <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground lg:text-[1.0625rem]">
-            Book, agree on a fair fare, ride, pay, rate. Every step on your
-            terms.
+            {hiw.body}
           </p>
         </div>
 
         {/* Sticky step navigator — pinned just below the navbar while in section */}
         <div className="sticky top-20 z-30 mt-8 flex justify-center">
           <nav
-            aria-label="Steps"
+            aria-label={hiw.stepsNavLabel}
             className="flex gap-1 rounded-full border border-border bg-card/85 p-1.5 shadow-lg backdrop-blur-xl"
           >
             {STEPS.map((s, i) => {
@@ -971,7 +988,7 @@ export default function HowItWorks() {
                 <a
                   key={s.id}
                   href={`#${s.id}`}
-                  aria-label={`Jump to step ${i + 1}`}
+                  aria-label={fillTemplate(hiw.jumpToStep, { n: i + 1 })}
                   aria-current={isActive ? "step" : undefined}
                   className={`flex h-11 w-11 items-center justify-center rounded-full text-xs font-bold tabular-nums transition-colors ${
                     isActive

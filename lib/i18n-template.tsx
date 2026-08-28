@@ -11,3 +11,10 @@ export function renderTemplate(template: string, values: Record<string, ReactNod
     return part;
   });
 }
+
+// Plain-string variant for attributes and non-JSX contexts.
+export function fillTemplate(template: string, values: Record<string, string | number>) {
+  return template.replace(/\{([a-zA-Z]+)\}/g, (m, k) =>
+    k in values ? String(values[k]) : m,
+  );
+}

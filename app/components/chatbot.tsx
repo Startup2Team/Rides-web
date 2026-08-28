@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocale, useSection } from "../i18n/context";
+import type { Dictionary } from "../i18n/context";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -17,155 +19,123 @@ type Message = {
 type FlowId =
   | "welcome" | "driver" | "negotiation" | "locations"
   | "payments" | "complaint" | "human" | "ride-issue" | "no-match";
-type Flow = {
-  reply: (string | { body: string; links?: ExternalLink[] })[];
-  next: QuickReply[];
-};
 
-// ── Flows ─────────────────────────────────────────────────────────────────────
+type ChatbotDict = Dictionary["chatbot"];
+type LabelKey = keyof ChatbotDict["labels"];
+type LinkSpec = { labelKey: LabelKey; href: string; external?: boolean };
 
-const FLOWS: Record<FlowId, Flow> = {
+// ── Flow graph ────────────────────────────────────────────────────────────────
+// Structure only — every user-visible string lives in the locale dictionaries.
+// `links` maps a reply index to the buttons rendered under that reply.
+
+const WHATSAPP = "https://wa.me/250788000000";
+
+const FLOW_GRAPH: Record<
+  FlowId,
+  { links?: Record<number, LinkSpec[]>; next: { labelKey: LabelKey; flow: FlowId }[] }
+> = {
   welcome: {
-    reply: [
-      "Hey there! Welcome to Rides.\n\nI'm your smart assistant ask me anything about booking rides, becoming a driver, payments, or how Rides works across Rwanda.",
-    ],
     next: [
-      { label: "Become a driver", flow: "driver" },
-      { label: "How payments work", flow: "payments" },
-      { label: "Negotiations", flow: "negotiation" },
-      { label: "Where you operate", flow: "locations" },
-      { label: "Ride issue", flow: "ride-issue" },
-      { label: "Talk to a human", flow: "human" },
+      { labelKey: "become-driver", flow: "driver" },
+      { labelKey: "how-payments-work", flow: "payments" },
+      { labelKey: "negotiations", flow: "negotiation" },
+      { labelKey: "where-you-operate", flow: "locations" },
+      { labelKey: "ride-issue", flow: "ride-issue" },
+      { labelKey: "talk-to-human", flow: "human" },
     ],
   },
   driver: {
-    reply: [
-      "Great — drivers are how Rides scales. Here's what you need:",
-      "• Valid Rwandan driver licence\n• Vehicle (Moto, Cab, Hilux, or Fuso)\n• SONARWA insurance + police authorisation\n• MTN MoMo or Airtel Money for payouts",
-      {
-        body: "Drop your details on the contact form — we usually reply within 48h.",
-        links: [
-          { label: "Driver application", href: "/contact" },
-          { label: "Driver page", href: "/drivers" },
-        ],
-      },
-    ],
+    links: {
+      2: [
+        { labelKey: "driver-application", href: "/contact" },
+        { labelKey: "driver-page", href: "/drivers" },
+      ],
+    },
     next: [
-      { label: "How payments work", flow: "payments" },
-      { label: "Where you operate", flow: "locations" },
-      { label: "Talk to a human", flow: "human" },
+      { labelKey: "how-payments-work", flow: "payments" },
+      { labelKey: "where-you-operate", flow: "locations" },
+      { labelKey: "talk-to-human", flow: "human" },
     ],
   },
   negotiation: {
-    reply: [
-      "Rides is the only platform in Rwanda where rider and driver agree on the fare together.",
-      "1. Rider sees a suggested fare and makes an offer\n2. Driver accepts, counter-offers, or passes\n3. Up to 4 rounds — then both settle or walk away",
-      {
-        body: "Average uplift on first offer is ~18%. Every fare is logged.",
-        links: [{ label: "See how it works", href: "/#how-it-works" }],
-      },
-    ],
+    links: { 2: [{ labelKey: "see-how-it-works", href: "/#how-it-works" }] },
     next: [
-      { label: "How payments work", flow: "payments" },
-      { label: "Become a driver", flow: "driver" },
-      { label: "Talk to a human", flow: "human" },
+      { labelKey: "how-payments-work", flow: "payments" },
+      { labelKey: "become-driver", flow: "driver" },
+      { labelKey: "talk-to-human", flow: "human" },
     ],
   },
   locations: {
-    reply: [
-      "We're live across all of Kigali — Gasabo, Kicukiro, and Nyarugenge.",
-      "Musanze is in pilot, and Huye launches Q3 2026.",
-      "Want Rides in your area? Let us know 👇",
-    ],
     next: [
-      { label: "Become a driver", flow: "driver" },
-      { label: "Talk to a human", flow: "human" },
+      { labelKey: "become-driver", flow: "driver" },
+      { labelKey: "talk-to-human", flow: "human" },
     ],
   },
   payments: {
-    reply: [
-      "We accept MTN MoMo, Airtel Money, and cash on every ride.",
-      "Drivers are paid out twice daily — 06:00 and 17:00 — straight to their wallet. Rides takes 12–18% commission depending on vehicle.",
-      "All payments are auditable in the driver app.",
-    ],
     next: [
-      { label: "Negotiations", flow: "negotiation" },
-      { label: "Ride issue", flow: "ride-issue" },
-      { label: "Talk to a human", flow: "human" },
+      { labelKey: "negotiations", flow: "negotiation" },
+      { labelKey: "ride-issue", flow: "ride-issue" },
+      { labelKey: "talk-to-human", flow: "human" },
     ],
   },
   "ride-issue": {
-    reply: [
-      "Sorry to hear that. We treat ride issues as priority — average response under 12 hours.",
-      {
-        body: "File the details on the contact form under 'Complaint' category.",
-        links: [
-          { label: "File a complaint", href: "/contact" },
-          { label: "WhatsApp support", href: "https://wa.me/250788000000", external: true },
-        ],
-      },
-    ],
+    links: {
+      1: [
+        { labelKey: "file-a-complaint", href: "/contact" },
+        { labelKey: "whatsapp-support", href: WHATSAPP, external: true },
+      ],
+    },
     next: [
-      { label: "How payments work", flow: "payments" },
-      { label: "Talk to a human", flow: "human" },
+      { labelKey: "how-payments-work", flow: "payments" },
+      { labelKey: "talk-to-human", flow: "human" },
     ],
   },
   complaint: {
-    reply: [
-      "Sorry about that. The fastest way to get help is the contact form — average reply under 12 hours.",
-      {
-        body: "Or reach us instantly on WhatsApp:",
-        links: [
-          { label: "Contact form", href: "/contact" },
-          { label: "WhatsApp", href: "https://wa.me/250788000000", external: true },
-        ],
-      },
-    ],
+    links: {
+      1: [
+        { labelKey: "contact-form", href: "/contact" },
+        { labelKey: "whatsapp", href: WHATSAPP, external: true },
+      ],
+    },
     next: [
-      { label: "Ride issue", flow: "ride-issue" },
-      { label: "Talk to a human", flow: "human" },
+      { labelKey: "ride-issue", flow: "ride-issue" },
+      { labelKey: "talk-to-human", flow: "human" },
     ],
   },
   human: {
-    reply: [
-      "Want to talk to a real person? Here's the fastest way:",
-      {
-        body: "WhatsApp is quickest during business hours (Mon–Sat · 08:00–20:00). Contact form is best for anything that needs a paper trail.",
-        links: [
-          { label: "WhatsApp", href: "https://wa.me/250788000000", external: true },
-          { label: "Contact form", href: "/contact" },
-          { label: "Call support", href: "tel:+250788000000", external: true },
-        ],
-      },
-    ],
-    next: [{ label: "Back to start", flow: "welcome" }],
+    links: {
+      1: [
+        { labelKey: "whatsapp", href: WHATSAPP, external: true },
+        { labelKey: "contact-form", href: "/contact" },
+        { labelKey: "call-support", href: "tel:+250788000000", external: true },
+      ],
+    },
+    next: [{ labelKey: "back-to-start", flow: "welcome" }],
   },
   "no-match": {
-    reply: [
-      "Not feeling well Lol 😂\n\nTry asking me about rides, drivers, payments, or how Rides works across Rwanda!",
-    ],
     next: [
-      { label: "Become a driver", flow: "driver" },
-      { label: "How payments work", flow: "payments" },
-      { label: "Negotiations", flow: "negotiation" },
-      { label: "Where you operate", flow: "locations" },
-      { label: "Talk to a human", flow: "human" },
+      { labelKey: "become-driver", flow: "driver" },
+      { labelKey: "how-payments-work", flow: "payments" },
+      { labelKey: "negotiations", flow: "negotiation" },
+      { labelKey: "where-you-operate", flow: "locations" },
+      { labelKey: "talk-to-human", flow: "human" },
     ],
   },
 };
 
 // ── Keyword matcher ───────────────────────────────────────────────────────────
+// Keyword lists are per-locale, so a French or Kinyarwanda question reaches the
+// same flow an English one would. Order sets precedence and must stay stable.
 
-function matchFlow(input: string): FlowId {
+const MATCH_ORDER: Exclude<FlowId, "welcome" | "no-match">[] = [
+  "driver", "negotiation", "locations", "payments", "complaint", "ride-issue", "human",
+];
+
+function matchFlow(input: string, keywords: ChatbotDict["keywords"]): FlowId {
   const t = input.toLowerCase();
-  const has = (...w: string[]) => w.some((x) => t.includes(x));
-  if (has("driver", "drive", "apply", "join", "onboard")) return "driver";
-  if (has("negotiat", "fare", "price", "haggle", "offer")) return "negotiation";
-  if (has("where", "location", "area", "kigali", "musanze")) return "locations";
-  if (has("pay", "momo", "airtel", "cash", "wallet", "payout")) return "payments";
-  if (has("complain", "refund", "overcharge", "wrong", "bad")) return "complaint";
-  if (has("ride", "trip", "issue", "problem", "dispute")) return "ride-issue";
-  if (has("human", "person", "agent", "support", "call", "whatsapp")) return "human";
+  for (const flow of MATCH_ORDER) {
+    if (keywords[flow].some((w) => t.includes(w.toLowerCase()))) return flow;
+  }
   return "no-match";
 }
 
@@ -174,21 +144,41 @@ function matchFlow(input: string): FlowId {
 const STORAGE_KEY = "rides-chatbot-history";
 const makeId = () => `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-function flowToMessages(flow: Flow): Message[] {
-  return flow.reply.map((r) =>
-    typeof r === "string"
-      ? { id: makeId(), sender: "bot" as Sender, body: r }
-      : { id: makeId(), sender: "bot" as Sender, body: r.body, links: r.links },
-  );
+function flowToMessages(flowId: FlowId, dict: ChatbotDict): Message[] {
+  const graph = FLOW_GRAPH[flowId];
+  return dict.flows[flowId].reply.map((body, i) => {
+    const specs = graph.links?.[i];
+    return {
+      id: makeId(),
+      sender: "bot" as Sender,
+      body,
+      links: specs?.map((l) => ({
+        label: dict.labels[l.labelKey],
+        href: l.href,
+        external: l.external,
+      })),
+    };
+  });
+}
+
+function nextReplies(flowId: FlowId, dict: ChatbotDict): QuickReply[] {
+  return FLOW_GRAPH[flowId].next.map((n) => ({
+    label: dict.labels[n.labelKey],
+    flow: n.flow,
+  }));
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function Chatbot() {
+  const dict = useSection("chatbot");
+  const { locale } = useLocale();
   const [open, setOpen] = useState(false);
   const [hasNew, setHasNew] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [quickReplies, setQuickReplies] = useState<QuickReply[]>(FLOWS.welcome.next);
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>(() =>
+    nextReplies("welcome", dict),
+  );
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -197,8 +187,20 @@ export function Chatbot() {
   // Restore / seed history
   useEffect(() => {
     setMounted(true);
-    setTimeout(() => setMessages(flowToMessages(FLOWS.welcome)), 200);
+    setTimeout(() => setMessages(flowToMessages("welcome", dict)), 200);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Language switch: past turns were written in the previous language and can't
+  // be retranslated, so restart the conversation in the newly selected one.
+  const firstLocale = useRef(locale);
+  useEffect(() => {
+    if (locale === firstLocale.current) return;
+    firstLocale.current = locale;
+    setMessages(flowToMessages("welcome", dict));
+    setQuickReplies(nextReplies("welcome", dict));
+    window.sessionStorage.removeItem(STORAGE_KEY);
+  }, [locale, dict]);
 
   useEffect(() => {
     if (!mounted || messages.length === 0) return;
@@ -224,16 +226,15 @@ export function Chatbot() {
   }, [open]);
 
   function runFlow(flowId: FlowId) {
-    const flow = FLOWS[flowId];
     setQuickReplies([]);
     setTyping(true);
-    const replies = flowToMessages(flow);
+    const replies = flowToMessages(flowId, dict);
     replies.forEach((msg, i) => {
       setTimeout(() => {
         setMessages((prev) => [...prev, msg]);
         if (i === replies.length - 1) {
           setTyping(false);
-          setQuickReplies(flow.next);
+          setQuickReplies(nextReplies(flowId, dict));
         }
       }, 500 + i * 700);
     });
@@ -250,12 +251,12 @@ export function Chatbot() {
     if (!value) return;
     setMessages((prev) => [...prev, { id: makeId(), sender: "user", body: value }]);
     setInput("");
-    runFlow(matchFlow(value));
+    runFlow(matchFlow(value, dict.keywords));
   }
 
   function resetChat() {
-    setMessages(flowToMessages(FLOWS.welcome));
-    setQuickReplies(FLOWS.welcome.next);
+    setMessages(flowToMessages("welcome", dict));
+    setQuickReplies(nextReplies("welcome", dict));
     window.sessionStorage.removeItem(STORAGE_KEY);
   }
 
@@ -267,7 +268,7 @@ export function Chatbot() {
       <button
         type="button"
         onClick={() => { setOpen((v) => !v); setHasNew(false); }}
-        aria-label={open ? "Close chat" : "Open chat with Rides"}
+        aria-label={open ? dict.closeLabel : dict.openLabel}
         className="fixed bottom-6 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-[1.05] active:scale-[0.95]"
       >
         {/* Close icon */}
@@ -281,7 +282,7 @@ export function Chatbot() {
         {/* Open icon — logo + label */}
         <span className={`absolute inset-0 flex flex-col items-center justify-center gap-0.5 transition-all duration-300 ${open ? "scale-0 opacity-0" : "scale-100 opacity-100"}`}>
           <img src="/ridelogo.png" alt="" className="h-8 w-8 object-contain brightness-0 invert" aria-hidden />
-          <span className="text-[10px] font-black tracking-wide text-emerald-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]">Chat</span>
+          <span className="text-[10px] font-black tracking-wide text-emerald-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]">{dict.bubbleLabel}</span>
         </span>
 
 
@@ -290,18 +291,21 @@ export function Chatbot() {
       {/* ── Chat panel ──────────────────────────────────────────────────── */}
       <div
         role="dialog"
-        aria-label="Chat with Rides"
+        aria-label={dict.dialogLabel}
         aria-hidden={!open}
         className={`fixed bottom-24 z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-black/20 transition-all duration-300 ease-out inset-x-4 sm:inset-x-auto sm:right-6 sm:w-80 ${
           open ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"
         }`}
-        style={{ height: "32rem" }}
+        // Cap to the space actually available: the panel sits 6rem off the
+        // bottom, so a fixed 32rem overflowed the top of short viewports
+        // (landscape phones, short windows) with no way to scroll it back.
+        style={{ height: "min(32rem, calc(100dvh - 7.5rem))" }}
       >
         {/* Header */}
         <div className="flex items-center gap-3 bg-primary px-4 py-3">
           <img src="/ridelogo.png" alt="Rides" className="h-8 w-8 shrink-0 object-contain brightness-0 invert" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white leading-none">Rides Assistant</p>
+            <p className="text-sm font-bold text-white leading-none">{dict.assistantName}</p>
           </div>
         </div>
 
@@ -341,13 +345,13 @@ export function Chatbot() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask me anything…"
+            placeholder={dict.inputPlaceholder}
             className="h-9 flex-1 rounded-xl border border-border bg-surface px-3 text-xs text-foreground outline-none transition-colors focus:border-primary"
           />
           <button
             type="submit"
             disabled={!input.trim()}
-            aria-label="Send"
+            aria-label={dict.sendLabel}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-md shadow-primary/30 transition-transform hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>

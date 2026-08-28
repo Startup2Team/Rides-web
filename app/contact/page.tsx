@@ -51,7 +51,7 @@ function InfoRow({
 
 export default function ContactPage() {
   return (
-    <main className="relative flex-1 overflow-hidden">
+    <main className="relative flex-1 overflow-x-clip">
       <section className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 px-5 py-12 sm:gap-12 sm:px-6 sm:py-16 lg:min-h-[calc(100vh-5rem)] lg:grid-cols-2 lg:gap-20 lg:py-24">
         {/* ── Left: heading + contact info ── */}
         <div className="relative">

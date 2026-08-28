@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useLocale } from "../i18n/context";
+import { useLocale, useTranslations } from "../i18n/context";
+import { fillTemplate } from "@/lib/i18n-template";
 import type { Locale } from "../i18n/config";
 
 /* ── Language metadata ───────────────────────────────────────────────────── */
@@ -21,6 +22,7 @@ const LANGUAGES: ReadonlyArray<{
 export function LanguageSwitcher() {
   const [open, setOpen] = useState(false);
   const { locale: current, setLocale } = useLocale();
+  const t = useTranslations("common");
   const wrapperRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -59,7 +61,7 @@ export function LanguageSwitcher() {
       <button
         ref={buttonRef}
         type="button"
-        aria-label={`Change language. Current language: ${active.label}`}
+        aria-label={fillTemplate(t("changeLanguage"), { language: active.label })}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
@@ -72,7 +74,7 @@ export function LanguageSwitcher() {
 
       <div
         role="menu"
-        aria-label="Select language"
+        aria-label={t("selectLanguage")}
         className={`absolute right-0 top-full z-50 mt-2 min-w-[200px] origin-top-right overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-foreground/5 transition-all duration-200 ease-out ${
           open
             ? "scale-100 opacity-100"

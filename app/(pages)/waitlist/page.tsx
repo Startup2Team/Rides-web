@@ -5,7 +5,7 @@ import { WaitlistForm } from "./waitlist-form";
 export const metadata: Metadata = {
   title: "Join the Rides Waitlist",
   description:
-    "Be first in line when Rides launches in your area — as a rider or a driver.",
+    "Be first in line when Rides launches in your area as a rider or a driver.",
 };
 
 function WaitlistFallback() {
@@ -24,7 +24,7 @@ function WaitlistFallback() {
 
 export default function WaitlistPage() {
   return (
-    <main className="relative flex-1 overflow-hidden">
+    <main className="relative flex-1 overflow-x-clip">
       <section className="mx-auto max-w-2xl px-5 py-12 sm:px-6 sm:py-16 lg:py-24">
         <Suspense fallback={<WaitlistFallback />}>
           <WaitlistForm />

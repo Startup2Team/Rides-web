@@ -26,8 +26,8 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-border bg-background">
-      <div className="mx-auto max-w-7xl px-6 py-16 lg:py-20">
-        <div className="grid gap-10 lg:grid-cols-12">
+      <div className="mx-auto max-w-7xl px-6 py-10 sm:py-12 lg:py-14">
+        <div className="grid gap-8 lg:grid-cols-12">
           <div className="lg:col-span-5">
             <Link href="/" className="inline-flex items-center">
               <span className="text-xl font-black tracking-[-0.04em]">
@@ -36,14 +36,11 @@ export default function Footer() {
                 <span className="text-emerald-600">es</span>
               </span>
             </Link>
-            <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              {tf("tagline")}
-            </p>
-            <p className="mt-2 text-xs italic text-muted-foreground/60">
+            <p className="mt-3 text-xs italic text-muted-foreground/60">
               {tf("quote")}
             </p>
 
-            <div className="mt-6 flex items-center gap-2">
+            <div className="mt-5 flex items-center gap-2">
               <Link
                 href="#"
                 aria-label="Twitter"
@@ -81,7 +78,7 @@ export default function Footer() {
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
                 {tf("product")}
               </p>
-              <ul className="mt-4 space-y-3">
+              <ul className="mt-3 space-y-2.5">
                 {productLinks.map((link) => (
                   <li key={link.href}>
                     <Link
@@ -99,7 +96,7 @@ export default function Footer() {
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
                 {tf("company")}
               </p>
-              <ul className="mt-4 space-y-3">
+              <ul className="mt-3 space-y-2.5">
                 {companyLinks.map((link) => (
                   <li key={link.href}>
                     <Link
@@ -113,11 +110,11 @@ export default function Footer() {
               </ul>
             </div>
 
-            <div>
+            <div className="hidden sm:block">
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
                 {tf("legal")}
               </p>
-              <ul className="mt-4 space-y-3">
+              <ul className="mt-3 space-y-2.5">
                 {legalLinks.map((link) => (
                   <li key={link.href}>
                     <Link
@@ -133,7 +130,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col-reverse items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
+        <div className="mt-8 flex flex-col-reverse items-center justify-between gap-3 border-t border-border pt-6 sm:flex-row">
           <p className="text-xs text-muted-foreground">
             © {year} Rides. {tf("rightsReserved")}
           </p>
@@ -144,10 +141,6 @@ export default function Footer() {
             <span className="h-3 w-px bg-border" />
             <Link href="/terms" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
               {tf("terms")}
-            </Link>
-            <span className="h-3 w-px bg-border" />
-            <Link href="/about" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
-              {t("about")}
             </Link>
           </div>
         </div>

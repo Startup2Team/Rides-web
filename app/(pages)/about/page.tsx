@@ -215,7 +215,7 @@ export default function AboutPage() {
   const about = useSection("about");
 
   return (
-    <main className="flex-1 overflow-x-hidden bg-background">
+    <main className="flex-1 overflow-x-clip bg-background">
 
       {/* ── 1. HERO — story, photo + purpose card, vision & mission ────────── */}
       <section className="relative overflow-hidden">
@@ -258,7 +258,7 @@ export default function AboutPage() {
             </div>
             <Photo
               src="/images/about-fleet.png"
-              alt="Our full fleet: sedan, moto with driver and passenger, pickup, and cargo truck"
+              alt={about.fleetImageAlt}
               className="mt-8 w-full scale-105 lg:scale-110"
               fit="contain"
               priority
