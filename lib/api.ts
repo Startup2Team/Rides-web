@@ -90,18 +90,28 @@ export function resolveBackendUrl(path: string | null | undefined): string | nul
   if (!path) return null;
   let origin = "http://localhost:8080";
   try {
-    const url = new URL(BASE_URL);
-    origin = url.origin;
+    if (typeof window !== "undefined" && window.location.hostname) {
+      origin = `${window.location.protocol}//${window.location.hostname}:8080`;
+    } else {
+      const url = new URL(BASE_URL);
+      origin = url.origin;
+    }
   } catch {
     // fallback
   }
 
-  // Handle internal MinIO URLs (e.g., http://minio:9000/ride-documents/... or http://localhost:9000/...)
-  if (path.includes(":9000") || path.includes(":9001") || path.includes("//minio/")) {
-    const match = path.match(/(?::9000|\/\/minio)\/+(.+)$/);
+  // Handle internal MinIO / R2 / placeholder URLs
+  if (
+    path.includes(":9000") ||
+    path.includes(":9001") ||
+    path.includes("//minio/") ||
+    path.includes("<your-public-r2-domain>") ||
+    path.startsWith("https:///")
+  ) {
+    const match = path.match(/(?::9000|\/\/minio|\/rides-docs|\/ride-documents|<your-public-r2-domain>)\/+(.+)$/);
     if (match && match[1]) {
       const rewritten = `${origin}/api/v1/uploads/objects/${match[1]}`;
-      console.log('[WEB:URL_REWRITE] 🔄 Rewrote internal MinIO URL:', { original: path, rewritten });
+      console.log("[WEB:URL_REWRITE] 🔄 Rewrote storage URL for web:", { original: path, rewritten });
       return rewritten;
     }
   }
