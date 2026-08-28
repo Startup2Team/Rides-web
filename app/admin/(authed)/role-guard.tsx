@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import { canAccessPath, firstAllowedPath } from "@/lib/admin-permissions";
 
@@ -12,8 +12,14 @@ export function RoleGuard({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
-    if (!ready) return;
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !ready) return;
     if (canAccessPath(permissions, pathname, searchParams)) return;
     const fallback = firstAllowedPath(permissions);
     if (fallback.startsWith("/admin/login")) {
@@ -21,9 +27,9 @@ export function RoleGuard({ children }: { children: React.ReactNode }) {
       return;
     }
     router.replace(fallback);
-  }, [ready, permissions, pathname, searchParams, router]);
+  }, [mounted, ready, permissions, pathname, searchParams, router]);
 
-  if (!ready) {
+  if (!mounted || !ready) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <p className="text-sm text-muted-foreground">Loading permissions…</p>
