@@ -78,7 +78,11 @@ function docStatus(key: DocKey, dec: DocDecision): "none" | "accepted" | "reject
   if (dec.front.status === "accepted" && (!two || dec.back.status === "accepted")) return "accepted";
   return "none";
 }
-function docReviewed(key: DocKey, dec: DocDecision): boolean {
+function docReviewed(key: DocKey, dec: DocDecision, driver?: VerifyDriver): boolean {
+  if (driver) {
+    const { front, back } = docFacesFor(driver, key);
+    if (!front && !back) return true;
+  }
   const two = DOC_LABELS[key].twoFaces;
   return dec.front.status !== "none" && (!two || dec.back.status !== "none");
 }
@@ -370,6 +374,10 @@ function ApprovalStatusPill({ status }: { status: string }) {
       label: "Pending review",
       cls: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100",
     },
+    "needs_more_info": {
+      label: "Update required",
+      cls: "bg-amber-100 text-amber-900 ring-1 ring-inset ring-amber-300 font-bold",
+    },
     approved: {
       label: "Approved",
       cls: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100",
@@ -410,7 +418,8 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
 }
 
 function DocFaceCard({ label, url }: { label: string; url: string }) {
-  const isImage = /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url) || url.startsWith("data:image/");
+  const isNonImage = /\.(pdf|doc|docx)(\?|$)/i.test(url);
+  const isImage = !isNonImage || url.startsWith("data:image/");
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-surface">
       <div className="flex items-center justify-between border-b border-border bg-muted/20 px-3 py-2">
@@ -630,7 +639,7 @@ export default function DriverReviewPage() {
     }));
   };
 
-  const allReviewed = DOCS.every((d) => docReviewed(d.key, decisions[d.key]));
+  const allReviewed = DOCS.every((d) => docReviewed(d.key, decisions[d.key], driver ?? undefined));
   const allAccepted = DOCS.every((d) => docStatus(d.key, decisions[d.key]) === "accepted");
   const allRejected = DOCS.every((d) => docStatus(d.key, decisions[d.key]) === "rejected");
 
@@ -897,27 +906,58 @@ export default function DriverReviewPage() {
               const faces = docFacesFor(driver, d.key);
               const hasAnyFace = !!(faces.front || faces.back);
               const isTwoFace = DOC_LABELS[d.key].twoFaces;
-              return (
-                <li
-                  key={d.key}
-                  className={`overflow-hidden rounded-2xl border bg-card p-5 transition-all duration-300 ${
-                    ds === "accepted"
-                      ? "border-emerald-500/30 shadow-md shadow-emerald-500/5"
-                      : ds === "rejected"
-                      ? "border-red-500/30 shadow-md shadow-red-500/5"
-                      : "border-border"
-                  }`}
-                >
-                  <div className="flex flex-col md:flex-row justify-between gap-4">
-                    <div className="flex-1 space-y-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-sm font-bold text-foreground">{d.label}</h3>
-                        {hasAnyFace && (
-                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-                            {faces.front && faces.back ? "2 faces" : "1 face"}
-                          </span>
-                        )}
-                      </div>
+                  const isUpdateRequired =
+                    ds === "rejected" ||
+                    (function () {
+                      const s = (driver.approvalStatus ?? "").trim().toLowerCase();
+                      if (s !== "needs_more_info" && s !== "needs_info" && s !== "needs info") return false;
+                      const label = d.label.toLowerCase();
+                      const reason = (driver.rejectionReason ?? "").toLowerCase();
+                      if (reason && reason.includes(label)) return true;
+                      const types = [...DOC_TYPES[d.key].front, ...DOC_TYPES[d.key].back];
+                      const decisions = driver.reviewHistory?.[0]?.documentDecisions ?? [];
+                      return decisions.some(
+                        (dec) =>
+                          dec.decision === "rejected" &&
+                          types.some((t) => t.toUpperCase() === dec.documentType.toUpperCase()),
+                      );
+                    })();
+
+                  return (
+                    <li
+                      key={d.key}
+                      className={`overflow-hidden rounded-2xl border bg-card p-5 transition-all duration-300 ${
+                        isUpdateRequired
+                          ? "border-amber-400/80 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/30 ring-1 ring-amber-400/50 shadow-sm"
+                          : ds === "accepted"
+                          ? "border-emerald-500/30 shadow-md shadow-emerald-500/5"
+                          : "border-border"
+                      }`}
+                    >
+                      {isUpdateRequired && (
+                        <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-100/90 dark:bg-amber-900/40 px-3.5 py-2.5 text-xs font-semibold text-amber-950 dark:text-amber-100 shadow-sm">
+                          <span className="text-sm">⚠️</span>
+                          <span>Update required: Driver was asked to re-upload a new copy of this document.</span>
+                        </div>
+                      )}
+                      <div className="flex flex-col md:flex-row justify-between gap-4">
+                        <div className="flex-1 space-y-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-sm font-bold text-foreground">{d.label}</h3>
+                              {isUpdateRequired && (
+                                <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900 dark:text-amber-100">
+                                  <span>🟨</span>
+                                  <span>Update required</span>
+                                </span>
+                              )}
+                            </div>
+                            {hasAnyFace && (
+                              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                                {faces.front && faces.back ? "2 faces" : "1 face"}
+                              </span>
+                            )}
+                          </div>
                       <DocumentPreview kind={d.key} driver={driver} />
                     </div>
 
@@ -1081,14 +1121,14 @@ export default function DriverReviewPage() {
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <h2 className="text-sm font-semibold tracking-tight text-foreground">Review Progress</h2>
           <span className="text-xs font-bold text-foreground">
-            {DOCS.filter((d) => docReviewed(d.key, decisions[d.key])).length} / {DOCS.length} reviewed
+            {DOCS.filter((d) => docReviewed(d.key, decisions[d.key], driver)).length} / {DOCS.length} reviewed
           </span>
         </div>
         <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-primary transition-all duration-300"
             style={{
-              width: `${(DOCS.filter((d) => docReviewed(d.key, decisions[d.key])).length / DOCS.length) * 100}%`,
+              width: `${(DOCS.filter((d) => docReviewed(d.key, decisions[d.key], driver)).length / DOCS.length) * 100}%`,
             }}
           />
         </div>

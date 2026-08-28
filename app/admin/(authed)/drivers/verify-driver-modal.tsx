@@ -39,6 +39,7 @@ export type VerifyDriver = {
   plate: string;
   /** Raw approval state from the backend (e.g. "pending", "approved", "rejected"). */
   approvalStatus: string;
+  rejectionReason?: string;
   /**
    * Current display avatar (users.profile_image_url), which the driver can change
    * in-app. Used for the identity avatar (header/sidebar) only — NOT for the

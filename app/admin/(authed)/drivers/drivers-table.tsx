@@ -34,7 +34,8 @@ const statusStyles: Record<string, string> = {
   "On trip": "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-100",
   Offline: "bg-muted text-muted-foreground",
   Pending: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100",
-  NeedsInfo: "bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-300",
+  NeedsInfo: "bg-amber-100 text-amber-900 ring-1 ring-inset ring-amber-300 font-bold",
+  "Needs more info": "bg-amber-100 text-amber-900 ring-1 ring-inset ring-amber-300 font-bold",
   Suspended: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-100",
   Rejected: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-100",
   // Deliberately NOT green/Approved-looking — this is the fallback for a
@@ -48,7 +49,7 @@ const isApprovedBucket = (status: DriverStatus) =>
 /** Badge key (into statusStyles) + display label for a driver's current status. */
 function statusBadge(d: Driver): { key: string; label: string } {
   if (isApprovedBucket(d.status)) return { key: "Approved", label: "Approved" };
-  if (d.status === "NeedsInfo") return { key: "NeedsInfo", label: "Needs Info" };
+  if (d.status === "NeedsInfo" || d.status === "Needs more info") return { key: "NeedsInfo", label: "Update required" };
   if (d.status === "Unknown") {
     return { key: "Unknown", label: d.rawStatus || "Unknown" };
   }
@@ -184,6 +185,11 @@ function DriverCard({
               </span>
             )
           )}
+          {driver.status === "Needs more info" && driver.rejectionReason ? (
+            <p className="text-[10px] text-amber-800 truncate max-w-[200px]" title={driver.rejectionReason}>
+              {driver.rejectionReason}
+            </p>
+          ) : null}
         </div>
         <span className="font-mono text-[10px] text-muted-foreground">
           {driver.plate}
@@ -488,10 +494,9 @@ export function DriversTable() {
       } else if (statusFilter === "ApprovedNonCompliant") {
         if (!isApproved || d.eligible !== false) return false;
       } else if (statusFilter === "Pending") {
-        // "Pending Review" is the actionable queue — drivers sent back for
-        // NEEDS_MORE_INFO still need an admin decision, so they belong here
-        // too, not just fresh PENDING_REVIEW applications.
-        if (d.status !== "Pending" && d.status !== "NeedsInfo") return false;
+        if (d.status !== "Pending" && d.status !== "NeedsInfo" && d.status !== "Needs more info") return false;
+      } else if (statusFilter === "NeedsMoreInfo") {
+        if (d.status !== "NeedsInfo" && d.status !== "Needs more info") return false;
       } else if (statusFilter === "Rejected") {
         if (d.status !== "Rejected") return false;
       } else if (statusFilter === "Suspended") {
@@ -693,10 +698,12 @@ export function DriversTable() {
               className="h-8 rounded-lg border border-border bg-surface px-2.5 text-xs text-foreground outline-none focus:border-primary cursor-pointer w-[48%] sm:w-auto flex-1"
             >
               <option value="all">All statuses</option>
-              <option value="Pending">Pending Review (incl. Needs Info)</option>
+              <option value="Pending">Pending Review</option>
+              <option value="NeedsMoreInfo">🟨 Update Required</option>
               <option value="ApprovedEligible">Approved (Eligible)</option>
               <option value="ApprovedNonCompliant">Approved (Non-compliant)</option>
               <option value="Rejected">Rejected</option>
+              <option value="Suspended">Suspended</option>
             </select>
 
             {/* Joining Date Filter */}

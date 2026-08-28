@@ -57,6 +57,7 @@ export type DriverStatus =
   // re-uploaded. Distinct from "Pending" so it renders its own label, but it
   // belongs in the same needs-review queue.
   | "NeedsInfo"
+  | "Needs more info"
   | "Suspended"
   | "Rejected"
   // Any approval_status the frontend doesn't recognize. Must NEVER be treated
@@ -88,6 +89,7 @@ export type DriverRow = {
    * send `updated_at` yet.
    */
   resubmitted: boolean;
+  rejectionReason?: string;
 };
 
 export function isDriverEligible(driver: {
@@ -136,13 +138,16 @@ export function mapApprovalStatus(
   approvalStatus: string,
   isOnline: boolean,
   onTrip = false,
+  rejectionReason?: string | null,
 ): DriverStatus {
   const s = approvalStatus.toUpperCase();
-  if (s === "PENDING_REVIEW" || s === "PENDING") return "Pending";
-  // Admin asked for specific documents to be re-uploaded. This is a
-  // needs-review state, not Approved — it must stay in the actionable queue
-  // and never fall through to the Offline/Approved bucket below.
-  if (s === "NEEDS_MORE_INFO") return "NeedsInfo";
+  if (s === "PENDING_REVIEW" || s === "PENDING") {
+    if (rejectionReason && rejectionReason.trim() !== "") {
+      return "NeedsInfo";
+    }
+    return "Pending";
+  }
+  if (s === "NEEDS_MORE_INFO" || s === "NEEDS_INFO") return "NeedsInfo";
   if (s === "REJECTED") return "Rejected";
   if (s === "SUSPENDED") return "Suspended";
   if (s === "APPROVED" || s === "ACTIVE" || s === "APPROVED_NON_COMPLIANT") {
@@ -199,7 +204,7 @@ export function mapApiDriver(d: ApiDriver): DriverRow {
     (d.phone ? d.phone : "Unknown driver");
   const isNonCompliant = statusUpper === "APPROVED_NON_COMPLIANT";
   const eligible = !isNonCompliant;
-  const status = mapApprovalStatus(d.approval_status, Boolean(d.is_online), Boolean(d.on_trip));
+  const status = mapApprovalStatus(d.approval_status, Boolean(d.is_online), Boolean(d.on_trip), d.rejection_reason);
 
   return {
     id: d.id,
@@ -219,6 +224,7 @@ export function mapApiDriver(d: ApiDriver): DriverRow {
     eligible,
     referrals: d.referral_count ?? 0,
     resubmitted: wasResubmitted(status, d.created_at, d.updated_at),
+    rejectionReason: d.rejection_reason ?? undefined,
   };
 }
 
@@ -305,6 +311,7 @@ export function mapDriverDetailToVerify(
     vehicle: row?.vehicle ?? formatTransportType(detail.transport_type),
     plate: detail.vehicle_plate ?? row?.plate ?? "—",
     approvalStatus: detail.approval_status ?? "pending",
+    rejectionReason: detail.rejection_reason ?? (row as { rejectionReason?: string } | undefined)?.rejectionReason ?? undefined,
     profileImageUrl: detail.profile_image_url ?? undefined,
     kyc: {
       phone: detail.phone ?? "",

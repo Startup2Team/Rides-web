@@ -96,11 +96,11 @@ export function resolveBackendUrl(path: string | null | undefined): string | nul
     // fallback
   }
 
-  // Handle internal MinIO URLs (e.g., http://minio:9000/rides-docs/...) or console URLs (:9001)
-  if (path.includes(":9000/") || path.includes(":9001/") || path.includes("//minio/")) {
-    const parts = path.split("/rides-docs/");
-    if (parts.length > 1) {
-      const rewritten = `${origin}/api/v1/uploads/objects/${parts[1]}`;
+  // Handle internal MinIO URLs (e.g., http://minio:9000/ride-documents/... or http://localhost:9000/...)
+  if (path.includes(":9000") || path.includes(":9001") || path.includes("//minio/")) {
+    const match = path.match(/(?::9000|\/\/minio)\/+(.+)$/);
+    if (match && match[1]) {
+      const rewritten = `${origin}/api/v1/uploads/objects/${match[1]}`;
       console.log('[WEB:URL_REWRITE] 🔄 Rewrote internal MinIO URL:', { original: path, rewritten });
       return rewritten;
     }
@@ -596,6 +596,7 @@ export type Driver = {
   updated_at?: string;
   referral_count?: number;
   referred_by_driver_id?: string | null;
+  rejection_reason?: string | null;
 };
 
 export type DriversResponse = {
@@ -635,6 +636,7 @@ export type DriverDetail = {
   id: string;
   full_name?: string | null;
   phone?: string;
+  rejection_reason?: string | null;
   transport_type: string;
   vehicle_plate?: string;
   /**
