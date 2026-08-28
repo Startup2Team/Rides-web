@@ -15,10 +15,10 @@
     "appStoreEyebrow": "Download on the",
     "appStoreLabel": "App Store",
     "googlePlayEyebrow": "Get it on",
-    "googlePlayLabel": "Google Play"
+    "googlePlayLabel": "Google Play",
+    "waitlistCta": "Join the Waitlist"
   },
   "footer": {
-    "tagline": "People-powered mobility and logistics — connecting riders, drivers, and communities across Africa and beyond.",
     "quote": "“Driven by People, Powered by Choice.”",
     "product": "Product",
     "company": "Company",
@@ -30,69 +30,109 @@
     "terms": "Terms"
   },
   "about": {
-    "heroHeadline": "A better way to move. Designed for real journeys.",
-    "heroSub": "Transparent pricing. Fair negotiation. Safer rides.",
-    "welcomeHeading": "Why we built Rides.",
-    "welcomeP1": "Transportation should be fair, transparent, and built around the people who use it not the other way around.",
-    "welcomeP2": "Rides gives riders and drivers the trip details, the fare logic, and the freedom to negotiate before the trip begins. Trust comes from transparency. Fairness comes from choice.",
-    "standForHeading": "What we stand for.",
-    "faqHeading": "Frequently asked questions.",
-    "bullets": [
+    "eyebrow": "About Us",
+    "heroHeadline": "Building Opportunities Through Technology",
+    "heroP1": "We are building more than a transportation platform. We are creating a people-powered technology ecosystem that connects individuals, businesses, and communities through mobility, logistics, and digital solutions.",
+    "heroP2": "Our platforms are designed to make everyday services more accessible, affordable, and flexible while creating sustainable income opportunities for millions of people.",
+    "beliefLead": "Every product we build is guided by one simple belief:",
+    "beliefHighlight": "Technology should create opportunities, not barriers.",
+    "purposeTitle": "Our Purpose",
+    "purposeBody": "Serving people, empowering communities, and creating opportunities.",
+    "visionTitle": "Our Vision",
+    "visionParts": [
       {
-        "title": "Transparency from the first tap",
-        "body": "Riders see the route, estimated time, distance, and fare before the trip begins. Drivers know what they're earning before they accept a ride. No surprises. No hidden calculations."
+        "text": "To become the world's most trusted people-powered mobility, logistics, and technology ecosystem, connecting more than ",
+        "highlight": false
       },
       {
-        "title": "Fairness through choice",
-        "body": "Pricing should be a conversation, not a decision made by an algorithm alone. Riders and drivers can negotiate the fare before the journey starts, reaching an agreement that works for both sides."
+        "text": "500 million users",
+        "highlight": true
       },
       {
-        "title": "Safety within reach",
-        "body": "Safety isn't an afterthought. One-tap SOS support, verified identities, document checks, and a responsive support team — every ride built on a safer foundation."
+        "text": " while empowering over ",
+        "highlight": false
       },
       {
-        "title": "Mutual respect by design",
-        "body": "Rides is built for the people who make every journey possible — riders and drivers alike. Trust, respect, and fairness are part of every interaction."
+        "text": "5 million people",
+        "highlight": true
       },
       {
-        "title": "Trust through action",
-        "body": "Anyone can claim to care about transparency and fairness. We demonstrate it through the choices we make, the features we build, and the way we serve our community every day."
+        "text": " to generate sustainable income across Africa and beyond.",
+        "highlight": false
       }
     ],
-    "faqs": [
+    "missionTitle": "Our Mission",
+    "missionBody": "Our mission is to transform the way people move, work, and connect by delivering flexible transportation, logistics, and digital solutions that place decision-making power in the hands of service providers while offering customers exceptional value, safety, convenience, and choice.",
+    "commitHeading": "We Are Committed To",
+    "commitments": [
+      "Creating over 5 million jobs and income opportunities.",
+      "Serving more than 500 million users globally.",
+      "Building technology that enables economic inclusion.",
+      "Supporting local entrepreneurs and businesses.",
+      "Making transportation and logistics accessible, affordable, and reliable for everyone."
+    ],
+    "valuesHeading": "Our Core Values",
+    "values": [
       {
-        "q": "What is Rides?",
-        "a": "Rides is an app designed to make transportation more transparent, fair, and safe for both riders and drivers."
+        "title": "Customer First",
+        "body": "Every decision begins with understanding and serving our customers."
       },
       {
-        "q": "Is Rides available now?",
-        "a": "Yes. Rides is officially live and available for users."
+        "title": "Freedom & Flexibility",
+        "body": "We believe work and mobility should adapt to people's lives, not the other way around."
       },
       {
-        "q": "How is Rides different from other apps?",
-        "a": "Rides focuses on transparency and fairness. Riders see clear trip details before confirming a ride, and drivers understand their earnings upfront. We also allow fare negotiation between riders and drivers."
+        "title": "Empowerment Through Choice",
+        "body": "We put decision-making power into the hands of customers and service providers."
       },
       {
-        "q": "How does price negotiation work?",
-        "a": "Before a trip starts, riders and drivers agree on a fare. Once both sides accept, the ride is confirmed. This ensures both parties agree on the price before the journey begins."
+        "title": "Economic Inclusion",
+        "body": "We create pathways for individuals and businesses to earn, grow, and succeed regardless of their background or location."
       },
       {
-        "q": "How does safety work on Rides?",
-        "a": "Verified IDs, document checks on every driver, a one-tap emergency button, and a 24/7 support team you can reach during or after a trip."
+        "title": "Innovation Without Limits",
+        "body": "We continuously innovate to provide smarter, faster, and more efficient solutions."
       },
       {
-        "q": "Do I need a wallet to use Rides?",
-        "a": "No wallet is required. Payments are handled directly between riders and drivers based on the agreed fare."
+        "title": "Trust & Transparency",
+        "body": "We build trust through honesty, accountability, fairness, and open communication."
       },
       {
-        "q": "Where is Rides available?",
-        "a": "Rides is currently available in selected cities, with more locations being added as we grow."
+        "title": "Community Impact",
+        "body": "Our success is measured not only by profits but by the positive impact we create in communities."
       },
       {
-        "q": "How can I start using Rides?",
-        "a": "You can download the app, create an account, and start booking rides immediately where the service is available."
+        "title": "Excellence in Execution",
+        "body": "We strive for excellence in every ride, delivery, partnership, and customer interaction."
       }
-    ]
+    ],
+    "impactHeading": "Our Long-Term Impact",
+    "impactBody": "We are building one of Africa's largest technology ecosystems. It empowers millions of entrepreneurs, drivers, businesses, and communities through innovative digital platforms.",
+    "impactStats": [
+      {
+        "value": "500M+",
+        "label": "Users Connected"
+      },
+      {
+        "value": "5M+",
+        "label": "Income Opportunities"
+      },
+      {
+        "value": "",
+        "label": "Across Africa and Beyond"
+      },
+      {
+        "value": "",
+        "label": "Stronger Communities"
+      }
+    ],
+    "promiseHeading": "Our Promise",
+    "promiseBody": "We promise to build technology that is accessible, affordable, reliable, secure, inclusive, and community-driven. Because when people have access to opportunity, communities prosper.",
+    "communityMottoLabel": "Our Community Motto",
+    "communityMotto": "Your Journey. Your Choice. Your Opportunity.",
+    "orgMottoLabel": "Our Organization Motto",
+    "orgMotto": "Driven by People, Powered by Choice.",
+    "fleetImageAlt": "Our full fleet: sedan, moto with driver and passenger, pickup, and cargo truck"
   },
   "drivers": {
     "heroHeadline": "Drive on your terms, earn on your terms.",
@@ -107,20 +147,20 @@
     "talkToTeam": "Talk to our team",
     "benefits": [
       {
-        "title": "Daily payouts",
-        "detail": "Paid every working day, straight to your mobile money. No weekly batches, no minimum threshold."
+        "title": "Reliable payouts",
+        "detail": "Your earnings go straight to your mobile money, quickly and without unnecessary waiting."
       },
       {
         "title": "Driver-first economics",
-        "detail": "Transparent fares with no hidden cuts. You see what you'll earn before you accept the trip."
+        "detail": "Transparent fares with no hidden cuts. You see what a trip is worth before you accept it."
       },
       {
         "title": "Real human support",
-        "detail": "A live team in Kigali on call 24/7. When something goes wrong, someone actually answers."
+        "detail": "A support team you can reach when you need it. When something goes wrong, someone answers."
       },
       {
         "title": "Built in Rwanda",
-        "detail": "Local team, local routes, local payment rails. We understand how Rwanda moves."
+        "detail": "Local team, local routes, local payment options. We understand how Rwanda moves."
       }
     ],
     "steps": [
@@ -156,5 +196,949 @@
     "errMessageRequired": "Tell us what we can help with.",
     "errMessageShort": "Add a bit more detail (at least 10 characters).",
     "genericErrorFallback": "Something went wrong. Please try again."
+  },
+  "waitlist": {
+    "eyebrow": "Get early access",
+    "heading": "Join the Rides waitlist",
+    "subheading": "Be first in line when Rides launches in your area as a rider or a driver.",
+    "roleCustomerTitle": "I want a ride",
+    "roleCustomerHint": "Get notified the moment Rides is live near you.",
+    "roleDriverTitle": "I want to drive",
+    "roleDriverHint": "Get notified when we start onboarding drivers in your area.",
+    "nameLabel": "Full name",
+    "phoneLabel": "Phone number",
+    "phoneHint": "e.g. 0781234567",
+    "emailLabel": "Email (optional)",
+    "provinceLabel": "Province",
+    "districtLabel": "District",
+    "sectorLabel": "Sector",
+    "selectProvincePlaceholder": "Select province",
+    "selectDistrictPlaceholder": "Select district",
+    "selectDistrictFirstPlaceholder": "Select province first",
+    "selectSectorPlaceholder": "Select sector",
+    "selectSectorFirstPlaceholder": "Select district first",
+    "vehicleTypeLabel": "Vehicle type",
+    "selectVehiclePlaceholder": "Select your vehicle",
+    "vehicleMoto": "Moto (motorcycle taxi)",
+    "vehicleRifani": "Rifani (tuk-tuk)",
+    "vehicleCab": "Cab",
+    "vehicleHilux": "Hilux (pickup)",
+    "vehicleFuso": "Fuso (truck)",
+    "consentLaunchLabel": "Notify me when Rides launches in my area",
+    "consentMarketingLabel": "Send me other Rides updates",
+    "privacyNoteTemplate": "By joining the waitlist, you agree to our {privacyLink}.",
+    "privacyLinkLabel": "Privacy Policy",
+    "turnstileUnavailable": "We couldn't load the verification check. Please check your connection and try again.",
+    "turnstileRetry": "Retry verification",
+    "submit": "Join the waitlist",
+    "submitting": "Joining…",
+    "errNameRequired": "Please enter your name.",
+    "errPhoneRequired": "Please enter your phone number.",
+    "errPhoneInvalid": "Enter a valid Rwanda mobile number (e.g. 0781234567).",
+    "errSectorRequired": "Select your sector.",
+    "errVehicleRequired": "Select your vehicle type.",
+    "errConsentRequired": "Please confirm to continue.",
+    "errTurnstileRequired": "Please complete the verification check.",
+    "err400": "We couldn't process that — please check your details and try again.",
+    "err403": "We couldn't verify you're human. Please retry the check and try again.",
+    "err429": "Too many attempts — please wait a moment and try again.",
+    "genericErrorFallback": "Something went wrong. Please try again.",
+    "successTitle": "You're on the list!",
+    "successBodyTemplate": "Thanks {name} — we'll text you the moment Rides launches in your area.",
+    "successShareHeading": "Share your invite link",
+    "successShareBody": "Share your personal link with friends and help Rides launch faster.",
+    "whatsappShareText": "I just joined the Rides waitlist — join me and let's get Rides to Rwanda faster: {link}",
+    "whatsappButton": "Share on WhatsApp",
+    "copyLink": "Copy link",
+    "copied": "Copied!",
+    "joinAnother": "Join with another number"
+  },
+  "features": {
+    "eyebrow": "Built for the trip",
+    "heading": "Everything you need, on your terms",
+    "body": "Built around how Rwanda actually moves. Fair prices, the right vehicle, and full visibility from book to drop-off.",
+    "multiModalBadge": "Multi-modal",
+    "multiModalTitle": "Pick your ride.",
+    "multiModalBody": "A moto for a quick run. A cab for comfort. A hilux for rough roads. A fuso for a full haul. One app, four ways to move.",
+    "realtimeBadge": "Real-time",
+    "realtimeTitle": "Eyes on every trip.",
+    "realtimeBody": "Follow your driver on the map as they approach. Share the live trip with anyone you trust.",
+    "pricingBadge": "Fair pricing",
+    "pricingTitle": "Name your price.",
+    "pricingBody": "See the suggested fare, send a counter-offer. No surge surprises.",
+    "payBadge": "Mobile money",
+    "payTitle": "Pay your way.",
+    "payBody": "MoMo, Airtel, or cash to your driver. Same flow either way."
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "heading": "Frequently asked questions",
+    "introPrefix": "Everything you need to know about riding, driving, paying, and staying safe with Rides. Still not finding it?",
+    "introLinkLabel": "Send us a message",
+    "items": [
+      {
+        "q": "What is Rides?",
+        "a": "Rides is one app for every way you move. A moto when you're late. A cab when it matters. A hilux for the rough road. A fuso for moving day. You choose the vehicle, you see the fare before you book, and you follow the driver the whole way."
+      },
+      {
+        "q": "How do I book a ride?",
+        "a": "Sign in with your phone number, pick your vehicle, set your pickup and destination, and confirm. A nearby driver accepts in seconds — then you watch them come to you on the map."
+      },
+      {
+        "q": "What vehicle types are available?",
+        "a": "Four. Motos for a quick solo run. Cabs when you want comfort. Hilux pickups for bulky loads and rough roads. Fuso trucks for a full haul. The price scales with what you pick, so you never pay for more vehicle than the trip needs."
+      },
+      {
+        "q": "How are fares calculated?",
+        "a": "Distance, vehicle type, and time of day — and you see the number before you book. Fares can also be negotiated up front in the app, by riders and drivers alike. No surge pricing. No hidden fees."
+      },
+      {
+        "q": "How do I pay?",
+        "a": "MTN Mobile Money or Airtel Money, straight from the app. Prefer cash? Pay the driver directly — the same fare either way."
+      },
+      {
+        "q": "Are drivers verified?",
+        "a": "Every driver submits their ID, vehicle insurance, and a vehicle authorization document before they can take a single trip. Our team reviews and approves each application by hand — nobody signs up automatically."
+      },
+      {
+        "q": "What if I need to cancel?",
+        "a": "Cancel any time before your driver arrives. Cancel repeatedly once a driver is already on the way and you will hit a short cooldown — that one is for the drivers, who turn down other trips to reach you."
+      },
+      {
+        "q": "How do I become a driver?",
+        "a": "Tap Drivers in the menu and start your application. You will need a valid licence, vehicle insurance, and an inspection certificate. Approval usually takes 24–48 hours."
+      }
+    ]
+  },
+  "howItWorks": {
+    "eyebrow": "How it works",
+    "heading": "From request to rating, in 5 steps.",
+    "body": "Book, agree on a fair fare, ride, pay, rate. Every step on your terms.",
+    "stepsNavLabel": "Steps",
+    "jumpToStep": "Jump to step {n}",
+    "stepLabel": "Step {n}",
+    "steps": [
+      {
+        "title": "Book in Seconds",
+        "body": "Open the app, choose your preferred vehicle, and complete your booking in just a few taps."
+      },
+      {
+        "title": "Driver Confirmed",
+        "body": "Your request is securely matched with available drivers. Once accepted, you can track your driver in real time."
+      },
+      {
+        "title": "Confirm Your Fare",
+        "body": "Review the fare before your trip begins and confirm your booking with confidence."
+      },
+      {
+        "title": "Track Every Mile",
+        "body": "Follow your driver in real time and share your trip with trusted contacts for added peace of mind."
+      },
+      {
+        "title": "Rate Your Experience",
+        "body": "Share your feedback by rating your trip to help maintain a trusted community."
+      }
+    ],
+    "ui": {
+      "greeting": "Hi",
+      "whereTo": "Where to today?",
+      "currentLocation": "Current Location",
+      "cityCountry": "Kigali, Rwanda",
+      "selectYourRide": "Select your ride",
+      "continueWith": "Continue with {vehicle}",
+      "tabHome": "Home",
+      "tabRides": "Rides",
+      "tabProfile": "Profile",
+      "notifications": "Notifications",
+      "mapLayers": "Map layers",
+      "myLocation": "My location",
+      "findingDriver": "Finding your driver",
+      "connectingNearby": "Connecting you with nearby moto riders",
+      "cancelSearch": "Cancel Search",
+      "negotiatingFare": "Negotiating fare",
+      "initialOffer": "Initial offer",
+      "counterOffer": "Counter offer",
+      "yourOffer": "Your offer",
+      "finalOffer": "Final offer",
+      "acceptFare": "Accept {amount}",
+      "decline": "Decline",
+      "driverOnTheWay": "{name} is on the way",
+      "maskedCall": "Masked call · 0:24",
+      "tripCompleted": "Trip Completed",
+      "rateYourTrip": "Rate your trip",
+      "ratingHelps": "Your rating helps keep the community trusted.",
+      "submit": "Submit"
+    }
+  },
+  "smartMobility": {
+    "eyebrow": "The platform",
+    "heading": "Built for real-time movement.",
+    "body": "Live tracking, smarter matching, quick confirmations, and clear pricing. All running underneath your ride.",
+    "features": [
+      {
+        "title": "Live Tracking",
+        "description": "Track your driver in real time and know exactly when they'll arrive."
+      },
+      {
+        "title": "Smarter Matching",
+        "description": "Intelligent matching connects you with available drivers nearby for a faster, more reliable experience."
+      },
+      {
+        "title": "Quick Confirmations",
+        "description": "Most ride requests are confirmed within moments, getting you on the road sooner."
+      },
+      {
+        "title": "Clear Pricing",
+        "description": "See your fare before your trip starts for a simple and transparent booking experience."
+      }
+    ],
+    "dash": {
+      "liveOperations": "Live operations",
+      "today": "Today",
+      "week": "Week",
+      "month": "Month",
+      "now": "Now",
+      "activeRides": "Active rides",
+      "onlineDrivers": "Online drivers",
+      "live": "Live",
+      "hotZones": "Hot zones",
+      "hotZonesValue": "3 active"
+    }
+  },
+  "finalCta": {
+    "eyebrow": "Get the app",
+    "headingPart1": "Your ride.",
+    "headingPart2": "Your price.",
+    "body": "Across a thousand hills, every ride begins with a fair conversation.",
+    "ui": {
+      "currentLocation": "Current Location",
+      "cityCountry": "Kigali, Rwanda",
+      "selectYourRide": "Select your ride",
+      "continueWith": "Continue with {vehicle}",
+      "tabHome": "Home",
+      "tabRides": "Rides",
+      "tabProfile": "Profile",
+      "greeting": "Hi",
+      "whereTo": "Where to today?",
+      "notifications": "Notifications",
+      "mapLayers": "Map layers",
+      "myLocation": "My location"
+    }
+  },
+  "chatbot": {
+    "bubbleLabel": "Chat",
+    "openLabel": "Open chat with Rides",
+    "closeLabel": "Close chat",
+    "dialogLabel": "Chat with Rides",
+    "assistantName": "Rides Assistant",
+    "inputPlaceholder": "Ask me anything…",
+    "sendLabel": "Send",
+    "flows": {
+      "welcome": {
+        "reply": [
+          "Hey there! Welcome to Rides.\n\nI'm your smart assistant — ask me anything about booking rides, becoming a driver, payments, or how Rides works across Rwanda."
+        ]
+      },
+      "driver": {
+        "reply": [
+          "Great — drivers are how Rides scales. Here's what you need:",
+          "• Valid Rwandan driver licence\n• Vehicle (Moto, Cab, Hilux, or Fuso)\n• SONARWA insurance + police authorisation\n• MTN MoMo or Airtel Money for payouts",
+          "Drop your details on the contact form — we usually reply within 48h."
+        ]
+      },
+      "negotiation": {
+        "reply": [
+          "Rides is the only platform in Rwanda where rider and driver agree on the fare together.",
+          "1. Rider sees a suggested fare and makes an offer\n2. Driver accepts, counter-offers, or passes\n3. Up to 4 rounds — then both settle or walk away",
+          "Average uplift on first offer is ~18%. Every fare is logged."
+        ]
+      },
+      "locations": {
+        "reply": [
+          "We're live across all of Kigali — Gasabo, Kicukiro, and Nyarugenge.",
+          "Musanze is in pilot, and Huye launches Q3 2026.",
+          "Want Rides in your area? Let us know 👇"
+        ]
+      },
+      "payments": {
+        "reply": [
+          "We accept MTN MoMo, Airtel Money, and cash on every ride.",
+          "Drivers are paid out twice daily — 06:00 and 17:00 — straight to their wallet. Rides takes 12–18% commission depending on vehicle.",
+          "All payments are auditable in the driver app."
+        ]
+      },
+      "ride-issue": {
+        "reply": [
+          "Sorry to hear that. We treat ride issues as priority — average response under 12 hours.",
+          "File the details on the contact form under the 'Complaint' category."
+        ]
+      },
+      "complaint": {
+        "reply": [
+          "Sorry about that. The fastest way to get help is the contact form — average reply under 12 hours.",
+          "Or reach us instantly on WhatsApp:"
+        ]
+      },
+      "human": {
+        "reply": [
+          "Want to talk to a real person? Here's the fastest way:",
+          "WhatsApp is quickest during business hours (Mon–Sat · 08:00–20:00). The contact form is best for anything that needs a paper trail."
+        ]
+      },
+      "no-match": {
+        "reply": [
+          "I'm not sure I follow that one.\n\nTry asking me about rides, drivers, payments, or how Rides works across Rwanda!"
+        ]
+      }
+    },
+    "labels": {
+      "become-driver": "Become a driver",
+      "how-payments-work": "How payments work",
+      "negotiations": "Negotiations",
+      "where-you-operate": "Where you operate",
+      "ride-issue": "Ride issue",
+      "talk-to-human": "Talk to a human",
+      "back-to-start": "Back to start",
+      "driver-application": "Driver application",
+      "driver-page": "Driver page",
+      "see-how-it-works": "See how it works",
+      "file-a-complaint": "File a complaint",
+      "whatsapp-support": "WhatsApp support",
+      "contact-form": "Contact form",
+      "whatsapp": "WhatsApp",
+      "call-support": "Call support"
+    },
+    "keywords": {
+      "driver": [
+        "driver",
+        "drive",
+        "apply",
+        "join",
+        "onboard"
+      ],
+      "negotiation": [
+        "negotiat",
+        "fare",
+        "price",
+        "haggle",
+        "offer"
+      ],
+      "locations": [
+        "where",
+        "location",
+        "area",
+        "kigali",
+        "musanze"
+      ],
+      "payments": [
+        "pay",
+        "momo",
+        "airtel",
+        "cash",
+        "wallet",
+        "payout"
+      ],
+      "complaint": [
+        "complain",
+        "refund",
+        "overcharge",
+        "wrong",
+        "bad"
+      ],
+      "ride-issue": [
+        "ride",
+        "trip",
+        "issue",
+        "problem",
+        "dispute"
+      ],
+      "human": [
+        "human",
+        "person",
+        "agent",
+        "support",
+        "call",
+        "whatsapp"
+      ]
+    }
+  },
+  "common": {
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "changeLanguage": "Change language. Current language: {language}",
+    "selectLanguage": "Select language",
+    "savePdf": "Save as PDF",
+    "savePdfTitle": "Print or save this page as a PDF",
+    "home": "Home"
+  },
+  "privacy": {
+    "chrome": {
+      "breadcrumb": "Privacy Policy",
+      "badge": "Privacy & Data Protection",
+      "title": "Privacy Policy",
+      "effective": "Effective {date}",
+      "description": "This policy describes how we collect, use, share, and protect your personal data when you use the Rides app, website, and related services.",
+      "viewRights": "View your rights",
+      "contactUs": "Contact us →",
+      "whatWeCollect": "What we collect →",
+      "contents": "Contents",
+      "dataController": "Data Controller",
+      "location": "Kigali, Rwanda",
+      "contactCta": "Contact Us",
+      "footerNote": "© {year} {company} · Kigali, Rwanda · Last updated {date}",
+      "effectiveDate": "June 11, 2026"
+    },
+    "hero": {
+      "encrypted": "Encrypted",
+      "private": "Private",
+      "yourRights": "Your Rights",
+      "compliant": "Compliant",
+      "dataControl": "Your data, your control",
+      "complianceBadge": "GDPR · Law N°058/2021"
+    },
+    "commitments": [
+      {
+        "title": "We never sell your data",
+        "body": "Your personal information is never sold to advertisers or third parties."
+      },
+      {
+        "title": "GDPR & Rwanda Law N°058/2021",
+        "body": "We comply with both local Rwandan data law and EU GDPR standards."
+      },
+      {
+        "title": "You control your data",
+        "body": "Access, correct, delete, or export your data at any time on request."
+      }
+    ],
+    "rights": [
+      {
+        "title": "Access",
+        "desc": "Request information about our processing and access your personal information"
+      },
+      {
+        "title": "Correct",
+        "desc": "Update or correct inaccuracies in your personal information"
+      },
+      {
+        "title": "Delete",
+        "desc": "Request deletion of your personal information"
+      },
+      {
+        "title": "Transfer",
+        "desc": "Receive a machine-readable copy of your personal information"
+      },
+      {
+        "title": "Restrict",
+        "desc": "Restrict the processing of your personal information"
+      },
+      {
+        "title": "Object",
+        "desc": "Object to our reliance on legitimate interests as the basis of our processing"
+      }
+    ],
+    "securitySteps": [
+      {
+        "title": "Encryption",
+        "desc": "Sensitive data encrypted"
+      },
+      {
+        "title": "Secure Servers",
+        "desc": "Cloud infrastructure"
+      },
+      {
+        "title": "Access Control",
+        "desc": "Authentication systems"
+      },
+      {
+        "title": "Security Audits",
+        "desc": "Regular assessments"
+      }
+    ],
+    "sections": [
+      {
+        "id": "introduction",
+        "num": "",
+        "title": "Introduction",
+        "content": [
+          {
+            "kind": "text",
+            "value": "This Privacy Policy is designed to help you understand how TRAVELIS Rwanda Ltd and its related subsidiaries and affiliates, including www.rides.rw (\"we\", \"us\" or \"our\") collects, uses, shares, and protects your personal data when you use our mobile application, website, and related services. We value your privacy, and we will not share your personal information with third parties except as described in this Privacy Policy without your consent."
+          },
+          {
+            "kind": "text",
+            "value": "By using our platforms, you agree to the practices described in this policy. If you do not agree, please do not use our websites, mobile applications, or provide us with your information."
+          }
+        ]
+      },
+      {
+        "id": "coverage",
+        "num": "",
+        "title": "What This Policy Covers",
+        "content": [
+          {
+            "kind": "text",
+            "value": "This Privacy Policy applies to our collection, use and sharing of your personal information:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "When you visit our website at www.rides.rw and its related sites and mobile applications",
+              "When you receive our communications or participate in our online or offline activities or events",
+              "When you fill out an application for admission or subscription to our mobile applications",
+              "Information we obtain from third parties such as resellers, database vendors, content publishers and suppliers"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "This Privacy Policy applies only to information gathered on and through the Site or mobile application and does not apply to any other websites not owned or operated by TRAVELIS Rwanda Ltd."
+          }
+        ]
+      },
+      {
+        "id": "who-we-are",
+        "num": "1",
+        "title": "Who We Are",
+        "content": [
+          {
+            "kind": "text",
+            "value": "TRAVELIS Rwanda Ltd is a technology company operating a ride-hailing and logistics platform as well as other technology-based solutions and applications in Rwanda."
+          },
+          {
+            "kind": "text",
+            "value": "We act as a data controller for personal data collected through the platform."
+          }
+        ]
+      },
+      {
+        "id": "legal-framework",
+        "num": "2",
+        "title": "Legal Framework",
+        "content": [
+          {
+            "kind": "text",
+            "value": "We comply with:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Rwanda Law No. 058/2021 relating to the protection of personal data and privacy",
+              "General Data Protection Regulation (GDPR) where applicable",
+              "Other applicable transport and digital service regulations"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "information-we-collect",
+        "num": "3",
+        "title": "Information We Collect",
+        "content": [
+          {
+            "kind": "sub",
+            "key": "3.1",
+            "title": "3.1  Personal Information",
+            "bullets": [
+              "Full name",
+              "Phone number and Mobile money number",
+              "Email address",
+              "Profile photo",
+              "National ID or passport (for drivers)",
+              "Address details"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.2",
+            "title": "3.2  Location Data",
+            "bullets": [
+              "Real-time GPS location while accessing the mobile application",
+              "Pickup and drop-off locations",
+              "Route history (for safety and service improvement)"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.3",
+            "title": "3.3  Ride Information",
+            "bullets": [
+              "Trip history",
+              "Payment details (processed via third-party providers)",
+              "Ratings and feedback"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.4",
+            "title": "3.4  Device and Technical Data",
+            "bullets": [
+              "Device type and operating system",
+              "IP address",
+              "App usage data and crash logs"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.5",
+            "title": "3.5  Driver-Specific Data",
+            "bullets": [
+              "Driving licence details and photo",
+              "Vehicle registration document(s) and photo(s)",
+              "Insurance certificate(s) and photo(s)",
+              "Momo code number and mobile money phone number",
+              "Background verification data (if applicable)",
+              "Transportation service permit details and photo (if applicable)",
+              "Picture(s) of the vehicle(s)"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.6",
+            "title": "3.6  Feedback and Correspondence",
+            "bullets": [
+              "Information you provide when requesting support, responding to surveys, or corresponding with us"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.7",
+            "title": "3.7  Information From Third Parties",
+            "bullets": [
+              "Additional information from third-party sources such as service providers, vendors, social media sites, and advertising agencies to provide you with more relevant information about our services"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "how-we-use",
+        "num": "4",
+        "title": "How We Use Your Data",
+        "content": [
+          {
+            "kind": "bullets",
+            "items": [
+              "Connect riders and drivers",
+              "Provide, maintain and improve the Site and mobile applications",
+              "Process and complete trips",
+              "Process payments and payouts",
+              "Improve platform safety and performance",
+              "Provide customer support",
+              "Detect fraud and prevent misuse",
+              "Comply with legal obligations",
+              "Send important service updates",
+              "Better understand your needs and interests, and personalise your experience",
+              "Process applications submitted through the Site and mobile applications",
+              "Perform website analytics and database management services",
+              "Manage and serve interest-based advertising on our platforms and trusted third-party sites",
+              "Investigate or prevent violations of the law or your agreements with us",
+              "Protect the rights, privacy, safety or property of you, us, or others"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "We do not sell personal data."
+          }
+        ]
+      },
+      {
+        "id": "legal-basis",
+        "num": "5",
+        "title": "Legal Basis for Processing",
+        "content": [
+          {
+            "kind": "text",
+            "value": "We process data based on:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Contract necessity — to provide ride and payment services",
+              "Legal obligations — tax and transport compliance",
+              "Legitimate interest — fraud prevention, safety, and analytics",
+              "Consent — marketing communications and optional features"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "data-sharing",
+        "num": "6",
+        "title": "Data Sharing",
+        "content": [
+          {
+            "kind": "text",
+            "value": "We do not share your personal information with third parties without your consent, except in the following circumstances:"
+          },
+          {
+            "kind": "sub",
+            "key": "providers",
+            "title": "Drivers, Riders & Service Providers",
+            "bullets": [
+              "Name and pickup/drop-off location",
+              "Trip status and contact information (masked where possible)",
+              "Payment details including MomoPay code and mobile money numbers"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "affiliates",
+            "title": "TRAVELIS Rwanda Ltd Affiliates",
+            "bullets": [
+              "We may share your information with TRAVELIS Rwanda Ltd's affiliates and related organisations for use consistent with this Privacy Policy"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "partners",
+            "title": "Business Partners",
+            "bullets": [
+              "Partners who offer a service to you jointly with us — a list is available upon request"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "legal",
+            "title": "Legal, Safety & Compliance",
+            "bullets": [
+              "Government or law enforcement officials for fraud prevention and legal compliance",
+              "Where permitted by law in connection with a legal investigation",
+              "To protect, investigate, and deter against fraudulent, harmful, or illegal activity"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "transfers",
+            "title": "Business Transfers",
+            "bullets": [
+              "In connection with a merger, acquisition, reorganisation, or sale of assets, or in the event of bankruptcy"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "data-retention",
+        "num": "7",
+        "title": "Data Retention",
+        "content": [
+          {
+            "kind": "bullets",
+            "items": [
+              "Account data: retained while your account is active",
+              "Trip history: up to 5 years (legal and tax compliance)",
+              "Location data: limited retention for safety and dispute resolution",
+              "Marketing data: until consent is withdrawn"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "data-security",
+        "num": "8",
+        "title": "Data Security",
+        "content": [
+          {
+            "kind": "text",
+            "value": "We implement strong security measures including:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Encryption of sensitive data",
+              "Secure servers and cloud infrastructure",
+              "Access controls and authentication systems",
+              "Regular security audits"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "However, no system is 100% secure, and we cannot guarantee absolute security."
+          }
+        ]
+      },
+      {
+        "id": "your-rights",
+        "num": "9",
+        "title": "Your Rights (Rwanda + GDPR)",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Rwandan Law N°058/2021 of 13/10/2021 relating to the Protection of Personal Data and Privacy gives you the following rights:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Access — Request information about our processing and access your personal information",
+              "Correct — Update or correct inaccuracies in your personal information",
+              "Delete — Request deletion of your personal information",
+              "Transfer — Receive a machine-readable copy of your personal information",
+              "Restrict — Restrict the processing of your personal information",
+              "Object — Object to our reliance on legitimate interests as the basis of our processing"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "To exercise your rights, contact us at: info@rides.rw"
+          }
+        ]
+      },
+      {
+        "id": "location-data",
+        "num": "10",
+        "title": "Location Data",
+        "content": [
+          {
+            "kind": "text",
+            "value": "We use GPS location to:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Match riders with nearby drivers",
+              "Track trip progress",
+              "Improve safety and navigation"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "You can disable location access in your device settings, but core services may not function properly."
+          }
+        ]
+      },
+      {
+        "id": "childrens-privacy",
+        "num": "11",
+        "title": "Children's Privacy",
+        "content": [
+          {
+            "kind": "text",
+            "value": "The Site is not intended for use by anyone under the age of 18, nor do we knowingly collect or solicit personal information from anyone under the age of 18. If you are under 18, you should not attempt to use the Site or send any information about yourself to us."
+          }
+        ]
+      },
+      {
+        "id": "international-transfers",
+        "num": "12",
+        "title": "International Data Transfers",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Your data may be stored or processed on servers outside Rwanda. When this occurs, we ensure appropriate safeguards in line with GDPR standards."
+          }
+        ]
+      },
+      {
+        "id": "third-party-services",
+        "num": "13",
+        "title": "Third-Party Services",
+        "content": [
+          {
+            "kind": "text",
+            "value": "We may use third-party providers for:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Payments",
+              "Maps and navigation",
+              "Analytics",
+              "Messaging services",
+              "Hosting services"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "These providers have their own privacy policies, which we encourage you to review."
+          }
+        ]
+      },
+      {
+        "id": "cookie-policy",
+        "num": "14",
+        "title": "Cookie Policy",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Cookies are small data files placed on your device when you visit a website. We use several different kinds of cookies:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Strictly necessary cookies — required for the Site to function and cannot be switched off",
+              "Performance cookies — allow us to count visits and traffic sources to measure and improve performance",
+              "Functional cookies — enable enhanced functionality and personalisation",
+              "Third-party cookies — from analytics providers (e.g. Google Analytics) for demographic information and usage insights"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "We may also use web beacons (sometimes called \"tracking pixels\" or \"clear gifs\") — tiny graphic files that enable us to recognise when someone has visited our Site. If you sign up to receive our emails, we may use cookies in conjunction with those emails."
+          },
+          {
+            "kind": "text",
+            "value": "Most browsers let you remove or reject cookies. To do this, follow the instructions in your browser settings."
+          }
+        ]
+      },
+      {
+        "id": "other-information",
+        "num": "15",
+        "title": "Other Important Information",
+        "content": [
+          {
+            "kind": "sub",
+            "key": "third-party-sites",
+            "title": "Third-Party Sites and Services",
+            "bullets": [
+              "The Site may contain links to other websites operated by third parties",
+              "We are not responsible for their actions or privacy practices",
+              "We encourage you to read their privacy policies to learn more"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "security",
+            "title": "Security",
+            "bullets": [
+              "We take organisational, technical, and physical measures to protect your personal information",
+              "Security risk is inherent in all internet and information technologies",
+              "We cannot guarantee the absolute security of your personal information"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "changes",
+        "num": "16",
+        "title": "Changes to This Policy",
+        "content": [
+          {
+            "kind": "bullets",
+            "items": [
+              "We may update this Privacy Policy from time to time",
+              "Users will be notified of significant changes via the app or email",
+              "Continued use of the app means acceptance of updates"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "contact",
+        "num": "17",
+        "title": "Contact Us",
+        "content": [
+          {
+            "kind": "text",
+            "value": "If you have questions or requests regarding your data:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Company: TRAVELIS Rwanda Ltd",
+              "Email: info@rides.rw",
+              "Location: Kigali, Rwanda"
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

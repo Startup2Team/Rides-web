@@ -9,18 +9,18 @@
     "download": "Kuramo porogaramu"
   },
   "hero": {
-    "headlineLine1": "Urugendo rwawe. Guhitamo kwawe.",
+    "headlineLine1": "Urugendo rwawe. Amahitamo yawe.",
     "headlineLine2": "Amahirwe yawe.",
-    "subheadline": "Bikorwa n'abantu, bishyigikiwe no guhitamo.",
+    "subheadline": "Duyobowe n'abantu, dushyigikiwe n'amahitamo.",
     "appStoreEyebrow": "Kuramo kuri",
     "appStoreLabel": "App Store",
-    "googlePlayEyebrow": "Iboneke kuri",
-    "googlePlayLabel": "Google Play"
+    "googlePlayEyebrow": "Iboneka kuri",
+    "googlePlayLabel": "Google Play",
+    "waitlistCta": "Iyandikishe ku rutonde"
   },
   "footer": {
-    "tagline": "Ubwikorezi n'ibikorwa bishingiye ku bantu — duhuza abagenzi, abashoferi n'imiryango muri Afurika no hanze yayo.",
-    "quote": "\"Bikorwa n'abantu, bishyigikiwe no guhitamo.\"",
-    "product": "Ibicuruzwa",
+    "quote": "“Duyobowe n'abantu, dushyigikiwe n'amahitamo.”",
+    "product": "Serivisi",
     "company": "Ikigo",
     "legal": "Amategeko",
     "privacyPolicy": "Politiki y'ibanga",
@@ -30,93 +30,133 @@
     "terms": "Amabwiriza"
   },
   "about": {
-    "heroHeadline": "Uburyo bwiza bwo kugenda. Bwateguriwe ingendo nyazo.",
-    "heroSub": "Ibiciro bisobanutse. Kwumvikana ku giciro. Ingendo zizewe.",
-    "welcomeHeading": "Impamvu twashinze Rides.",
-    "welcomeP1": "Ubwikorezi bugomba kuba bunyangamugayo, busobanutse, kandi bwateguriwe abantu babukoresha — atari uko byifashe ubundi.",
-    "welcomeP2": "Rides iha abagenzi n'abashoferi amakuru y'urugendo, uko igiciro gitangwa, n'uburenganzira bwo kwumvikana mbere y'uko urugendo rutangira. Icyizere gikomoka ku bunyangamugayo. Ubutabera bukomoka ku guhitamo.",
-    "standForHeading": "Ibyo duharanira.",
-    "faqHeading": "Ibibazo bikunze kubazwa.",
-    "bullets": [
+    "eyebrow": "Abo turi bo",
+    "heroHeadline": "Duhanga amahirwe binyuze mu ikoranabuhanga",
+    "heroP1": "Ntitwubaka urubuga rwo gutwara abantu gusa. Turimo kubaka urusobe rw'ikoranabuhanga rushingiye ku bantu, ruhuza abantu ku giti cyabo, ubucuruzi n'imiryango binyuze mu ngendo, mu bwikorezi no mu bisubizo bya digitale.",
+    "heroP2": "Imbuga zacu zateguwe kugira ngo serivisi za buri munsi ziboneke byoroshye, ku giciro cyiza kandi mu buryo bunyuranye, mu gihe zinafungura amahirwe yo kwinjiza arambye ku bantu babarirwa muri za miliyoni.",
+    "beliefLead": "Buri gicuruzwa twubaka kiyoborwa n'ihame rimwe ryoroshye:",
+    "beliefHighlight": "Ikoranabuhanga rigomba guhanga amahirwe, ntiribe imbogamizi.",
+    "purposeTitle": "Intego yacu",
+    "purposeBody": "Gukorera abantu, guha imbaraga imiryango no guhanga amahirwe.",
+    "visionTitle": "Icyerekezo cyacu",
+    "visionParts": [
       {
-        "title": "Ubunyangamugayo guhera igihe utangiye",
-        "body": "Abagenzi babona inzira, igihe giteganyijwe, intera n'igiciro mbere y'uko urugendo rutangira. Abashoferi bamenya ayo bazinjiza mbere yo kwemera urugendo. Nta gitangaza. Nta bibazo byihishe."
+        "text": "Kuba urusobe rw'ingendo, ubwikorezi n'ikoranabuhanga rushingiye ku bantu rwizewe kurusha izindi ku isi, duhuza abakoresha barenga ",
+        "highlight": false
       },
       {
-        "title": "Ubutabera biturutse ku guhitamo",
-        "body": "Igiciro kigomba kuba ikiganiro, atari icyemezo gifatwa na porogaramu yonyine. Abagenzi n'abashoferi barashobora kumvikana ku giciro mbere y'uko urugendo rutangira, bakagera ku myumvikane iboneye ku mpande zombi."
+        "text": "miliyoni 500",
+        "highlight": true
       },
       {
-        "title": "Umutekano ugerwaho byoroshye",
-        "body": "Umutekano ntabwo ari ikintu cyibagirana. Ubufasha bw'ihutirwa mu gukanda rimwe, indangamuntu zemejwe, isuzuma ry'inyandiko, n'itsinda ry'ubufasha rihari — buri rugendo rushingiye ku musingi w'umutekano."
+        "text": " tunafasha abantu barenga ",
+        "highlight": false
       },
       {
-        "title": "Icyubahiro kimwe cyateganyijwe",
-        "body": "Rides yubatswe ku bantu batuma buri rugendo rushoboka — abagenzi n'abashoferi. Icyizere, icyubahiro n'ubutabera ni bimwe mu byo dushyira imbere mu mikoranire yose."
+        "text": "miliyoni 5",
+        "highlight": true
       },
       {
-        "title": "Icyizere kigaragazwa mu bikorwa",
-        "body": "Umuntu wese arashobora kuvuga ko yita ku bunyangamugayo n'ubutabera. Turabigaragaza binyuze mu byemezo dufata, ibiranga dukora, n'uburyo dukorera umuryango wacu buri munsi."
+        "text": " kubona amahirwe yo kwinjiza arambye muri Afurika no hanze yayo.",
+        "highlight": false
       }
     ],
-    "faqs": [
+    "missionTitle": "Inshingano yacu",
+    "missionBody": "Inshingano yacu ni uguhindura uburyo abantu bagenda, bakora kandi bahuza, dutanga ibisubizo binyuranye by'ingendo, ubwikorezi n'ikoranabuhanga bishyira ububasha bwo gufata ibyemezo mu maboko y'abatanga serivisi, mu gihe abakiriya bahabwa agaciro kadasanzwe, umutekano, uburyo bworoshye n'amahitamo.",
+    "commitHeading": "Twiyemeje",
+    "commitments": [
+      "Guhanga imirimo n'amahirwe yo kwinjiza birenga miliyoni 5.",
+      "Gukorera abakoresha barenga miliyoni 500 ku isi.",
+      "Kubaka ikoranabuhanga rifasha bose kugera ku bukungu.",
+      "Gushyigikira ba rwiyemezamirimo n'ubucuruzi bwo mu karere.",
+      "Gutuma ingendo n'ubwikorezi biboneka, bihendutse kandi byizewe kuri bose."
+    ],
+    "valuesHeading": "Indangagaciro zacu",
+    "values": [
       {
-        "q": "Rides ni iki?",
-        "a": "Rides ni porogaramu yateguwe kugira ngo ubwikorezi bube bunyangamugayo, buboneye kandi bwizewe ku bagenzi n'abashoferi bombi."
+        "title": "Umukiriya mbere ya byose",
+        "body": "Buri cyemezo gitangirana no gusobanukirwa no gukorera abakiriya bacu."
       },
       {
-        "q": "Rides irahari ubu?",
-        "a": "Yego. Rides itangiye gukora ku mugaragaro kandi irahari ku bakoresha."
+        "title": "Ubwisanzure no guhinduka",
+        "body": "Twizera ko akazi n'ingendo bigomba guhuzwa n'ubuzima bw'abantu, atari ukundi."
       },
       {
-        "q": "Rides itandukaniye he na porogaramu zindi?",
-        "a": "Rides yibanda ku bunyangamugayo n'ubutabera. Abagenzi babona amakuru y'urugendo mbere yo kwemeza urugendo, kandi abashoferi bamenya ayo bazinjiza mbere y'igihe. Kandi twemerera kwumvikana ku giciro hagati y'abagenzi n'abashoferi."
+        "title": "Guhabwa imbaraga binyuze mu mahitamo",
+        "body": "Dushyira ububasha bwo gufata ibyemezo mu maboko y'abakiriya n'abatanga serivisi."
       },
       {
-        "q": "Kwumvikana ku giciro bikora bite?",
-        "a": "Mbere y'uko urugendo rutangira, abagenzi n'abashoferi bumvikana ku giciro. Igihe impande zombi zemeye, urugendo rurahamagara. Ibi bituma impande zombi zumvikana ku giciro mbere y'uko urugendo rutangira."
+        "title": "Ubukungu burimo bose",
+        "body": "Duhanga inzira zituma abantu n'ubucuruzi binjiza, bakura kandi bagera ku ntsinzi hatitawe ku nkomoko cyangwa aho batuye."
       },
       {
-        "q": "Umutekano ukora bite kuri Rides?",
-        "a": "Indangamuntu zemejwe, isuzuma ry'inyandiko ku mushoferi wese, buto y'ihutirwa ikandwa rimwe, n'itsinda ry'ubufasha rihari amasaha 24 ku minsi 7, mu gihe cy'urugendo cyangwa nyuma yarwo."
+        "title": "Guhanga udushya nta mbibi",
+        "body": "Duhora duhanga udushya kugira ngo dutange ibisubizo by'ubwenge, byihuse kandi binoze kurushaho."
       },
       {
-        "q": "Nkeneye porutefe kugira ngo nkoreshe Rides?",
-        "a": "Nta porutefe ikenewe. Kwishyura bikorwa hagati y'abagenzi n'abashoferi bakurikije igiciro bumvikanyeho."
+        "title": "Ikizere n'umucyo",
+        "body": "Twubaka ikizere binyuze mu kuri, kubazwa ibyo dukora, ubutabera no gutumanaho mu mucyo."
       },
       {
-        "q": "Rides irahari he?",
-        "a": "Rides ubu irahari mu mijyi imwe n'imwe yatoranyijwe, kandi ahandi hazongerwa uko dukura."
+        "title": "Ingaruka nziza ku muryango",
+        "body": "Intsinzi yacu ntipimwa gusa n'inyungu, ahubwo n'ingaruka nziza duteza mu miryango."
       },
       {
-        "q": "Nabigiraho nte gukoresha Rides?",
-        "a": "Ushobora kuramo porogaramu, ukafungura konti, ukatangira gufata ingendo ako kanya aho serivisi ihari."
+        "title": "Indashyikirwa mu bikorwa",
+        "body": "Duharanira indashyikirwa muri buri rugendo, buri bwikorezi, buri bufatanye no muri buri mubano n'umukiriya."
       }
-    ]
+    ],
+    "impactHeading": "Ingaruka zacu z'igihe kirekire",
+    "impactBody": "Turimo kubaka rumwe mu nsobe z'ikoranabuhanga nini muri Afurika. Ruha imbaraga ba rwiyemezamirimo, abashoferi, ubucuruzi n'imiryango babarirwa muri za miliyoni binyuze ku mbuga za digitale z'udushya.",
+    "impactStats": [
+      {
+        "value": "500M+",
+        "label": "Abakoresha bahujwe"
+      },
+      {
+        "value": "5M+",
+        "label": "Amahirwe yo kwinjiza"
+      },
+      {
+        "value": "",
+        "label": "Muri Afurika no hanze yayo"
+      },
+      {
+        "value": "",
+        "label": "Imiryango ikomeye kurushaho"
+      }
+    ],
+    "promiseHeading": "Isezerano ryacu",
+    "promiseBody": "Dusezeranya kubaka ikoranabuhanga riboneka, rihendutse, ryizewe, rifite umutekano, ririmo bose kandi rishingiye ku muryango. Kuko iyo abantu babonye amahirwe, imiryango itera imbere.",
+    "communityMottoLabel": "Intero y'umuryango wacu",
+    "communityMotto": "Urugendo rwawe. Amahitamo yawe. Amahirwe yawe.",
+    "orgMottoLabel": "Intero y'ikigo cyacu",
+    "orgMotto": "Duyobowe n'abantu, dushyigikiwe n'amahitamo.",
+    "fleetImageAlt": "Ibinyabiziga byacu byose: imodoka, moto ifite umushoferi n'umugenzi, hilux, na kamyo y'imizigo"
   },
   "drivers": {
-    "heroHeadline": "Twara nk'uko ubishaka, winjize nk'uko ubishaka.",
-    "heroSub": "Zana moto yawe, imodoka, hilux cyangwa fuso. Ramo porogaramu ya Rides Umushoferi utangire kwinjiza uyu munsi.",
+    "heroHeadline": "Twara uko ushaka, winjize amafaranga uko ushaka.",
+    "heroSub": "Koresha ikinyabiziga cyawe: moto, imodoka, hilux cyangwa fuso. Kuramo porogaramu ya Rides Driver maze utangire kwinjiza amafaranga uyu munsi.",
     "heroNote": "Reba ibyo dutanga hepfo mbere yo gusaba.",
-    "whyEyebrow": "Impamvu wagenda na Rides",
-    "whyHeading": "Byateguriwe abantu batwara imodoka.",
+    "whyEyebrow": "Impamvu watwara na Rides",
+    "whyHeading": "Byateguriwe abamotari n'abashoferi.",
     "howEyebrow": "Uko watangira",
     "howHeading": "Intambwe eshatu. Abenshi mu bashoferi batangira gukora mu masaha 48.",
-    "eligibility": "Uzakenera uruhushya rwo gutwara rwemewe, imodoka ikora neza, konti ya mobile money, n'indangamuntu ya Leta. Ibisabwa byihariye ku modoka yawe bizagaragazwa muri porogaramu igihe usaba.",
+    "eligibility": "Uzakenera uruhushya rwo gutwara rwemewe, ikinyabiziga gikora neza, konti ya mobile money, n'indangamuntu ya Leta. Ibisabwa byihariye ku kinyabiziga cyawe bizagaragazwa muri porogaramu igihe usaba.",
     "questionsPrefix": "Ufite ibibazo mbere yo gusaba?",
     "talkToTeam": "Vugana n'itsinda ryacu",
     "benefits": [
       {
-        "title": "Kwishyurwa buri munsi",
-        "detail": "Wishyurwa buri munsi ukoze, agahita ajya kuri mobile money yawe. Nta gutegereza icyumweru, nta ntangiro ntoya isabwa."
+        "title": "Kwishyurwa mu buryo bwizewe",
+        "detail": "Amafaranga yawe ajya kuri mobile money yawe vuba, nta gutegereza kutari ngombwa."
       },
       {
         "title": "Ubukungu bushingiye ku mushoferi",
-        "detail": "Ibiciro bisobanutse nta kivunanwa kihishe. Ubona icyo uzinjiza mbere yo kwemera urugendo."
+        "detail": "Ibiciro bisobanutse, nta mafaranga ahishe akurwaho. Ubona agaciro k'urugendo mbere yo kurwemera."
       },
       {
         "title": "Ubufasha nyabwo bw'abantu",
-        "detail": "Itsinda rihari i Kigali rihari amasaha 24 ku minsi 7. Iyo hari ikibazo, hari umuntu usubiza koko."
+        "detail": "Itsinda ushobora kugeraho igihe ubikeneye. Iyo hari ikibazo, hari umuntu usubiza."
       },
       {
         "title": "Byubatswe mu Rwanda",
@@ -125,21 +165,21 @@
     ],
     "steps": [
       {
-        "title": "Ramo porogaramu",
-        "detail": "Bona porogaramu ya Rides Umushoferi kuri App Store cyangwa Google Play."
+        "title": "Kuramo porogaramu",
+        "detail": "Uzasanga porogaramu ya Rides Driver kuri App Store cyangwa Google Play."
       },
       {
         "title": "Ohereza amakuru yawe",
-        "detail": "Porogaramu iragufasha intambwe ku yindi. Ibisabwa byihariye ku modoka yawe bigaragara muri iyi ntambwe."
+        "detail": "Porogaramu iragufasha intambwe ku yindi. Ibisabwa byihariye ku kinyabiziga cyawe bigaragara muri iyi ntambwe."
       },
       {
-        "title": "Tangira kwinjiza",
+        "title": "Tangira kwinjiza amafaranga",
         "detail": "Turasuzuma tukanakwemeza, akenshi mu masaha 24 kugeza 48. Nyuma y'aho, uba utangiye gukora."
       }
     ]
   },
   "contact": {
-    "heading": "Twaganire?"
+    "heading": "Tuganire?"
   },
   "contactForm": {
     "nameLabel": "Amazina yawe",
@@ -156,5 +196,955 @@
     "errMessageRequired": "Tubwire icyo dushobora kugufasha.",
     "errMessageShort": "Ongeraho amakuru make (byibuze inyuguti 10).",
     "genericErrorFallback": "Habaye ikosa. Ongera ugerageze."
+  },
+  "waitlist": {
+    "eyebrow": "Uzabe uwa mbere",
+    "heading": "Iyandikishe ku rutonde rwa Rides",
+    "subheading": "Ba uwa mbere umenyeshwa igihe Rides itangiye gukorera mu karere kawe nk'umugenzi cyangwa umushoferi.",
+    "roleCustomerTitle": "Nshaka urugendo",
+    "roleCustomerHint": "Menyeshwa igihe Rides itangiye gukorera hafi yawe.",
+    "roleDriverTitle": "Nshaka gutwara",
+    "roleDriverHint": "Menyeshwa igihe dutangiye kwandikisha abashoferi mu karere kawe.",
+    "nameLabel": "Amazina yombi",
+    "phoneLabel": "Numero ya telefoni",
+    "phoneHint": "urugero: 0781234567",
+    "emailLabel": "Imeyili (si ngombwa)",
+    "provinceLabel": "Intara",
+    "districtLabel": "Akarere",
+    "sectorLabel": "Umurenge",
+    "selectProvincePlaceholder": "Hitamo intara",
+    "selectDistrictPlaceholder": "Hitamo akarere",
+    "selectDistrictFirstPlaceholder": "Banza uhitemo intara",
+    "selectSectorPlaceholder": "Hitamo umurenge",
+    "selectSectorFirstPlaceholder": "Banza uhitemo akarere",
+    "vehicleTypeLabel": "Ubwoko bw'ikinyabiziga",
+    "selectVehiclePlaceholder": "Hitamo ikinyabiziga cyawe",
+    "vehicleMoto": "Moto (moto y'abagenzi)",
+    "vehicleRifani": "Rifani (tuktuk)",
+    "vehicleCab": "Imodoka",
+    "vehicleHilux": "Hilux (pikapu)",
+    "vehicleFuso": "Fuso (kamyo)",
+    "consentLaunchLabel": "Mmenyeshe igihe Rides itangiye gukorera mu karere kanjye",
+    "consentMarketingLabel": "Nyoherereza andi makuru ya Rides",
+    "privacyNoteTemplate": "Iyo wiyandikishije ku rutonde, wemera {privacyLink} yacu.",
+    "privacyLinkLabel": "Politiki y'ibanga",
+    "turnstileUnavailable": "Ntitwashoboye gufungura igenzura. Reba interineti yawe hanyuma ongera ugerageze.",
+    "turnstileRetry": "Ongera ugerageze igenzura",
+    "submit": "Iyandikishe ku rutonde",
+    "submitting": "Kwiyandikisha…",
+    "errNameRequired": "Nyamuneka andika amazina yawe.",
+    "errPhoneRequired": "Nyamuneka andika numero ya telefoni yawe.",
+    "errPhoneInvalid": "Andika numero ya telefoni igendanwa yo mu Rwanda yemewe (urugero: 0781234567).",
+    "errSectorRequired": "Hitamo umurenge wawe.",
+    "errVehicleRequired": "Hitamo ubwoko bw'ikinyabiziga cyawe.",
+    "errConsentRequired": "Nyamuneka emeza kugira ngo ukomeze.",
+    "errTurnstileRequired": "Nyamuneka rangiza igenzura.",
+    "err400": "Ntitwabashije gukoresha ayo makuru — reba niba yuzuye neza hanyuma ongera ugerageze.",
+    "err403": "Ntitwabashije kwemeza ko uri umuntu. Ongera ugerageze igenzura.",
+    "err429": "Wagerageje kenshi — tegereza gato hanyuma ongere ugerageze.",
+    "genericErrorFallback": "Habaye ikosa. Ongera ugerageze.",
+    "successTitle": "Ubu uri ku rutonde!",
+    "successBodyTemplate": "Murakoze {name} — tuzakoherereza ubutumwa igihe Rides itangiye gukorera mu karere kawe.",
+    "successShareHeading": "Sangiza ihuza ryawe ryo gutumira",
+    "successShareBody": "Sangiza inshuti zawe ihuza ryawe bwite hanyuma ufashe Rides gutangira vuba.",
+    "whatsappShareText": "Niyandikishije ku rutonde rwa Rides — nawe wiyandikishe tuzane Rides mu Rwanda vuba: {link}",
+    "whatsappButton": "Sangiza kuri WhatsApp",
+    "copyLink": "Koporora ihuza",
+    "copied": "Byakoporowe!",
+    "joinAnother": "Iyandikishe ukoresheje indi numero"
+  },
+  "features": {
+    "eyebrow": "Byateguriwe urugendo",
+    "heading": "Ibyo ukeneye byose, uko ubishaka",
+    "body": "Byubatswe hakurikijwe uko u Rwanda rugenda koko. Ibiciro bikwiye, ikinyabiziga gikwiye, n'amakuru yuzuye kuva utumije kugeza ugeze aho ujya.",
+    "multiModalBadge": "Ibinyabiziga binyuranye",
+    "multiModalTitle": "Hitamo icyo ugendamo.",
+    "multiModalBody": "Moto iyo wihuta. Imodoka iyo ushaka kwisanzura. Hilux ku mihanda mibi. Fuso ku mizigo minini. Porogaramu imwe, uburyo bune bwo kugenda.",
+    "realtimeBadge": "Ako kanya",
+    "realtimeTitle": "Kurikirana buri rugendo.",
+    "realtimeBody": "Kurikira umushoferi ku ikarita mu gihe aba aje. Sangiza urugendo rurimo kubaho umuntu wese wizeye.",
+    "pricingBadge": "Igiciro gikwiye",
+    "pricingTitle": "Tanga igiciro cyawe.",
+    "pricingBody": "Reba igiciro cyagenwe, hanyuma utange icyo wowe usaba. Nta biciro byiyongera bitunguranye.",
+    "payBadge": "Mobile money",
+    "payTitle": "Ishyura uko ubishaka.",
+    "payBody": "MoMo, Airtel, cyangwa amafaranga mu ntoki uha umushoferi. Uburyo ni bumwe."
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "heading": "Ibibazo bikunze kubazwa",
+    "introPrefix": "Ibyo ukeneye kumenya byose ku ngendo, gutwara, kwishyura no kugendera mu mutekano na Rides. Ntabwo ubonye igisubizo?",
+    "introLinkLabel": "Twandikire ubutumwa",
+    "items": [
+      {
+        "q": "Rides ni iki?",
+        "a": "Rides ni porogaramu imwe ikoreshwa mu buryo bwose bwo kugenda. Moto iyo watinze. Imodoka iyo bikenewe. Hilux ku muhanda mubi. Fuso iyo wimuka. Uhitamo ikinyabiziga, ukabona igiciro mbere yo gutumiza, ukanakurikira umushoferi urugendo rwose."
+      },
+      {
+        "q": "Nakwitumiza urugendo nte?",
+        "a": "Injira ukoresheje numero ya telefoni yawe, uhitemo ikinyabiziga, wandike aho uva n'aho ujya, hanyuma wemeze. Umushoferi uri hafi yemera mu masegonda make — hanyuma ukamureba aje ku ikarita."
+      },
+      {
+        "q": "Ni ubuhe bwoko bw'ibinyabiziga buhari?",
+        "a": "Ni bune. Moto ku rugendo rwihuse rw'umuntu umwe. Imodoka iyo ushaka kwisanzura. Hilux ku mizigo minini no ku mihanda mibi. Fuso ku mizigo yuzuye. Igiciro kijyana n'icyo wahisemo, ku buryo utigera wishyura ikinyabiziga kirenze icyo urugendo rukeneye."
+      },
+      {
+        "q": "Ibiciro bibarwa bite?",
+        "a": "Bishingira ku ntera, ubwoko bw'ikinyabiziga, n'igihe cy'umunsi — kandi ubona umubare mbere yo gutumiza. Ibiciro kandi bishobora kunganirwa mbere muri porogaramu, haba ku bagenzi cyangwa ku bashoferi. Nta biciro byiyongera. Nta mafaranga ahishe."
+      },
+      {
+        "q": "Nishyura nte?",
+        "a": "MTN Mobile Money cyangwa Airtel Money, uhereye muri porogaramu. Uhisemo amafaranga mu ntoki? Ishyura umushoferi ubwe — igiciro kiba kimwe."
+      },
+      {
+        "q": "Abashoferi barasuzumwa?",
+        "a": "Buri mushoferi atanga indangamuntu ye, ubwishingizi bw'ikinyabiziga, n'icyemezo cyo gutwara abagenzi mbere yo gukora urugendo na rumwe. Itsinda ryacu risuzuma kandi rikemeza buri busabe ku giti cyabwo — nta muntu wiyandikisha ubwe gutyo."
+      },
+      {
+        "q": "Byagenda bite naramuka nahagaritse?",
+        "a": "Ushobora guhagarika igihe cyose mbere y'uko umushoferi agera. Nuhagarika kenshi umushoferi asanzwe ari mu nzira, uzatinda gato mbere yo kongera gutumiza — ibyo ni ugukingira abashoferi, kuko banga izindi ngendo kugira ngo bagere aho uri."
+      },
+      {
+        "q": "Naba umushoferi nte?",
+        "a": "Kanda Abashoferi muri menu utangire gusaba. Uzakenera uruhushya rwemewe, ubwishingizi bw'ikinyabiziga, n'icyemezo cy'isuzuma ry'ikinyabiziga. Kwemererwa bisanzwe bifata amasaha 24 kugeza kuri 48."
+      }
+    ]
+  },
+  "howItWorks": {
+    "eyebrow": "Uko bikora",
+    "heading": "Kuva ku busabe kugeza ku manota, mu ntambwe 5.",
+    "body": "Tumiza, mwumvikane ku giciro gikwiye, ugende, wishyure, utange amanota. Buri ntambwe uko ubishaka.",
+    "stepsNavLabel": "Intambwe",
+    "jumpToStep": "Jya ku ntambwe ya {n}",
+    "stepLabel": "Intambwe ya {n}",
+    "steps": [
+      {
+        "title": "Tumiza mu masegonda",
+        "body": "Fungura porogaramu, uhitemo ikinyabiziga ukunda, hanyuma urangize gutumiza ukoresheje udukanda duke."
+      },
+      {
+        "title": "Umushoferi yemejwe",
+        "body": "Ubusabe bwawe buhuzwa mu mutekano n'abashoferi bahari. Iyo bwemewe, ushobora gukurikirana umushoferi wawe ako kanya."
+      },
+      {
+        "title": "Emeza igiciro cyawe",
+        "body": "Suzuma igiciro mbere y'uko urugendo rutangira, hanyuma wemeze ubusabe bwawe wizeye."
+      },
+      {
+        "title": "Kurikirana buri kilometero",
+        "body": "Kurikirana umushoferi wawe ako kanya kandi usangize urugendo rwawe abo wizeye kugira ngo utuze ku mutima."
+      },
+      {
+        "title": "Tanga amanota ku rugendo",
+        "body": "Tanga igitekerezo cyawe utanga amanota ku rugendo kugira ngo ufashe kubungabunga umuryango wizewe."
+      }
+    ],
+    "ui": {
+      "greeting": "Muraho",
+      "whereTo": "Ujya he uyu munsi?",
+      "currentLocation": "Aho uri ubu",
+      "cityCountry": "Kigali, u Rwanda",
+      "selectYourRide": "Hitamo ikinyabiziga",
+      "continueWith": "Komeza na {vehicle}",
+      "tabHome": "Ahabanza",
+      "tabRides": "Ingendo",
+      "tabProfile": "Umwirondoro",
+      "notifications": "Ubutumwa",
+      "mapLayers": "Uburyo bw'ikarita",
+      "myLocation": "Aho ndi",
+      "findingDriver": "Turashaka umushoferi wawe",
+      "connectingNearby": "Turagushakira abamotari bari hafi",
+      "cancelSearch": "Hagarika ishakisha",
+      "negotiatingFare": "Kunganira igiciro",
+      "initialOffer": "Igiciro cya mbere",
+      "counterOffer": "Igiciro gisubijwe",
+      "yourOffer": "Igiciro cyawe",
+      "finalOffer": "Igiciro cya nyuma",
+      "acceptFare": "Emera {amount}",
+      "decline": "Anga",
+      "driverOnTheWay": "{name} ari mu nzira",
+      "maskedCall": "Guhamagara bihishe · 0:24",
+      "tripCompleted": "Urugendo rwarangiye",
+      "rateYourTrip": "Tanga amanota ku rugendo",
+      "ratingHelps": "Amanota yawe afasha kugumana umuryango wizewe.",
+      "submit": "Ohereza"
+    }
+  },
+  "smartMobility": {
+    "eyebrow": "Urubuga",
+    "heading": "Rwubakiwe ingendo zibaho ako kanya.",
+    "body": "Gukurikirana ako kanya, guhuza mu buryo bwiza, kwemeza vuba, n'ibiciro bisobanutse. Byose bikora inyuma y'urugendo rwawe.",
+    "features": [
+      {
+        "title": "Gukurikirana ako kanya",
+        "description": "Kurikirana umushoferi wawe ako kanya umenye neza igihe azagera."
+      },
+      {
+        "title": "Guhuza mu buryo bwiza",
+        "description": "Uburyo bwo guhuza bwuzuye ubwenge buguhuza n'abashoferi bahari bari hafi, kugira ngo ubone serivisi yihuse kandi yizewe."
+      },
+      {
+        "title": "Kwemeza vuba",
+        "description": "Ubusabe bwinshi bw'ingendo bwemezwa mu kanya gato, ugatangira urugendo vuba."
+      },
+      {
+        "title": "Ibiciro bisobanutse",
+        "description": "Reba igiciro cyawe mbere y'uko urugendo rutangira, kugira ngo gutumiza kworohe kandi kibe mu mucyo."
+      }
+    ],
+    "dash": {
+      "liveOperations": "Ibikorwa biriho ubu",
+      "today": "Uyu munsi",
+      "week": "Icyumweru",
+      "month": "Ukwezi",
+      "now": "Ubu",
+      "activeRides": "Ingendo ziriho",
+      "onlineDrivers": "Abashoferi bari kuri interineti",
+      "live": "Ubu",
+      "hotZones": "Uduce dukora cyane",
+      "hotZonesValue": "3 dukora"
+    }
+  },
+  "finalCta": {
+    "eyebrow": "Kuramo porogaramu",
+    "headingPart1": "Urugendo rwawe.",
+    "headingPart2": "Igiciro cyawe.",
+    "body": "Mu gihugu cy'imisozi igihumbi, buri rugendo rutangirana n'ikiganiro gikwiye.",
+    "ui": {
+      "currentLocation": "Aho uri ubu",
+      "cityCountry": "Kigali, u Rwanda",
+      "selectYourRide": "Hitamo ikinyabiziga",
+      "continueWith": "Komeza na {vehicle}",
+      "tabHome": "Ahabanza",
+      "tabRides": "Ingendo",
+      "tabProfile": "Umwirondoro",
+      "greeting": "Muraho",
+      "whereTo": "Ujya he uyu munsi?",
+      "notifications": "Ubutumwa",
+      "mapLayers": "Uburyo bw'ikarita",
+      "myLocation": "Aho ndi"
+    }
+  },
+  "chatbot": {
+    "bubbleLabel": "Ikiganiro",
+    "openLabel": "Fungura ikiganiro na Rides",
+    "closeLabel": "Funga ikiganiro",
+    "dialogLabel": "Ikiganiro na Rides",
+    "assistantName": "Umufasha wa Rides",
+    "inputPlaceholder": "Mbaza icyo ushaka cyose…",
+    "sendLabel": "Ohereza",
+    "flows": {
+      "welcome": {
+        "reply": [
+          "Muraho! Murakaza neza kuri Rides.\n\nNdi umufasha wawe w'ikoranabuhanga — mbaza icyo ushaka cyose ku gutumiza ingendo, kuba umushoferi, kwishyura, cyangwa uko Rides ikorera mu Rwanda."
+        ]
+      },
+      "driver": {
+        "reply": [
+          "Byiza cyane — abashoferi ni bo batuma Rides ikura. Dore ibyo ukeneye:",
+          "• Uruhushya rwo gutwara rwemewe mu Rwanda\n• Ikinyabiziga (Moto, Imodoka, Hilux, cyangwa Fuso)\n• Ubwishingizi bwa SONARWA + uruhushya rwa Polisi\n• MTN MoMo cyangwa Airtel Money yo kwishyurirwaho",
+          "Andika amakuru yawe ku ifishi yo kutwandikira — tuba dusubiza mu masaha 48."
+        ]
+      },
+      "negotiation": {
+        "reply": [
+          "Rides ni yo rubuga rwonyine mu Rwanda aho umugenzi n'umushoferi bumvikana ku giciro bombi.",
+          "1. Umugenzi abona igiciro cyagenwe hanyuma agatanga icyo asaba\n2. Umushoferi yemera, agasubiza ikindi giciro, cyangwa akarenga\n3. Kugeza ku mikino 4 — hanyuma bombi bakumvikana cyangwa bagatandukana",
+          "Impuzandengo y'izamuka ku giciro cya mbere ni hafi 18%. Buri giciro kirandikwa."
+        ]
+      },
+      "locations": {
+        "reply": [
+          "Dukorera mu Mujyi wa Kigali wose — Gasabo, Kicukiro, na Nyarugenge.",
+          "Musanze iri mu igerageza, naho Huye izatangira mu gihembwe cya gatatu cy'2026.",
+          "Urashaka Rides mu karere kawe? Tubimenyeshe 👇"
+        ]
+      },
+      "payments": {
+        "reply": [
+          "Twakira MTN MoMo, Airtel Money, n'amafaranga mu ntoki kuri buri rugendo.",
+          "Abashoferi bishyurwa kabiri ku munsi — saa moya za mu gitondo na saa kumi n'imwe z'umugoroba — bikajya kuri konti yabo. Rides ifata 12–18% bitewe n'ikinyabiziga.",
+          "Ubwishyu bwose bushobora kugenzurwa muri porogaramu y'umushoferi."
+        ]
+      },
+      "ride-issue": {
+        "reply": [
+          "Tubabajwe n'ibyo. Ibibazo by'ingendo tubiha umwanya wa mbere — impuzandengo yo gusubiza ni munsi y'amasaha 12.",
+          "Andika ibisobanuro ku ifishi yo kutwandikira mu cyiciro cya 'Ikirego'."
+        ]
+      },
+      "complaint": {
+        "reply": [
+          "Tubabajwe n'ibyo. Uburyo bwihuse bwo kubona ubufasha ni ifishi yo kutwandikira — impuzandengo yo gusubiza ni munsi y'amasaha 12.",
+          "Cyangwa uduhamagare ako kanya kuri WhatsApp:"
+        ]
+      },
+      "human": {
+        "reply": [
+          "Urashaka kuvugana n'umuntu nyawe? Dore uburyo bwihuse:",
+          "WhatsApp ni yo yihuta mu masaha y'akazi (Mbe–Gtd · 08:00–20:00). Ifishi yo kutwandikira ni nziza ku bintu bikeneye inyandiko isigara."
+        ]
+      },
+      "no-match": {
+        "reply": [
+          "Sinumva neza icyo ushaka kuvuga.\n\nGerageza kumbaza ku ngendo, abashoferi, kwishyura, cyangwa uko Rides ikorera mu Rwanda!"
+        ]
+      }
+    },
+    "labels": {
+      "become-driver": "Kuba umushoferi",
+      "how-payments-work": "Uko kwishyura bikora",
+      "negotiations": "Kunganira ibiciro",
+      "where-you-operate": "Aho mukorera",
+      "ride-issue": "Ikibazo ku rugendo",
+      "talk-to-human": "Vugana n'umuntu",
+      "back-to-start": "Subira ku ntangiriro",
+      "driver-application": "Gusaba kuba umushoferi",
+      "driver-page": "Urupapuro rw'abashoferi",
+      "see-how-it-works": "Reba uko bikora",
+      "file-a-complaint": "Tanga ikirego",
+      "whatsapp-support": "Ubufasha kuri WhatsApp",
+      "contact-form": "Ifishi yo kutwandikira",
+      "whatsapp": "WhatsApp",
+      "call-support": "Hamagara ubufasha"
+    },
+    "keywords": {
+      "driver": [
+        "shoferi",
+        "umushoferi",
+        "gutwara",
+        "twara",
+        "gusaba",
+        "kwiyandikisha",
+        "umumotari"
+      ],
+      "negotiation": [
+        "giciro",
+        "ciro",
+        "kunganira",
+        "nganira",
+        "amafaranga angahe",
+        "gucuruza"
+      ],
+      "locations": [
+        "hehe",
+        "aho",
+        "akarere",
+        "umujyi",
+        "kigali",
+        "musanze",
+        "mukorera"
+      ],
+      "payments": [
+        "kwishyura",
+        "ishyura",
+        "momo",
+        "airtel",
+        "amafaranga",
+        "kwishyurwa"
+      ],
+      "complaint": [
+        "ikirego",
+        "kirego",
+        "gusubizwa",
+        "kunyaga",
+        "nabi",
+        "ikosa"
+      ],
+      "ride-issue": [
+        "urugendo",
+        "rugendo",
+        "ingendo",
+        "ikibazo",
+        "impaka"
+      ],
+      "human": [
+        "umuntu",
+        "ubufasha",
+        "guhamagara",
+        "hamagara",
+        "whatsapp",
+        "umukozi"
+      ]
+    }
+  },
+  "common": {
+    "openMenu": "Fungura menu",
+    "closeMenu": "Funga menu",
+    "changeLanguage": "Hindura ururimi. Ururimi rukoreshwa: {language}",
+    "selectLanguage": "Hitamo ururimi",
+    "savePdf": "Bika nka PDF",
+    "savePdfTitle": "Sohora cyangwa ubike uru rupapuro nka PDF",
+    "home": "Ahabanza"
+  },
+  "privacy": {
+    "chrome": {
+      "breadcrumb": "Politiki y'ibanga",
+      "badge": "Ibanga no kurinda amakuru",
+      "title": "Politiki y'ibanga",
+      "effective": "Itangira gukurikizwa ku wa {date}",
+      "description": "Iyi politiki isobanura uko dukusanya, dukoresha, dusangiza kandi turinda amakuru yawe bwite igihe ukoresha porogaramu ya Rides, urubuga, na serivisi zijyanye na yo.",
+      "viewRights": "Reba uburenganzira bwawe",
+      "contactUs": "Twandikire →",
+      "whatWeCollect": "Ibyo dukusanya →",
+      "contents": "Ibirimo",
+      "dataController": "Ushinzwe amakuru",
+      "location": "Kigali, u Rwanda",
+      "contactCta": "Twandikire",
+      "footerNote": "© {year} {company} · Kigali, u Rwanda · Byavuguruwe bwa nyuma ku wa {date}",
+      "effectiveDate": "11 Kamena 2026"
+    },
+    "hero": {
+      "encrypted": "Byabitswe mu ibanga",
+      "private": "Ibanga",
+      "yourRights": "Uburenganzira bwawe",
+      "compliant": "Byubahiriza amategeko",
+      "dataControl": "Amakuru yawe, ni wowe uyagenga",
+      "complianceBadge": "GDPR · Itegeko N°058/2021"
+    },
+    "commitments": [
+      {
+        "title": "Ntabwo tugurisha amakuru yawe",
+        "body": "Amakuru yawe bwite ntabwo agurishwa ku bamamaza cyangwa ku bandi bantu."
+      },
+      {
+        "title": "GDPR n'Itegeko ry'u Rwanda N°058/2021",
+        "body": "Twubahiriza itegeko ry'u Rwanda rirebana n'amakuru ndetse n'amahame ya GDPR y'u Burayi."
+      },
+      {
+        "title": "Ni wowe ugenga amakuru yawe",
+        "body": "Ushobora kubona amakuru yawe, kuyakosora, kuyasiba cyangwa kuyakuramo igihe cyose ubisabye."
+      }
+    ],
+    "rights": [
+      {
+        "title": "Kubona",
+        "desc": "Gusaba amakuru ku byerekeye uko dukoresha amakuru no kubona amakuru yawe bwite"
+      },
+      {
+        "title": "Gukosora",
+        "desc": "Kuvugurura cyangwa gukosora amakosa mu makuru yawe bwite"
+      },
+      {
+        "title": "Gusiba",
+        "desc": "Gusaba ko amakuru yawe bwite asibwa"
+      },
+      {
+        "title": "Kwimura",
+        "desc": "Guhabwa kopi y'amakuru yawe bwite mu buryo mudasobwa ishobora gusoma"
+      },
+      {
+        "title": "Kugabanya",
+        "desc": "Kugabanya uburyo amakuru yawe bwite akoreshwa"
+      },
+      {
+        "title": "Kwamagana",
+        "desc": "Kwamagana ko dushingira ku nyungu zemewe mu gukoresha amakuru yawe"
+      }
+    ],
+    "securitySteps": [
+      {
+        "title": "Kubika mu ibanga",
+        "desc": "Amakuru y'ingenzi abikwa mu ibanga"
+      },
+      {
+        "title": "Seriveri zizewe",
+        "desc": "Ibikorwaremezo byo mu kirere"
+      },
+      {
+        "title": "Kugenzura abinjira",
+        "desc": "Uburyo bwo kwemeza umuntu"
+      },
+      {
+        "title": "Igenzura ry'umutekano",
+        "desc": "Isuzuma rikorwa buri gihe"
+      }
+    ],
+    "sections": [
+      {
+        "id": "introduction",
+        "num": "",
+        "title": "Ijambo ry'ibanze",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Iyi Politiki y'ibanga yateguwe kugira ngo igufashe gusobanukirwa uko TRAVELIS Rwanda Ltd n'amashami yayo n'ibigo bifitanye isano na yo, harimo na www.rides.rw (\"twe\", \"twebwe\" cyangwa \"yacu\"), dukusanya, dukoresha, dusangiza kandi turinda amakuru yawe bwite igihe ukoresha porogaramu yacu ya telefoni, urubuga rwacu, na serivisi zijyanye na byo. Duha agaciro ibanga ryawe, kandi ntituzasangiza amakuru yawe bwite abandi bantu keretse mu buryo busobanuwe muri iyi Politiki y'ibanga cyangwa wemeye."
+          },
+          {
+            "kind": "text",
+            "value": "Iyo ukoresheje imbuga zacu, uba wemeye uburyo busobanuwe muri iyi politiki. Niba utabyemera, ntukoreshe imbuga zacu, porogaramu zacu za telefoni, kandi ntuduhe amakuru yawe."
+          }
+        ]
+      },
+      {
+        "id": "coverage",
+        "num": "",
+        "title": "Ibyo iyi politiki ireba",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Iyi Politiki y'ibanga ireba uko dukusanya, dukoresha kandi dusangiza amakuru yawe bwite:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Igihe usuye urubuga rwacu kuri www.rides.rw, izindi mbuga zifitanye isano na rwo, na porogaramu zacu za telefoni",
+              "Igihe wakiriye ubutumwa bwacu cyangwa witabiriye ibikorwa cyangwa ibirori byacu, biba kuri interineti cyangwa hanze yayo",
+              "Igihe wuzuza ifishi yo kwiyandikisha cyangwa kwiyandikisha kuri porogaramu zacu za telefoni",
+              "Amakuru tubona ku bandi bantu nk'abacuruzi, abatanga amakuru abitswe, abatangaza ibirimo n'abatanga serivisi"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Iyi Politiki y'ibanga ireba gusa amakuru yakusanyirijwe ku Rubuga cyangwa muri porogaramu ya telefoni, ntireba izindi mbuga zitari izacu cyangwa TRAVELIS Rwanda Ltd itagenga."
+          }
+        ]
+      },
+      {
+        "id": "who-we-are",
+        "num": "1",
+        "title": "Abo turi bo",
+        "content": [
+          {
+            "kind": "text",
+            "value": "TRAVELIS Rwanda Ltd ni ikigo cy'ikoranabuhanga gicunga urubuga rwo gutumiza ingendo n'ubwikorezi, ndetse n'ibindi bisubizo na porogaramu bishingiye ku ikoranabuhanga mu Rwanda."
+          },
+          {
+            "kind": "text",
+            "value": "Turi ushinzwe amakuru ku makuru bwite akusanyirizwa kuri uru rubuga."
+          }
+        ]
+      },
+      {
+        "id": "legal-framework",
+        "num": "2",
+        "title": "Amategeko dukurikiza",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Twubahiriza:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Itegeko ry'u Rwanda N° 058/2021 ryerekeye kurengera amakuru bwite n'ibanga",
+              "Amabwiriza rusange yo kurengera amakuru (GDPR) aho akurikizwa",
+              "Andi mabwiriza akurikizwa mu bijyanye n'ubwikorezi na serivisi za digitale"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "information-we-collect",
+        "num": "3",
+        "title": "Amakuru dukusanya",
+        "content": [
+          {
+            "kind": "sub",
+            "key": "3.1",
+            "title": "3.1  Amakuru bwite",
+            "bullets": [
+              "Amazina yombi",
+              "Numero ya telefoni na numero ya mobile money",
+              "Aderesi ya imeyili",
+              "Ifoto y'umwirondoro",
+              "Indangamuntu cyangwa pasiporo (ku bashoferi)",
+              "Aho utuye"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.2",
+            "title": "3.2  Amakuru y'aho uri",
+            "bullets": [
+              "Aho uri ako kanya ukurikije GPS mu gihe ukoresha porogaramu",
+              "Aho utwarwa n'aho ugezwa",
+              "Amateka y'inzira wanyuzemo (ku mpamvu z'umutekano no kunoza serivisi)"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.3",
+            "title": "3.3  Amakuru y'urugendo",
+            "bullets": [
+              "Amateka y'ingendo",
+              "Amakuru yo kwishyura (akorwa n'abandi batanga serivisi)",
+              "Amanota n'ibitekerezo"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.4",
+            "title": "3.4  Amakuru y'igikoresho n'ikoranabuhanga",
+            "bullets": [
+              "Ubwoko bw'igikoresho na sisitemu ikoreshwa",
+              "Aderesi ya IP",
+              "Amakuru y'ikoreshwa rya porogaramu n'inyandiko z'amakosa"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.5",
+            "title": "3.5  Amakuru yihariye y'abashoferi",
+            "bullets": [
+              "Amakuru n'ifoto by'uruhushya rwo gutwara",
+              "Inyandiko n'ifoto by'iyandikwa ry'ikinyabiziga",
+              "Icyemezo n'ifoto by'ubwishingizi",
+              "Numero ya kode ya Momo na numero ya telefoni ya mobile money",
+              "Amakuru y'igenzura ry'amateka (aho bikenewe)",
+              "Amakuru n'ifoto by'uruhushya rwo gutwara abagenzi (aho bikenewe)",
+              "Ifoto z'ikinyabiziga cyangwa ibinyabiziga"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.6",
+            "title": "3.6  Ibitekerezo n'ubutumwa",
+            "bullets": [
+              "Amakuru utanga igihe usaba ubufasha, usubiza ibibazo by'ubushakashatsi, cyangwa utwandikira"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "3.7",
+            "title": "3.7  Amakuru ava ku bandi",
+            "bullets": [
+              "Andi makuru ava ku bandi bantu nk'abatanga serivisi, abagemura, imbuga nkoranyambaga n'ibigo by'ubwamamaza, kugira ngo tuguhe amakuru akubereye kurushaho ku bijyanye na serivisi zacu"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "how-we-use",
+        "num": "4",
+        "title": "Uko dukoresha amakuru yawe",
+        "content": [
+          {
+            "kind": "bullets",
+            "items": [
+              "Guhuza abagenzi n'abashoferi",
+              "Gutanga, kubungabunga no kunoza Urubuga na porogaramu za telefoni",
+              "Gutunganya no kurangiza ingendo",
+              "Gutunganya kwishyura no kwishyura abashoferi",
+              "Kunoza umutekano n'imikorere y'urubuga",
+              "Gutanga ubufasha ku bakiriya",
+              "Kumenya uburiganya no kubuza ikoreshwa nabi",
+              "Kubahiriza inshingano zishingiye ku mategeko",
+              "Kohereza amakuru y'ingenzi ku serivisi",
+              "Gusobanukirwa neza ibyo ukeneye n'ibigushimisha, no guhuza serivisi n'ibyo ukunda",
+              "Gutunganya ubusabe bwatanzwe binyuze ku Rubuga no muri porogaramu za telefoni",
+              "Gukora isesengura ry'urubuga na serivisi zo gucunga amakuru abitswe",
+              "Gucunga no gutanga ubwamamaza bushingiye ku byo ukunda ku mbuga zacu no ku mbuga z'abandi twizeye",
+              "Gukora iperereza cyangwa kubuza ivunwa ry'amategeko cyangwa amasezerano ufitanye natwe",
+              "Kurengera uburenganzira, ibanga, umutekano cyangwa umutungo wawe, uwacu, cyangwa uw'abandi"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Ntabwo tugurisha amakuru bwite."
+          }
+        ]
+      },
+      {
+        "id": "legal-basis",
+        "num": "5",
+        "title": "Ishingiro ryemewe ryo gukoresha amakuru",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Dukoresha amakuru dushingiye kuri ibi:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Ibisabwa n'amasezerano — gutanga serivisi z'ingendo no kwishyura",
+              "Inshingano zishingiye ku mategeko — kubahiriza imisoro n'amabwiriza y'ubwikorezi",
+              "Inyungu zemewe — kurwanya uburiganya, umutekano, n'isesengura",
+              "Uruhushya rwawe — ubutumwa bw'ubwamamaza n'ibindi bikorwa udategetswe"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "data-sharing",
+        "num": "6",
+        "title": "Gusangiza amakuru",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Ntabwo dusangiza amakuru yawe bwite abandi bantu utabyemeye, keretse mu bihe bikurikira:"
+          },
+          {
+            "kind": "sub",
+            "key": "providers",
+            "title": "Abashoferi, abagenzi n'abatanga serivisi",
+            "bullets": [
+              "Amazina n'aho utwarwa cyangwa ugezwa",
+              "Aho urugendo rugeze n'amakuru yo kuguhamagara (ahishwe aho bishoboka)",
+              "Amakuru yo kwishyura harimo kode ya MomoPay na numero za mobile money"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "affiliates",
+            "title": "Ibigo bifitanye isano na TRAVELIS Rwanda Ltd",
+            "bullets": [
+              "Dushobora gusangiza amakuru yawe ibigo bifitanye isano na TRAVELIS Rwanda Ltd n'imiryango ijyanye na yo, hakoreshejwe uburyo buhuye n'iyi Politiki y'ibanga"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "partners",
+            "title": "Abafatanyabikorwa mu bucuruzi",
+            "bullets": [
+              "Abafatanyabikorwa baguha serivisi tubifatanyije — urutonde rwabo rushobora gutangwa iyo urusabye"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "legal",
+            "title": "Amategeko, umutekano no kubahiriza amabwiriza",
+            "bullets": [
+              "Inzego za Leta cyangwa abashinzwe kubahiriza amategeko, ku mpamvu zo kurwanya uburiganya no kubahiriza amategeko",
+              "Aho amategeko abyemerera, mu rwego rw'iperereza rishingiye ku mategeko",
+              "Kurengera, gukora iperereza no kubuza ibikorwa by'uburiganya, ibyangiza cyangwa binyuranyije n'amategeko"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "transfers",
+            "title": "Ihererekanya ry'ubucuruzi",
+            "bullets": [
+              "Mu rwego rw'ihuzwa ry'ibigo, kugurwa, kwivugurura, kugurisha umutungo, cyangwa mu gihe cyo guhomba"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "data-retention",
+        "num": "7",
+        "title": "Igihe amakuru amara abitswe",
+        "content": [
+          {
+            "kind": "bullets",
+            "items": [
+              "Amakuru ya konti: abikwa igihe konti yawe ikora",
+              "Amateka y'ingendo: kugeza ku myaka 5 (kubahiriza amategeko n'imisoro)",
+              "Amakuru y'aho uri: abikwa mu gihe gito, ku mpamvu z'umutekano no gukemura impaka",
+              "Amakuru y'ubwamamaza: kugeza igihe uhagarikiye uruhushya wari watanze"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "data-security",
+        "num": "8",
+        "title": "Umutekano w'amakuru",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Dushyiraho ingamba zikomeye z'umutekano, zirimo:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Kubika amakuru y'ingenzi mu ibanga",
+              "Seriveri zizewe n'ibikorwaremezo byo mu kirere",
+              "Kugenzura abinjira n'uburyo bwo kwemeza umuntu",
+              "Igenzura ry'umutekano rikorwa buri gihe"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Nyamara, nta sisitemu ifite umutekano wa 100%, kandi ntitwakwemeza ko umutekano wuzuye ushoboka."
+          }
+        ]
+      },
+      {
+        "id": "your-rights",
+        "num": "9",
+        "title": "Uburenganzira bwawe (u Rwanda + GDPR)",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Itegeko ry'u Rwanda N°058/2021 ryo ku wa 13/10/2021 ryerekeye kurengera amakuru bwite n'ibanga rikuha uburenganzira bukurikira:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Kubona — Gusaba amakuru ku byerekeye uko dukoresha amakuru no kubona amakuru yawe bwite",
+              "Gukosora — Kuvugurura cyangwa gukosora amakosa mu makuru yawe bwite",
+              "Gusiba — Gusaba ko amakuru yawe bwite asibwa",
+              "Kwimura — Guhabwa kopi y'amakuru yawe bwite mu buryo mudasobwa ishobora gusoma",
+              "Kugabanya — Kugabanya uburyo amakuru yawe bwite akoreshwa",
+              "Kwamagana — Kwamagana ko dushingira ku nyungu zemewe mu gukoresha amakuru yawe"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Kugira ngo ukoreshe uburenganzira bwawe, twandikire kuri: info@rides.rw"
+          }
+        ]
+      },
+      {
+        "id": "location-data",
+        "num": "10",
+        "title": "Amakuru y'aho uri",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Dukoresha aho uri ukurikije GPS kugira ngo:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Duhuze abagenzi n'abashoferi bari hafi",
+              "Dukurikirane aho urugendo rugeze",
+              "Dunoze umutekano no kuyobora inzira"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Ushobora guhagarika uburenganzira bwo kumenya aho uri mu igenamiterere rya telefoni yawe, ariko serivisi z'ibanze zishobora kudakora neza."
+          }
+        ]
+      },
+      {
+        "id": "childrens-privacy",
+        "num": "11",
+        "title": "Ibanga ry'abana",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Uru Rubuga ntirugenewe abantu bafite munsi y'imyaka 18, kandi ntabwo tubigambiriye dukusanya cyangwa dusaba amakuru bwite y'umuntu wese uri munsi y'imyaka 18. Niba ufite munsi y'imyaka 18, ntugerageze gukoresha uru Rubuga cyangwa kutwoherereza amakuru akwerekeyeho."
+          }
+        ]
+      },
+      {
+        "id": "international-transfers",
+        "num": "12",
+        "title": "Kohereza amakuru mu mahanga",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Amakuru yawe ashobora kubikwa cyangwa gutunganyirizwa kuri seriveri ziri hanze y'u Rwanda. Iyo ibyo bibaye, twemeza ko hashyirwaho ingamba zikwiye zihuje n'amahame ya GDPR."
+          }
+        ]
+      },
+      {
+        "id": "third-party-services",
+        "num": "13",
+        "title": "Serivisi z'abandi",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Dushobora gukoresha abandi batanga serivisi mu bijyanye na:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Kwishyura",
+              "Amakarita no kuyobora inzira",
+              "Isesengura",
+              "Serivisi z'ubutumwa",
+              "Serivisi zo kubika imbuga"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Abo batanga serivisi bafite politiki zabo z'ibanga, kandi turagusaba kuzisoma."
+          }
+        ]
+      },
+      {
+        "id": "cookie-policy",
+        "num": "14",
+        "title": "Politiki ya cookies",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Cookies ni udufayili duto tw'amakuru dushyirwa ku gikoresho cyawe igihe usuye urubuga. Dukoresha ubwoko butandukanye bwa cookies:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Cookies za ngombwa rwose — zikenewe kugira ngo Urubuga rukore, kandi ntizishobora guhagarikwa",
+              "Cookies z'imikorere — zidufasha kubara abasuye urubuga n'aho baturutse, kugira ngo dupime kandi dunoze imikorere",
+              "Cookies z'imikoreshereze — zituma habaho imikorere yisumbuyeho no guhuza urubuga n'ibyo ukunda",
+              "Cookies z'abandi — ziva ku batanga isesengura (urugero Google Analytics), zitanga amakuru ku bwoko bw'abakoresha n'uko bakoresha urubuga"
+            ]
+          },
+          {
+            "kind": "text",
+            "value": "Dushobora kandi gukoresha web beacons (rimwe na rimwe zitwa \"tracking pixels\" cyangwa \"clear gifs\") — udufoto duto twemerera kumenya igihe umuntu yasuye Urubuga rwacu. Niba wiyandikishije kwakira imeyili zacu, dushobora gukoresha cookies muri izo meyili."
+          },
+          {
+            "kind": "text",
+            "value": "Muri za mushakisha nyinshi ushobora gusiba cyangwa kwanga cookies. Kugira ngo ubikore, kurikiza amabwiriza ari mu igenamiterere rya mushakisha yawe."
+          }
+        ]
+      },
+      {
+        "id": "other-information",
+        "num": "15",
+        "title": "Andi makuru y'ingenzi",
+        "content": [
+          {
+            "kind": "sub",
+            "key": "third-party-sites",
+            "title": "Imbuga na serivisi by'abandi",
+            "bullets": [
+              "Urubuga rushobora kuba rurimo amahuza yerekeza ku zindi mbuga zicungwa n'abandi",
+              "Ntabwo dushinzwe ibyo bakora cyangwa uko bitwara ku bijyanye n'ibanga",
+              "Turagusaba gusoma politiki zabo z'ibanga kugira ngo umenye byinshi"
+            ]
+          },
+          {
+            "kind": "sub",
+            "key": "security",
+            "title": "Umutekano",
+            "bullets": [
+              "Dufata ingamba z'imitunganyirize, iz'ikoranabuhanga n'iz'umubiri zo kurinda amakuru yawe bwite",
+              "Ibyago by'umutekano biba mu ikoranabuhanga rya interineti n'iry'amakuru muri rusange",
+              "Ntitwakwemeza ko amakuru yawe bwite afite umutekano wuzuye"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "changes",
+        "num": "16",
+        "title": "Impinduka kuri iyi politiki",
+        "content": [
+          {
+            "kind": "bullets",
+            "items": [
+              "Dushobora kuvugurura iyi Politiki y'ibanga rimwe na rimwe",
+              "Abakoresha bazamenyeshwa impinduka zikomeye binyuze muri porogaramu cyangwa kuri imeyili",
+              "Gukomeza gukoresha porogaramu bisobanura ko wemeye impinduka"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "contact",
+        "num": "17",
+        "title": "Twandikire",
+        "content": [
+          {
+            "kind": "text",
+            "value": "Niba ufite ibibazo cyangwa ubusabe ku bijyanye n'amakuru yawe:"
+          },
+          {
+            "kind": "bullets",
+            "items": [
+              "Ikigo: TRAVELIS Rwanda Ltd",
+              "Imeyili: info@rides.rw",
+              "Aho tuherereye: Kigali, u Rwanda"
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

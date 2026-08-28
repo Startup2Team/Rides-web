@@ -46,7 +46,7 @@ export default function DriversPage() {
   return (
     <main className="flex-1">
       {/* ── 1. HERO ─────────────────────────────────────────────────────── */}
-      <section className="relative flex min-h-[calc(100svh-4rem)] items-center overflow-hidden py-16 sm:min-h-[calc(100svh-5rem)] lg:py-20">
+      <section className="relative flex min-h-[calc(100svh-4.25rem)] items-center overflow-hidden py-16 sm:min-h-[calc(100svh-5rem)] lg:py-20">
         {/* Soft tinted background glow */}
         <div
           aria-hidden
@@ -76,7 +76,7 @@ export default function DriversPage() {
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
             <Link
               href="#download"
-              aria-label="Download on the App Store"
+              aria-label={`${th("appStoreEyebrow")} ${th("appStoreLabel")}`}
               className="inline-flex h-[3.25rem] items-center gap-2.5 rounded-2xl bg-foreground px-5 text-background transition-all hover:scale-[1.02] hover:bg-primary hover:text-primary-foreground active:scale-[0.98]"
             >
               <svg viewBox="0 0 24 24" aria-hidden className="h-6 w-6 fill-current">
@@ -89,7 +89,7 @@ export default function DriversPage() {
             </Link>
             <Link
               href="#download"
-              aria-label="Get it on Google Play"
+              aria-label={`${th("googlePlayEyebrow")} ${th("googlePlayLabel")}`}
               className="inline-flex h-[3.25rem] items-center gap-2.5 rounded-2xl bg-foreground px-5 text-background transition-all hover:scale-[1.02] hover:bg-primary hover:text-primary-foreground active:scale-[0.98]"
             >
               <svg viewBox="0 0 24 24" aria-hidden className="h-6 w-6">
@@ -203,7 +203,7 @@ export default function DriversPage() {
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="#download"
-                aria-label="Download on the App Store"
+                aria-label={`${th("appStoreEyebrow")} ${th("appStoreLabel")}`}
                 className="inline-flex h-[3.25rem] items-center gap-2.5 rounded-2xl bg-foreground px-5 text-background transition-all hover:scale-[1.02] hover:bg-primary hover:text-primary-foreground active:scale-[0.98]"
               >
                 <svg viewBox="0 0 24 24" aria-hidden className="h-6 w-6 fill-current">
@@ -216,7 +216,7 @@ export default function DriversPage() {
               </Link>
               <Link
                 href="#download"
-                aria-label="Get it on Google Play"
+                aria-label={`${th("googlePlayEyebrow")} ${th("googlePlayLabel")}`}
                 className="inline-flex h-[3.25rem] items-center gap-2.5 rounded-2xl bg-foreground px-5 text-background transition-all hover:scale-[1.02] hover:bg-primary hover:text-primary-foreground active:scale-[0.98]"
               >
                 <svg viewBox="0 0 24 24" aria-hidden className="h-6 w-6">

@@ -241,6 +241,13 @@ const icons = {
       <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
     </Icon>
   ),
+  packagePayments: (
+    <Icon>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <line x1="2" y1="10" x2="22" y2="10" />
+      <path d="m9 15 2 2 4-4" />
+    </Icon>
+  ),
   entitlements: (
     <Icon>
       <path d="M14 11a4 4 0 1 1-8 0 4 4 0 0 1 8 0z" />
@@ -332,7 +339,15 @@ export const groups: {
       { label: "Promotions", href: "/admin/campaigns", icon: icons.campaigns },
       { label: "Partner Ads", href: "/admin/partners", icon: icons.partners },
       { label: "Purchases", href: "/admin/purchases", icon: icons.purchases },
-      { label: "Ride Credits", href: "/admin/entitlements", icon: icons.entitlements },
+      { label: "Package Payments", href: "/admin/package-payments", icon: icons.packagePayments },
+      { label: "Entitlements", href: "/admin/entitlements", icon: icons.entitlements },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { label: "Profile", href: "/admin/profile", icon: icons.profile },
+      { label: "Admins & Roles", href: "/admin/team", icon: icons.team },
     ],
   },
 ];

@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useSection, useTranslations } from "../i18n/context";
+import { fillTemplate } from "@/lib/i18n-template";
 import { CarIcon, FusoIcon, HiluxIcon, MotoDetailedIcon, MotoIcon } from "./vehicle-icons";
 
 function StarRow() {
@@ -20,6 +24,10 @@ function StarRow() {
 }
 
 export default function FinalCTA() {
+  const t = useTranslations("finalCta");
+  const hero = useTranslations("hero");
+  const ui = useSection("finalCta").ui;
+
   return (
     <section id="download" className="py-12 sm:py-16 lg:py-20">
       <div className="mx-auto max-w-7xl px-6">
@@ -62,23 +70,22 @@ export default function FinalCTA() {
             <div className="text-center text-white lg:text-left">
               <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/85">
                 <span className="h-px w-8 bg-white/50" />
-                Get the app
+                {t("eyebrow")}
               </p>
               <h2 className="mt-3 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-4xl lg:text-5xl">
-                Your ride.{" "}
+                {t("headingPart1")}{" "}
                 <span className="text-white/90 underline decoration-white/30 decoration-[6px] underline-offset-[10px]">
-                  Your price.
+                  {t("headingPart2")}
                 </span>
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-pretty text-sm leading-relaxed text-white/80 sm:text-base lg:mx-0">
-                Across a thousand hills, every ride begins with a fair
-                conversation.
+                {t("body")}
               </p>
 
               {/* CTAs */}
               <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
                 <Link
-                  href="/download"
+                  href="#download"
                   className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-zinc-950 px-5 py-3.5 text-white shadow-xl shadow-black/30 ring-1 ring-inset ring-white/10 transition-transform hover:-translate-y-0.5 active:translate-y-0 sm:w-auto"
                 >
                   <span aria-hidden className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
@@ -87,16 +94,16 @@ export default function FinalCTA() {
                   </svg>
                   <div className="relative text-left">
                     <div className="text-[10px] uppercase tracking-wider opacity-80">
-                      Download on the
+                      {hero("appStoreEyebrow")}
                     </div>
                     <div className="text-base font-semibold leading-tight">
-                      App Store
+                      {hero("appStoreLabel")}
                     </div>
                   </div>
                 </Link>
 
                 <Link
-                  href="/download"
+                  href="#download"
                   className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-zinc-950 px-5 py-3.5 text-white shadow-xl shadow-black/30 ring-1 ring-inset ring-white/10 transition-transform hover:-translate-y-0.5 active:translate-y-0 sm:w-auto"
                 >
                   <span aria-hidden className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
@@ -142,10 +149,10 @@ export default function FinalCTA() {
                   </svg>
                   <div className="relative text-left">
                     <div className="text-[10px] uppercase tracking-wider opacity-80">
-                      Get it on
+                      {hero("googlePlayEyebrow")}
                     </div>
                     <div className="text-base font-semibold leading-tight">
-                      Google Play
+                      {hero("googlePlayLabel")}
                     </div>
                   </div>
                 </Link>
@@ -235,14 +242,14 @@ export default function FinalCTA() {
                           </span>
                           <div className="min-w-0 flex-1 text-center">
                             <div className="text-[6px] font-semibold uppercase tracking-[0.12em] text-muted-foreground leading-none">
-                              Current Location
+                              {ui.currentLocation}
                             </div>
                             <div className="text-[9px] font-bold leading-none text-foreground mt-0.5">
-                              Kigali, Rwanda
+                              {ui.cityCountry}
                             </div>
                           </div>
                         </div>
-                        <button type="button" aria-label="Notifications" className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-border">
+                        <button type="button" aria-label={ui.notifications} className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-border">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-foreground" aria-hidden>
                             <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
                             <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
@@ -299,14 +306,14 @@ export default function FinalCTA() {
 
                         {/* Right floating controls */}
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5">
-                          <button type="button" aria-label="Map layers" className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-border">
+                          <button type="button" aria-label={ui.mapLayers} className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-border">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-primary" aria-hidden>
                               <polygon points="12 2 2 7 12 12 22 7 12 2" />
                               <polyline points="2 17 12 22 22 17" />
                               <polyline points="2 12 12 17 22 12" />
                             </svg>
                           </button>
-                          <button type="button" aria-label="My location" className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-border">
+                          <button type="button" aria-label={ui.myLocation} className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-border">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-primary" aria-hidden>
                               <circle cx="12" cy="12" r="9" />
                               <circle cx="12" cy="12" r="3" fill="currentColor" />
@@ -327,16 +334,16 @@ export default function FinalCTA() {
                         {/* Greeting */}
                         <div className="mt-3">
                           <div className="text-[14px] font-bold leading-tight tracking-tight text-foreground">
-                            Hi
+                            {ui.greeting}
                           </div>
                           <div className="mt-0.5 text-[10px] text-muted-foreground">
-                            Where to today?
+                            {ui.whereTo}
                           </div>
                         </div>
 
                         {/* Vehicle section label */}
                         <div className="mt-4 text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">
-                          Select your ride
+                          {ui.selectYourRide}
                         </div>
 
                         {/* Vehicle chips */}
@@ -365,7 +372,7 @@ export default function FinalCTA() {
 
                         {/* Continue button */}
                         <div className="mt-3 flex h-9 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-md shadow-primary/30">
-                          Continue with Moto
+                          {fillTemplate(ui.continueWith, { vehicle: "Moto" })}
                         </div>
 
                         {/* Tab bar */}
@@ -376,21 +383,21 @@ export default function FinalCTA() {
                               <line x1="9" y1="3" x2="9" y2="21" />
                               <line x1="15" y1="3" x2="15" y2="21" />
                             </svg>
-                            <span className="text-[6px] font-bold leading-none">Home</span>
+                            <span className="text-[6px] font-bold leading-none">{ui.tabHome}</span>
                           </div>
                           <div className="flex flex-col items-center gap-0.5 px-2 py-1 text-muted-foreground">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden>
                               <circle cx="12" cy="12" r="10" />
                               <polyline points="12 6 12 12 16 14" />
                             </svg>
-                            <span className="text-[6px] font-bold leading-none">Rides</span>
+                            <span className="text-[6px] font-bold leading-none">{ui.tabRides}</span>
                           </div>
                           <div className="flex flex-col items-center gap-0.5 px-2 py-1 text-muted-foreground">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden>
                               <circle cx="12" cy="8" r="4" />
                               <path d="M5 21v-1a7 7 0 0 1 14 0v1" />
                             </svg>
-                            <span className="text-[6px] font-bold leading-none">Profile</span>
+                            <span className="text-[6px] font-bold leading-none">{ui.tabProfile}</span>
                           </div>
                         </div>
                       </div>

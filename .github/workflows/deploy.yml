@@ -4,7 +4,11 @@ name: Deploy (Vultr JNB)
 # box over SSH and rebuilds the admin/landing container. No deploy keys needed.
 #
 # Required GitHub Secret:
-#   DEPLOY_SSH_KEY — private SSH key trusted by root@139.84.251.242
+#   DEPLOY_SSH_KEY — private SSH key trusted by root@<DEPLOY_HOST>
+# Required GitHub Variable:
+#   DEPLOY_HOST — the box IP. A repo variable (Settings → Variables), not a
+#   hardcoded literal, so a box move is a settings change instead of a commit
+#   (the old hardcoded IP kept deploying to a dead box after the migration).
 
 on:
   push:
@@ -19,15 +23,22 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up SSH
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
         run: |
+          [ -z "$DEPLOY_HOST" ] && { echo "::error::repo variable DEPLOY_HOST is unset — set it to the box IP"; exit 1; }
           install -m 700 -d ~/.ssh
           echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy
           chmod 600 ~/.ssh/deploy
-          ssh-keyscan -H 139.84.251.242 >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Ship code to the box and rebuild
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
         run: |
-          SSH="ssh -i ~/.ssh/deploy -o BatchMode=yes root@139.84.251.242"
+          SSH="ssh -i ~/.ssh/deploy -o BatchMode=yes root@$DEPLOY_HOST"
           # Web has no secrets on the box, so a clean replace is safe.
           git archive --format=tar HEAD | $SSH 'rm -rf /opt/rides/Rides-web && mkdir -p /opt/rides/Rides-web && tar -x -C /opt/rides/Rides-web'
-          $SSH 'cd /opt/rides/Rides-api/api-server && docker compose -f docker-compose.prod.yml up -d --build admin && docker image prune -f'
+          $SSH 'cd /opt/rides/Rides-api/api-server && docker compose -f docker-compose.prod.yml up -d --build admin'
+          # Staging admin — same source, built with the staging API URL baked in.
+          $SSH 'cd /opt/rides/Rides-api/api-server && docker compose --env-file .env.staging -p rides-staging -f docker-compose.staging.yml up -d --build admin && docker image prune -f'

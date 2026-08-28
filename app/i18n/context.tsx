@@ -15,7 +15,7 @@ import rw from "./locales/rw.json";
 
 const dictionaries = { en, fr, rw } satisfies Record<Locale, typeof en>;
 
-type Dictionary = typeof en;
+export type Dictionary = typeof en;
 
 interface I18nContextValue {
   locale: Locale;

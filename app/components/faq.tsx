@@ -1,44 +1,11 @@
-type Item = {
-  q: string;
-  a: string;
-};
+"use client";
 
-const items: Item[] = [
-  {
-    q: "What is Taravelis?",
-    a: "Taravelis is a ride-hailing platform for Kigali. We connect you with motos, cabs, hilux pickups, and fuso trucks for whatever you need — daily commutes, errands, parcel runs, or moving day.",
-  },
-  {
-    q: "How do I book a ride?",
-    a: "Download the app, sign in with your phone number, choose your vehicle type, set your pickup and destination, and confirm. A nearby driver accepts in seconds and you'll see them on the map heading to you.",
-  },
-  {
-    q: "What vehicle types are available?",
-    a: "Four: motos for quick solo trips, cabs for comfort, hilux pickups for bulky or rough-road jobs, and fuso trucks for full hauls. Pick what fits the trip and the price scales accordingly.",
-  },
-  {
-    q: "How are fares calculated?",
-    a: "You see the fare before you book — distance, vehicle type, and time of day. For drivers and customers, fares can also be negotiated up-front through the app. No surge pricing, no hidden fees.",
-  },
-  {
-    q: "How do I pay?",
-    a: "Pay in-app with MTN Mobile Money or Airtel Money. Cash is also accepted directly to the driver if you prefer.",
-  },
-  {
-    q: "Are drivers verified?",
-    a: "Every driver submits ID, vehicle insurance, and a vehicle authorization document. Our admin team reviews and approves each application before a driver can take any rides.",
-  },
-  {
-    q: "What if I need to cancel?",
-    a: "You can cancel any time before the driver arrives. Repeated cancellations after a driver is en route trigger a short cooldown — we do this to keep things fair for drivers.",
-  },
-  {
-    q: "How do I become a driver?",
-    a: 'Tap "Drivers" in the nav and start the application. You\'ll need a valid licence, vehicle insurance, and an inspection certificate. Approval usually takes 24–48 hours.',
-  },
-];
+import { useSection, useTranslations } from "../i18n/context";
 
 export default function FAQ() {
+  const t = useTranslations("faq");
+  const { items } = useSection("faq");
+
   return (
     <section id="faq" className="py-16 sm:py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-6">
@@ -47,19 +14,18 @@ export default function FAQ() {
           <div className="lg:col-span-5 lg:sticky lg:top-24 lg:self-start">
             <div className="inline-flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
               <span className="h-px w-8 bg-foreground/30" />
-              FAQ
+              {t("eyebrow")}
             </div>
             <h2 className="mt-5 text-balance text-3xl font-bold leading-[1.05] tracking-[-0.03em] text-muted-foreground sm:text-4xl lg:text-[3.25rem]">
-              Frequently asked questions
+              {t("heading")}
             </h2>
             <p className="mt-5 text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Everything you need to know about riding, driving, paying, and
-              staying safe with Taravelis. Still not finding it?{" "}
+              {t("introPrefix")}{" "}
               <a
                 href="/contact"
                 className="font-medium text-primary underline-offset-4 hover:underline"
               >
-                Send us a message
+                {t("introLinkLabel")}
               </a>
               .
             </p>

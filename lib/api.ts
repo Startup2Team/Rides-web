@@ -5,6 +5,7 @@ import {
   clustersToHeatZones,
   type LiveDemandHeatZone,
 } from "./live-demand-heatmap";
+import { VEHICLE_BACKEND_CODE, type VehicleSlug } from "./driver-registration";
 
 // "rifani" (a.k.a. lifani) is the local name for the tuk-tuk; TUK_TUK is the
 // canonical backend code.
@@ -189,6 +190,65 @@ export async function submitContact(input: ContactSubmission): Promise<ContactRe
     throw new Error(msg);
   }
   return (json?.data ?? json) as ContactReceipt;
+}
+
+// ── Waitlist ──────────────────────────────────────────────────────────────
+
+export type WaitlistRole = "CUSTOMER" | "DRIVER";
+
+export type WaitlistSubmission = {
+  role: WaitlistRole;
+  name: string;
+  phone: string;
+  area: string;
+  /** Site slug (moto/rifani/cab/hilux/fuso) — mapped to the backend's VEHICLE_BACKEND_CODE before POSTing. */
+  vehicle_type?: VehicleSlug;
+  email?: string;
+  referred_by?: string;
+  consent_launch: boolean;
+  consent_marketing: boolean;
+  turnstile_token: string;
+  source: string;
+};
+
+// Backend envelope is `{ data: { referral_code, role } }` — no top-level id.
+// referral_code may be absent (e.g. if referrals aren't enabled yet), so the
+// caller must degrade to a plain success message without a share link.
+export type WaitlistReceipt = {
+  referral_code?: string;
+  role?: WaitlistRole;
+};
+
+/**
+ * Thrown by submitWaitlist so the caller can map the HTTP status to a
+ * trilingual message (the backend's own message is English-only and not fit
+ * to show directly on a public EN/FR/RW page).
+ */
+export class WaitlistError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "WaitlistError";
+    this.status = status;
+  }
+}
+
+export async function submitWaitlist(input: WaitlistSubmission): Promise<WaitlistReceipt> {
+  const body = {
+    ...input,
+    vehicle_type: input.vehicle_type ? VEHICLE_BACKEND_CODE[input.vehicle_type] : undefined,
+  };
+  const res = await fetch(`${BASE_URL}/waitlist`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = json?.error?.message ?? "Could not join the waitlist. Please try again.";
+    throw new WaitlistError(res.status, msg);
+  }
+  return (json?.data ?? {}) as WaitlistReceipt;
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────
@@ -1947,6 +2007,92 @@ export const getAuditLogs = (params: {
     `/admin/audit${query ? `?${query}` : ""}`
   );
 };
+
+// ── Package Payments (manual payment claims) ──────────────────────────────
+// Admin review queue for driver-submitted proof-of-payment claims. The driver
+// pays a merchant MoMo code off-platform, submits proof, and an operator
+// (SuperAdmin / FinanceManager) approves (grants rides) or rejects (with a
+// reason). Backend returns the raw snake_case claim shape below.
+//
+// proof_image_id is the stored file URL of the uploaded proof screenshot
+// (payment-proofs/… object) — it can be rendered directly as an image src,
+// exactly like driver KYC document file_url values.
+
+export type ManualClaimStatus =
+  | "submitted"
+  | "approved"
+  | "rejected"
+  | "created"
+  | "cancelled"
+  | "expired"
+  | "needs_clarification";
+
+export type ManualPaymentClaim = {
+  id: string;
+  version: number;
+  driver_id: string;
+  vehicle_id: string;
+  vehicle_type: string;
+  offer_id: string;
+  package_id: string;
+  package_name: string;
+  expected_amount_rwf: number;
+  provider: string; // mtn | airtel
+  merchant_code_snapshot: string;
+  payer_phone_number: string;
+  transaction_reference: string | null;
+  proof_image_id: string | null;
+  status: ManualClaimStatus;
+  created_at: string;
+  submitted_at: string | null;
+  expires_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  rejection_reason: string | null;
+  clarification_message: string | null;
+};
+
+/**
+ * List manual payment claims for review. Defaults to the `submitted` review
+ * queue on the backend; pass "all" to see every status. The backend wraps the
+ * list in { items, next_cursor }.
+ */
+export const getManualPaymentClaims = async (
+  status = "submitted",
+): Promise<ManualPaymentClaim[]> => {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+  const res = await request<{ items: ManualPaymentClaim[] | null; next_cursor: string | null }>(
+    `/admin/package-payments/manual-claims${qs}`,
+  );
+  return res?.items ?? [];
+};
+
+/** Approve a submitted claim — grants the package rides and notifies the driver. */
+export const approveManualPaymentClaim = (id: string) =>
+  request<{ claim: ManualPaymentClaim }>(
+    `/admin/package-payments/manual-claims/${id}/approve`,
+    { method: "POST", body: {} },
+  );
+
+/**
+ * Reject a submitted claim with a required reason and an optional clarification
+ * message the driver sees before resubmitting.
+ */
+export const rejectManualPaymentClaim = (
+  id: string,
+  reason: string,
+  clarificationMessage?: string,
+) =>
+  request<{ claim: ManualPaymentClaim }>(
+    `/admin/package-payments/manual-claims/${id}/reject`,
+    {
+      method: "POST",
+      body: {
+        reason,
+        clarification_message: clarificationMessage ?? "",
+      },
+    },
+  );
 
 // ── Account Assist ────────────────────────────────────────────────────────
 

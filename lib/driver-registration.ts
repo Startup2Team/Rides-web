@@ -47,6 +47,20 @@ export const DOC_API_TYPE: Record<DocKey, string[]> = {
 
 export type VehicleSlug = "moto" | "rifani" | "cab" | "hilux" | "fuso";
 
+/** Canonical vehicle taxonomy, in display order — reused wherever a vehicle-type picker is needed. */
+export const VEHICLE_SLUGS: VehicleSlug[] = ["moto", "rifani", "cab", "hilux", "fuso"];
+
+/** Backend wire codes for VehicleSlug — the API validates against `oneof=MOTO_BIKE CAB_TAXI HEAVY_FUSO LIGHT_HILUX TUK_TUK`, not the site slugs. */
+export type VehicleBackendCode = "MOTO_BIKE" | "CAB_TAXI" | "HEAVY_FUSO" | "LIGHT_HILUX" | "TUK_TUK";
+
+export const VEHICLE_BACKEND_CODE: Record<VehicleSlug, VehicleBackendCode> = {
+  moto: "MOTO_BIKE",
+  cab: "CAB_TAXI",
+  hilux: "LIGHT_HILUX",
+  fuso: "HEAVY_FUSO",
+  rifani: "TUK_TUK",
+};
+
 // Moto & Rifani : RX XXX X  — R + 1 letter + 3 digits + 1 letter  (e.g. RA 042 B)
 const PLATE_MOTO = /^R[A-Z] \d{3} [A-Z]$/;
 // Cab / Hilux / Fuso : RXX XXX X  — R + 2 letters + 3 digits + 1 letter  (e.g. RAC 118 G)
@@ -166,7 +180,9 @@ const ALL_RWANDA_MOBILE_PREFIXES = [MTN_PREFIX, ...AIRTEL_PREFIXES];
 export function normalizeRwandaMobilePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   if (digits.startsWith("250") && digits.length === 12) {
-    return digits.slice(3);
+    // E.164 without the leading 0 (e.g. "250781234567" → "781234567") —
+    // restore the local "0" prefix so it lines up with RWANDA_MOBILE_LENGTH.
+    return `0${digits.slice(3)}`;
   }
   return digits;
 }
