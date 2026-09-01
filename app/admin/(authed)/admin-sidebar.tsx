@@ -347,6 +347,7 @@ export const groups: {
       { label: "Ride Packages", href: "/admin/packages", icon: icons.packages },
       { label: "Promotions", href: "/admin/campaigns", icon: icons.campaigns },
       { label: "Partner Ads", href: "/admin/partners", icon: icons.partners },
+      { label: "Advert Banners", href: "/admin/adverts", icon: icons.partners },
       { label: "Purchases", href: "/admin/purchases", icon: icons.purchases },
       { label: "Package Payments", href: "/admin/package-payments", icon: icons.packagePayments },
       { label: "Entitlements", href: "/admin/entitlements", icon: icons.entitlements },

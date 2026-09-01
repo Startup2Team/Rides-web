@@ -119,8 +119,11 @@ export function resolveBackendUrl(path: string | null | undefined): string | nul
   if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) {
     return path;
   }
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${origin}${cleanPath}`;
+  const cleanPath = path.startsWith("/") ? path.substring(1) : path;
+  if (cleanPath.startsWith("documents/") || cleanPath.startsWith("avatars/") || cleanPath.startsWith("payment-proofs/")) {
+    return `${origin}/api/v1/uploads/objects/${cleanPath}`;
+  }
+  return `${origin}/${cleanPath}`;
 }
 
 type RequestOptions = Omit<RequestInit, "body"> & {
@@ -2176,4 +2179,40 @@ export const saveAdvert = (advert: Partial<ApiAdvert>, id?: string) => {
 
 export const removeAdvert = (id: string) =>
   request<void>(`/admin/adverts/${id}`, { method: "DELETE" });
+
+export const uploadAdvertBannerImage = async (file: File): Promise<string> => {
+  const ext = file.name.split('.').pop() || 'png';
+  const cleanExt = ext.toLowerCase() === 'jpg' ? 'jpeg' : ext.toLowerCase();
+  const safeFilename = `advert_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${cleanExt === 'jpeg' ? 'jpg' : cleanExt}`;
+  const objectKey = `documents/${safeFilename}`;
+  
+  let origin = "http://localhost:8080";
+  try {
+    if (typeof window !== "undefined" && window.location.hostname) {
+      origin = `${window.location.protocol}//${window.location.hostname}:8080`;
+    }
+  } catch {}
+
+  const uploadUrl = `${origin}/api/v1/uploads/objects/${objectKey}`;
+  const token = getToken();
+  
+  const headers: Record<string, string> = {
+    "Content-Type": file.type || "image/png",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(uploadUrl, {
+    method: "PUT",
+    headers,
+    body: file,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to upload banner image (${res.status})`);
+  }
+
+  return objectKey;
+};
 

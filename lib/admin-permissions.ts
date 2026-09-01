@@ -23,6 +23,7 @@ export type Permission =
   | "/admin/packages"
   | "/admin/campaigns"
   | "/admin/partners"
+  | "/admin/adverts"
   | "/admin/purchases"
   | "/admin/package-payments"
   | "/admin/entitlements"
@@ -74,6 +75,7 @@ export const SIDEBAR_ITEMS: {
   { href: "/admin/packages", label: "Packages", group: "Monetization" },
   { href: "/admin/campaigns", label: "Campaigns", group: "Monetization" },
   { href: "/admin/partners", label: "Partners", group: "Monetization" },
+  { href: "/admin/adverts", label: "Advert Banners", group: "Monetization" },
   { href: "/admin/purchases", label: "Purchases", group: "Monetization" },
   { href: "/admin/package-payments", label: "Package Payments", group: "Monetization" },
   { href: "/admin/entitlements", label: "Entitlements", group: "Monetization" },
