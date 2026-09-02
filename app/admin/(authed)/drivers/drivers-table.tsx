@@ -13,6 +13,7 @@ import {
   reinstateDriver,
   forceDriverOffline,
 } from "@/lib/api";
+import { useAdminSocket } from "@/lib/useAdminSocket";
 import {
   mapApiDriver,
   mapDriverDetailToVerify,
@@ -467,6 +468,13 @@ export function DriversTable() {
     window.addEventListener("localDriversUpdated", handle);
     return () => window.removeEventListener("localDriversUpdated", handle);
   }, [loadDrivers]);
+
+  useAdminSocket((event) => {
+    if (event.type === "DRIVER_PRESENCE_CHANGED") {
+      console.log("[ADMIN:WS] ⚡ Driver presence changed! Reloading drivers table...");
+      void loadDrivers();
+    }
+  });
 
   // getDriver effect removed in favor of page navigation
 

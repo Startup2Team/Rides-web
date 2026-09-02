@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getDriversOverview } from "@/lib/api";
+import { useAdminSocket } from "@/lib/useAdminSocket";
 import {
   isVehicleSlug,
   vehicleTypeFromSlug,
@@ -153,6 +154,26 @@ export function DriversOverview() {
   const [error, setError] = useState<string | null>(null);
   const firstLoad = useRef(true);
 
+  const loadOverview = useCallback(async () => {
+    try {
+      const vehicleType = slug ? vehicleTypeFromSlug(slug) : undefined;
+      const params: Record<string, string> = {};
+      if (vehicleType) params.vehicle_type = vehicleType;
+
+      const res = await getDriversOverview(params);
+      setStats({
+        total: res.total ?? 0,
+        online: res.online ?? 0,
+        onTrip: res.on_trip ?? 0,
+        pending: res.pending ?? 0,
+        suspended: res.suspended ?? 0,
+        totalReferrals: res.total_referrals ?? 0,
+      });
+    } catch (err) {
+      console.warn("Failed to load driver overview:", err);
+    }
+  }, [slug]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -163,36 +184,28 @@ export function DriversOverview() {
       }
       setError(null);
       try {
-        const vehicleType = slug ? vehicleTypeFromSlug(slug) : undefined;
-        const params: Record<string, string> = {};
-        if (vehicleType) params.vehicle_type = vehicleType;
-
-        const res = await getDriversOverview(params);
-        if (cancelled) return;
-        setStats({
-          total: res.total ?? 0,
-          online: res.online ?? 0,
-          onTrip: res.on_trip ?? 0,
-          pending: res.pending ?? 0,
-          suspended: res.suspended ?? 0,
-          totalReferrals: res.total_referrals ?? 0,
-        });
+        await loadOverview();
       } catch (err) {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to load driver stats");
-        setStats(emptyStats);
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load overview");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
     void load();
-    const id = setInterval(load, 5_000);
     return () => {
       cancelled = true;
-      clearInterval(id);
     };
-  }, [slug]);
+  }, [loadOverview]);
+
+  useAdminSocket((event) => {
+    if (event.type === "DRIVER_PRESENCE_CHANGED") {
+      console.log("[ADMIN:WS] ⚡ Driver presence event received! Reloading overview metrics...");
+      void loadOverview();
+    }
+  });
 
   useEffect(() => {
     const handle = () => {
